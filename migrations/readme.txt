@@ -1,0 +1,1 @@
+数据库迁移脚本，推荐使用golang-migrate管理版本化Schema变更。
