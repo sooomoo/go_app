@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/panjf2000/ants/v2"
 	"github.com/sooomo/niu"
 )
 
@@ -14,19 +13,14 @@ var chatHub *niu.Hub
 
 func GetChatHub() *niu.Hub { return chatHub }
 
-func Start() error {
-	niu.InitSignHeaders("niu")
-	p, err := ants.NewPool(10000)
-	if err != nil {
-		return err
-	}
-	chatHub, err = niu.NewHub(
-		[]string{"niu-v1"},
+func StartChatHub(pool niu.RoutinePool, subprotocols []string) error {
+	chatHub, err := niu.NewHub(
+		subprotocols,
 		2*time.Minute,
 		time.Minute,
 		30*time.Second,
 		30*time.Second,
-		p,
+		pool,
 		10*time.Second,
 		false,
 		func(r *http.Request) bool { return true },
@@ -35,7 +29,7 @@ func Start() error {
 		return err
 	}
 	msgProto := niu.NewMsgPackProtocol(nil, nil)
-	err = p.Submit(func() {
+	err = pool.Submit(func() {
 		for {
 			select {
 			case msg, ok := <-chatHub.MessageChan():
@@ -65,7 +59,7 @@ func Start() error {
 	return err
 }
 
-func UpgradeWebSocket(ctx *gin.Context) {
+func UpgradeChatWebSocket(ctx *gin.Context) {
 	userId := ctx.GetString("user_id")
 	platform := ctx.GetInt("platform")
 	err := chatHub.UpgradeWebSocket(

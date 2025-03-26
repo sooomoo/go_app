@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"goapp/internal/app/handlers"
 	"goapp/internal/app/hubs"
 	"goapp/internal/app/middlewares"
@@ -10,16 +11,16 @@ import (
 )
 
 func Run() {
-	niu.InitSignHeaders("niu")
-	err := hubs.Start()
+	ctx := context.TODO()
+	err := InitGlobalInstances(ctx, "", "", "")
 	if err != nil {
-		panic("hub start fail")
+		panic(err)
 	}
 
 	r := gin.Default()
 	r.Use(middlewares.ReplayMiddleware)
 	r.Use(middlewares.AuthorizeMiddleware)
-	r.GET("/chat", hubs.UpgradeWebSocket)
+	r.GET("/chat", hubs.UpgradeChatWebSocket)
 	r.Use(niu.SignatureMiddleware(nil, niu.DefaultSignRule))
 
 	handlers.RegisterRouters(r)
