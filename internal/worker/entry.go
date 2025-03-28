@@ -2,12 +2,10 @@ package worker
 
 import (
 	"context"
-	"fmt"
 	"goapp/internal/worker/global"
 	"goapp/internal/worker/tasks"
-	"os"
-	"os/signal"
-	"syscall"
+
+	"github.com/sooomo/niu"
 )
 
 func Start() {
@@ -20,14 +18,10 @@ func Start() {
 	// Start tasks
 	tasks.StartLogWriteTask(ctx)
 
-	// Wait system signal
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	sig := <-sigChan
-	fmt.Printf("收到信号: %v\n", sig)
-	cancel()
-	// Cleanup Resources
-	global.GetCache().Close()
-	// TODO
-	os.Exit(0)
+	// Wait system signal, and cleanup resources
+	niu.WaitSysSignal(func() {
+		cancel()
+		// Cleanup Resources
+		global.GetCache().Close()
+	})
 }
