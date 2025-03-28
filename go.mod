@@ -29,12 +29,12 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/redis/go-redis/v9 v9.7.3 // indirect
 	github.com/shamaton/msgpack/v2 v2.2.3 // indirect
-	github.com/sooomo/niu v0.0.6 // indirect
+	github.com/sooomo/niu v0.0.8 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect
 	golang.org/x/arch v0.15.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
-	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
