@@ -5,6 +5,20 @@ go 1.24.0
 require github.com/panjf2000/ants/v2 v2.11.2
 
 require (
+	github.com/gin-contrib/cors v1.7.4 // indirect
+	github.com/gin-contrib/gzip v1.2.2 // indirect
+	github.com/gin-contrib/pprof v1.5.2 // indirect
+	github.com/gin-contrib/sessions v1.0.2 // indirect
+	github.com/gin-contrib/zap v1.1.4 // indirect
+	github.com/gorilla/context v1.1.2 // indirect
+	github.com/gorilla/csrf v1.7.2 // indirect
+	github.com/gorilla/securecookie v1.1.2 // indirect
+	github.com/gorilla/sessions v1.4.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/zap v1.27.0 // indirect
+)
+
+require (
 	github.com/bytedance/sonic v1.13.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -15,7 +29,7 @@ require (
 	github.com/gin-gonic/gin v1.10.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.25.0 // indirect
+	github.com/go-playground/validator/v10 v10.26.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/uuid v1.6.0 // indirect
@@ -29,7 +43,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/redis/go-redis/v9 v9.7.3 // indirect
 	github.com/shamaton/msgpack/v2 v2.2.3 // indirect
-	github.com/sooomo/niu v0.0.9 // indirect
+	github.com/sooomo/niu v1.0.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect
 	golang.org/x/arch v0.15.0 // indirect

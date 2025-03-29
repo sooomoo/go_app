@@ -15,6 +15,7 @@ func Start() {
 	if err != nil {
 		panic(err)
 	}
+
 	// Start tasks
 	tasks.StartLogWriteTask(ctx)
 
