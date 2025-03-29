@@ -28,7 +28,7 @@ var queue niu.MessageQueue
 
 func GetQueue() niu.MessageQueue { return queue }
 
-func InitInstances(ctx context.Context, cacheAddr, lockerAddr, queueAddr string) error {
+func Init(ctx context.Context) error {
 	appId = niu.NewUUIDWithoutDash()
 
 	var err error = nil
@@ -37,16 +37,16 @@ func InitInstances(ctx context.Context, cacheAddr, lockerAddr, queueAddr string)
 		return err
 	}
 
-	cache, err = niu.NewCacheWithAddr(ctx, cacheAddr, "")
+	cache, err = niu.NewCacheWithAddr(ctx, "", "")
 	if err != nil {
 		return err
 	}
-	locker, err = niu.NewDistributeLockerWithAddr(ctx, lockerAddr, 15*time.Second, niu.LinearRetryStrategy(2*time.Second))
+	locker, err = niu.NewDistributeLockerWithAddr(ctx, "", 15*time.Second, niu.LinearRetryStrategy(2*time.Second))
 	if err != nil {
 		return err
 	}
 
-	queue, err = niu.NewRedisMessageQueueWithAddr(ctx, queueAddr, pool, 1024, 100)
+	queue, err = niu.NewRedisMessageQueueWithAddr(ctx, "", pool, 1024, 100)
 	if err != nil {
 		return err
 	}
