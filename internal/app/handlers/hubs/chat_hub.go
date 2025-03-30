@@ -1,7 +1,10 @@
 package hubs
 
 import (
+	"errors"
 	"fmt"
+	"goapp/internal/app/config"
+	"goapp/internal/app/services"
 	"net/http"
 	"time"
 
@@ -11,11 +14,10 @@ import (
 
 var chatHub *niu.Hub
 
-func GetChatHub() *niu.Hub { return chatHub }
-
-func StartChatHub(pool niu.RoutinePool, subprotocols []string) error {
-	chatHub, err := niu.NewHub(
-		subprotocols,
+func StartChatHub(pool niu.CoroutinePool, config *config.HubConfig) (*niu.Hub, error) {
+	var err error
+	chatHub, err = niu.NewHub(
+		config.SubProtocols,
 		2*time.Minute,
 		time.Minute,
 		30*time.Second,
@@ -26,7 +28,7 @@ func StartChatHub(pool niu.RoutinePool, subprotocols []string) error {
 		func(r *http.Request) bool { return true },
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	msgProto := niu.NewMsgPackProtocol(nil, nil)
 	err = pool.Submit(func() {
@@ -56,19 +58,22 @@ func StartChatHub(pool niu.RoutinePool, subprotocols []string) error {
 			}
 		}
 	})
-	return err
+	return chatHub, err
 }
 
-func UpgradeChatWebSocket(ctx *gin.Context) {
-	userId := ctx.GetString("user_id")
-	platform := ctx.GetInt("platform")
-	err := chatHub.UpgradeWebSocket(
-		userId,
-		niu.Platform(platform),
-		ctx.Writer,
-		ctx.Request,
-	)
+func upgradeChatWebSocket(c *gin.Context) {
+	if chatHub == nil {
+		panic(errors.New("chat hub is nil"))
+	}
+	svr := services.NewAuthService()
+	claims := svr.GetClaims(c)
+	if claims == nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	userId := fmt.Sprintf("%d", claims.UserId)
+	err := chatHub.UpgradeWebSocket(userId, claims.Platform, c.Writer, c.Request)
 	if err != nil {
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+		c.AbortWithStatus(http.StatusInternalServerError)
 	}
 }

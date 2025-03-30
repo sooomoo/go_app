@@ -2,7 +2,7 @@ package handlers
 
 import "github.com/gin-gonic/gin"
 
-func RegisterUserRoutes(r *gin.Engine) {
+func RegisterUserRoutes(r *gin.RouterGroup) {
 	g := r.Group("/usr")
 	g.GET("/:id", func(ctx *gin.Context) {
 		// Get user info

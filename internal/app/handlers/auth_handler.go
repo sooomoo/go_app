@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"goapp/internal/app/global"
 	"goapp/internal/app/services"
 	"net/http"
 
@@ -10,20 +9,31 @@ import (
 	"github.com/sooomo/niu"
 )
 
+func RegisterAuthHandlers(r *gin.RouterGroup) {
+	authGroup := r.Group("/auth", func(c *gin.Context) {
+
+		// TODO: 此处还需要验证该用户的角色
+		c.Next()
+	})
+
+	authGroup.POST("/login", handleLogin)
+}
+
 // 手机验证码登录
-func HandleLogin(c *gin.Context) {
+func handleLogin(c *gin.Context) {
 	var req services.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
-	platform := niu.ParsePlatform(global.GetAuthenticator().GetPlatform(c))
+
+	svr := services.NewAuthService()
+	platform := niu.ParsePlatform(svr.GetPlatform(c))
 	if !niu.IsPlatformValid(platform) {
 		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("invalid platform"))
 		return
 	}
 
-	svr := services.NewAuthService()
 	reply := svr.Authorize(c, &req, platform)
 
 	c.SetSameSite(http.SameSiteLaxMode)

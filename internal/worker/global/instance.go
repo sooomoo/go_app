@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/panjf2000/ants/v2"
+	"github.com/redis/go-redis/v9"
 	"github.com/sooomo/niu"
 )
 
@@ -12,9 +13,9 @@ var appId string
 
 func GetAppId() string { return appId }
 
-var pool niu.RoutinePool
+var pool niu.CoroutinePool
 
-func GetPool() niu.RoutinePool { return pool }
+func GetPool() niu.CoroutinePool { return pool }
 
 var cache *niu.Cache
 
@@ -41,12 +42,16 @@ func Init(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	locker, err = niu.NewDistributeLockerWithAddr(ctx, "", 15*time.Second, niu.LinearRetryStrategy(2*time.Second))
+	locker, err = niu.NewDistributeLocker(ctx, &redis.Options{
+		Addr: "",
+	}, 15*time.Second, niu.LinearRetryStrategy(2*time.Second))
 	if err != nil {
 		return err
 	}
 
-	queue, err = niu.NewRedisMessageQueueWithAddr(ctx, "", pool, 1024, 100)
+	queue, err = niu.NewRedisMessageQueue(ctx, &redis.Options{
+		Addr: "",
+	}, pool, 1024, 100)
 	if err != nil {
 		return err
 	}

@@ -9,21 +9,21 @@ import (
 	"gorm.io/gorm"
 )
 
-type RepositoryOfUser struct {
+type RepositoryUser struct {
 	cache *niu.Cache
 	db    *gorm.DB
 	query *query.Query
 }
 
-func NewRepositoryOfUser(cache *niu.Cache, db *gorm.DB) *RepositoryOfUser {
-	return &RepositoryOfUser{
+func NewRepositoryUser(cache *niu.Cache, db *gorm.DB) *RepositoryUser {
+	return &RepositoryUser{
 		cache: cache,
 		db:    db,
 		query: query.Use(db),
 	}
 }
 
-func (r *RepositoryOfUser) Upsert(ctx context.Context, phone string) (*model.User, error) {
+func (r *RepositoryUser) Upsert(ctx context.Context, phone string) (*model.User, error) {
 	err := r.query.User.WithContext(ctx).WriteDB().Save(&model.User{Phone: phone})
 	if err != nil {
 		return nil, err
@@ -31,6 +31,6 @@ func (r *RepositoryOfUser) Upsert(ctx context.Context, phone string) (*model.Use
 	return r.query.User.WithContext(ctx).ReadDB().Where(r.query.User.Phone.Eq(phone)).First()
 }
 
-func (r *RepositoryOfUser) GetById(ctx context.Context, userId int64) (*model.User, error) {
+func (r *RepositoryUser) GetById(ctx context.Context, userId int64) (*model.User, error) {
 	return r.query.User.WithContext(ctx).ReadDB().Where(r.query.User.ID.Eq(userId)).First()
 }

@@ -4,10 +4,22 @@ import (
 	"context"
 	"goapp/internal/app/global"
 	"goapp/internal/app/repositories"
+	"strconv"
 	"strings"
+	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/sooomo/niu"
 )
+
+type AuthorizedClaims struct {
+	UserId               int          `json:"u"`
+	Roles                []string     `json:"r"`
+	Platform             niu.Platform `json:"p"`
+	Type                 string       `json:"t"` // 类型，如：access_token, refresh_token, message_token, etc.
+	jwt.RegisteredClaims              // 包含标准字段如 exp（过期时间）、iss（签发者）等
+}
 
 type LoginRequest struct {
 	Phone      string `json:"phone" binding:"required"`
@@ -16,14 +28,24 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	Token string `json:"token"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
+const (
+	KeyClaims = "claims"
+)
+
 type AuthService struct {
+	authRepo *repositories.RepositoryAuth
+	userRepo *repositories.RepositoryUser
 }
 
 func NewAuthService() *AuthService {
-	return &AuthService{}
+	return &AuthService{
+		authRepo: repositories.NewRepositoryAuth(global.Cache, global.Db),
+		userRepo: repositories.NewRepositoryUser(global.Cache, global.Db),
+	}
 }
 
 func (s *AuthService) Authorize(ctx context.Context, req *LoginRequest, platform niu.Platform) *niu.ReplyDto[ReplyCode, LoginResponse] {
@@ -40,8 +62,7 @@ func (s *AuthService) Authorize(ctx context.Context, req *LoginRequest, platform
 	}
 
 	// 通过手机号注册或获取用户信息
-	repo := repositories.NewRepositoryOfUser(nil, nil)
-	user, err := repo.Upsert(ctx, req.Phone)
+	user, err := s.userRepo.Upsert(ctx, req.Phone)
 	if err != nil {
 		reply.Code = ReplyCodeFailed
 		reply.Msg = err.Error()
@@ -49,7 +70,13 @@ func (s *AuthService) Authorize(ctx context.Context, req *LoginRequest, platform
 	}
 
 	// 生成token
-	token, err := global.GetAuthenticator().GenerateToken(int(user.ID), strings.Split(user.Roles, ","), platform)
+	accessToken, err := s.GenerateAccessToken(int(user.ID), strings.Split(user.Roles, ","), platform)
+	if err != nil {
+		reply.Code = ReplyCodeFailed
+		reply.Msg = err.Error()
+		return reply
+	}
+	refreshToken, err := s.GenerateRefreshToken(int(user.ID), platform)
 	if err != nil {
 		reply.Code = ReplyCodeFailed
 		reply.Msg = err.Error()
@@ -57,6 +84,113 @@ func (s *AuthService) Authorize(ctx context.Context, req *LoginRequest, platform
 	}
 
 	reply.Code = ReplyCodeSucceed
-	reply.Data = LoginResponse{Token: token}
+	reply.Data = LoginResponse{accessToken, refreshToken}
 	return reply
+}
+
+func (a *AuthService) RevokeToken(ctx context.Context, token string) error {
+	return a.authRepo.SaveRevokedToken(ctx, token) // 调用Repository层的方法
+}
+
+func (a *AuthService) IsTokenRevoked(ctx context.Context, token string) (bool, error) {
+	return a.authRepo.IsTokenRevoked(ctx, token) // 调用Repository层的方法
+}
+
+func (a *AuthService) GenerateAccessToken(userID int, roles []string, platform niu.Platform) (string, error) {
+	jwtConfig := global.AppConfig.Authenticator.Jwt
+	if len(jwtConfig.Secret) == 0 {
+		panic("jwtSecret is empty")
+	}
+	claims := AuthorizedClaims{
+		UserId:   userID,
+		Roles:    roles,
+		Platform: platform,
+		Type:     "a",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(jwtConfig.AccessTtl))), // 过期时间
+			Issuer:    jwtConfig.Issuer,                                                       // 签发者
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(jwtConfig.Secret)) // 使用 HMAC-SHA256 算法签名
+}
+
+func (a *AuthService) GenerateRefreshToken(userID int, platform niu.Platform) (string, error) {
+	jwtConfig := global.AppConfig.Authenticator.Jwt
+	if len(jwtConfig.Secret) == 0 {
+		panic("jwtSecret is empty")
+	}
+	claims := AuthorizedClaims{
+		UserId:   userID,
+		Platform: platform,
+		Type:     "r",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(jwtConfig.RefreshTtl))), // 过期时间
+			Issuer:    jwtConfig.Issuer,                                                        // 签发者
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(jwtConfig.Secret)) // 使用 HMAC-SHA256 算法签名
+}
+
+func (a *AuthService) ParseToken(tokenString string) (*AuthorizedClaims, error) {
+	jwtConfig := global.AppConfig.Authenticator.Jwt
+	if len(jwtConfig.Secret) == 0 {
+		panic("jwtSecret is empty")
+	}
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		&AuthorizedClaims{},
+		func(token *jwt.Token) (any, error) {
+			return []byte(jwtConfig.Secret), nil // 返回用于验证签名的密钥
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	if claims, ok := token.Claims.(*AuthorizedClaims); ok && token.Valid {
+		return claims, nil // 验证通过后返回自定义声明数据
+	}
+	return nil, err
+}
+
+func (d *AuthService) IsReplayRequest(ctx context.Context, nonce, timestamp string) bool {
+	timestampVal, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil {
+		return true
+	}
+	if time.Now().Unix()-timestampVal > 300 {
+		return true // 超过5分钟的请求视为无效
+	}
+	res, err := d.authRepo.SaveHandledRequest(ctx, nonce)
+	if err != nil {
+		return false
+	}
+	return !res
+}
+
+func (d *AuthService) GetPlatform(c *gin.Context) string {
+	return strings.TrimSpace(c.GetHeader("X-Platform"))
+}
+
+func (d *AuthService) GetClaims(c *gin.Context) *AuthorizedClaims {
+	val, exist := c.Get(KeyClaims)
+	if !exist {
+		return nil
+	}
+	claims, ok := val.(*AuthorizedClaims)
+	if !ok {
+		return nil
+	}
+	return claims
+}
+
+func (a *AuthService) GetSigner(ctx *gin.Context) (niu.Signer, error) {
+	// TODO:
+	return nil, nil
+}
+
+func (a *AuthService) GetCryptor(ctx *gin.Context) (niu.Cryptor, error) {
+	// TODO:
+	return nil, nil
 }

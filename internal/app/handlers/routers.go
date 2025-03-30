@@ -1,8 +1,14 @@
 package handlers
 
-import "github.com/gin-gonic/gin"
+import (
+	"goapp/internal/app/handlers/hubs"
 
-func RegisterRouters(r *gin.Engine) {
+	"github.com/gin-gonic/gin"
+)
+
+func RegisterHandlers(r *gin.RouterGroup) {
 	RegisterUserRoutes(r)
 	RegisterAdminRoutes(r)
+
+	hubs.RegisterHubs(r)
 }

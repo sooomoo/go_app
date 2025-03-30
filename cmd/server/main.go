@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"goapp/internal/app/global"
+	"goapp/internal/app"
 	"goapp/internal/app/handlers"
+	"goapp/internal/app/middlewares"
 	"os"
 
 	"github.com/gin-contrib/gzip"
@@ -12,24 +13,28 @@ import (
 )
 
 func main() {
-	err := global.Init(context.TODO())
+	env := os.Getenv("env")
+	configFile := ""
+	if env == "prod" {
+		configFile = ""
+	}
+	err := app.Init(context.TODO(), configFile)
 	if err != nil {
 		panic(err)
 	}
 
 	r := gin.New()
-	r.Use(gin.LoggerWithWriter(os.Stdout), gin.RecoveryWithWriter(os.Stdout))
+	v1 := r.Group("/v1")
+	v1.Use(gin.LoggerWithWriter(os.Stdout), gin.RecoveryWithWriter(os.Stdout))
 
 	pprof.RouteRegister(r, "debug/pprof")
 
-	r.Use(global.CorsMiddleware())
-	r.Use(gzip.Gzip(gzip.DefaultCompression))
-	r.POST("/login", handlers.HandleLogin)
+	v1.Use(middlewares.CorsMiddleware())
+	v1.Use(gzip.Gzip(gzip.DefaultCompression))
+	handlers.RegisterAuthHandlers(v1)
 
-	r.Use(global.GetAuthenticator().AuthenticateMiddleware)
-	r.GET("/chat", global.UpgradeChatWebSocket)
-
-	handlers.RegisterRouters(r)
+	r.Use(middlewares.AuthenticateMiddleware())
+	handlers.RegisterHandlers(v1)
 
 	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
