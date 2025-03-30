@@ -1,107 +1,61 @@
 package services
 
 import (
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
+	"context"
+	"goapp/internal/app/global"
+	"goapp/internal/app/repositories"
 
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/sooomo/niu"
 )
 
-type CustomClaims struct {
-	UserId               int    `json:"u"`
-	Role                 string `json:"r"`
-	Platform             string `json:"p"`
-	jwt.RegisteredClaims        // 包含标准字段如 exp（过期时间）、iss（签发者）等
+type LoginRequest struct {
+	Phone      string `json:"phone" binding:"required"`
+	Code       string `json:"code" binding:"required"`
+	SecureCode string `json:"secure_code" binding:"required"`
+}
+
+type LoginResponse struct {
+	Token string `json:"token"`
 }
 
 type AuthService struct {
-	Issuer        string
-	TokenLiveTime time.Duration
-	Secret        []byte
 }
 
 func NewAuthService() *AuthService {
-	return &AuthService{"niu.com", 2 * time.Hour, []byte("anhdje2xksw3dksse")}
+	return &AuthService{}
 }
 
-func (a *AuthService) AuthorizeRequest(ctx *gin.Context) int {
-	platform := strings.TrimSpace(ctx.GetHeader("x-platform"))
-	tokenString := strings.TrimPrefix(ctx.GetHeader("Authorization"), "Bearer ")
-	if len(tokenString) == 0 {
-		return http.StatusUnauthorized
+func (s *AuthService) Authorize(ctx context.Context, req *LoginRequest, platform niu.Platform) *niu.ReplyDto[ReplyCode, LoginResponse] {
+	reply := &niu.ReplyDto[ReplyCode, LoginResponse]{}
+	// 验证验证码
+	if req.Code != "1234" {
+		reply.Code = ReplyCodeInvalidMsgCode
+		return reply
+	}
+	// 验证安全码
+	if req.SecureCode != "8888" {
+		reply.Code = ReplyCodeInvalidSecureCode
+		return reply
 	}
 
-	// 解析Token
-	claims, err := a.ParseToken(tokenString)
+	// 通过手机号注册或获取用户信息
+	repo := repositories.NewRepositoryOfUser(nil, nil)
+	user, err := repo.Upsert(req.Phone)
 	if err != nil {
-		return http.StatusUnauthorized
+		reply.Code = ReplyCodeFailed
+		reply.Msg = err.Error()
+		return reply
 	}
 
-	if len(platform) == 0 || claims.Platform != platform {
-		return http.StatusBadRequest
-	}
-
-	// 检查token是否已经被吊销
-	isRevoked, err := a.IsTokenRevoked(tokenString)
+	// 生成token
+	token, err := global.GetAuthenticator().GenerateToken(user.Id, user.Roles, platform)
 	if err != nil {
-		return http.StatusInternalServerError
+		reply.Code = ReplyCodeFailed
+		reply.Msg = err.Error()
+		return reply
 	}
-	if isRevoked {
-		return http.StatusInternalServerError
-	}
 
-	ctx.Set("user_id", claims.UserId) // 将用户 ID 注入上下文
-	ctx.Set("role", claims.Role)
-	ctx.Set("platform", platform)
-
-	return 0
-}
-
-func (a *AuthService) IsReplayRequest(ctx *gin.Context) bool {
-
-	// reqNonce := ctx.GetHeader(niu.HeaderSignNonce)
-	return false
-}
-
-func (a *AuthService) ParseToken(tokenString string) (*CustomClaims, error) {
-	token, err := jwt.ParseWithClaims(
-		tokenString,
-		&CustomClaims{},
-		func(token *jwt.Token) (any, error) {
-			return a.Secret, nil // 返回用于验证签名的密钥
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
-		return claims, nil // 验证通过后返回自定义声明数据
-	}
-	return nil, err
-}
-
-func (a *AuthService) GenerateToken(userID int, role string, platform niu.Platform) (string, error) {
-	claims := CustomClaims{
-		UserId:   userID,
-		Role:     role,
-		Platform: strconv.Itoa(int(platform)),
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(a.TokenLiveTime)), // 过期时间
-			Issuer:    a.Issuer,                                            // 签发者
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(a.Secret) // 使用 HMAC-SHA256 算法签名
-}
-
-func (a *AuthService) RevokeToken(tokenString string) error {
-	return nil
-}
-
-func (a *AuthService) IsTokenRevoked(tokenString string) (bool, error) {
-	return false, nil
+	reply.Code = ReplyCodeSucceed
+	reply.Data = LoginResponse{Token: token}
+	return reply
 }
