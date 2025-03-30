@@ -4,6 +4,7 @@ import (
 	"context"
 	"goapp/internal/app/global"
 	"goapp/internal/app/repositories"
+	"strings"
 
 	"github.com/sooomo/niu"
 )
@@ -40,7 +41,7 @@ func (s *AuthService) Authorize(ctx context.Context, req *LoginRequest, platform
 
 	// 通过手机号注册或获取用户信息
 	repo := repositories.NewRepositoryOfUser(nil, nil)
-	user, err := repo.Upsert(req.Phone)
+	user, err := repo.Upsert(ctx, req.Phone)
 	if err != nil {
 		reply.Code = ReplyCodeFailed
 		reply.Msg = err.Error()
@@ -48,7 +49,7 @@ func (s *AuthService) Authorize(ctx context.Context, req *LoginRequest, platform
 	}
 
 	// 生成token
-	token, err := global.GetAuthenticator().GenerateToken(user.Id, user.Roles, platform)
+	token, err := global.GetAuthenticator().GenerateToken(int(user.ID), strings.Split(user.Roles, ","), platform)
 	if err != nil {
 		reply.Code = ReplyCodeFailed
 		reply.Msg = err.Error()
