@@ -1,6 +1,7 @@
 name: niu-dev
 worker_id: 1
-db:
+
+database:
   connect_string: root:abc12345@tcp(127.0.0.1:3306)/niu?charset=utf8mb4&parseTime=True&loc=Local
 
 cache:
@@ -8,36 +9,42 @@ cache:
   slave_addr: 
 
 locker:
-  addr: 127.0.0.1:6379/0
+  addr: 127.0.0.1:6379/1
   ttl: 15 # 15秒
   retry_strategy: linear # linear or exponential
   backoff: 2 # 2秒
   max_retry: 3
 
 queue:
-  addr: 127.0.0.1:6379/0
+  addr: 127.0.0.1:6379/2
   xadd_maxlen: 1024 
   batch_size: 100
 
 hub:
   sub_protocols:
-    - niu
+    - niu-v1
+  live_check_duration: 120 # 120秒
+  conn_max_idle_time: 60   # 60秒
+  read_timeout: 30         # 30秒
+  write_timeout: 30        # 30秒
+  handshake_timeout: 10    # 10秒
+  enable_compression: false
+
 
 authenticator:
-  redis_addr:
   paths_need_crypt:
-    - *
+    - "*"
   paths_not_crypt:
     - /v1/auth/login
   paths_need_auth: # 需要验证Token的路径
-    - *
+    - "*"
   paths_not_auth: # 不需要验证Token的路径
     - /v1/auth/login
   jwt:
     issuer: niu
     secret: 1234567890
     access_ttl: 120 # 120分钟
-    refresh_ttl: 720 # 30天
+    refresh_ttl: 43200 # 30天
   
 cors:
   allow_origins: 

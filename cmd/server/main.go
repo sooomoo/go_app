@@ -12,12 +12,7 @@ import (
 )
 
 func main() {
-	env := os.Getenv("env")
-	configFile := ""
-	if env == "prod" {
-		configFile = ""
-	}
-	err := app.Init(context.TODO(), configFile)
+	err := app.Init(context.TODO())
 	if err != nil {
 		panic(err)
 	}

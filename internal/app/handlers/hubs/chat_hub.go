@@ -18,40 +18,36 @@ func StartChatHub(pool niu.CoroutinePool, config *config.HubConfig) (*niu.Hub, e
 	var err error
 	chatHub, err = niu.NewHub(
 		config.SubProtocols,
-		2*time.Minute,
-		time.Minute,
-		30*time.Second,
-		30*time.Second,
+		time.Second*time.Duration(config.LiveCheckDuration),
+		time.Second*time.Duration(config.ConnMaxIdleTime),
+		time.Second*time.Duration(config.ReadTimeout),
+		time.Second*time.Duration(config.WriteTimeout),
 		pool,
-		10*time.Second,
-		false,
+		time.Second*time.Duration(config.HandshakeTimeout),
+		config.EnableCompression,
 		func(r *http.Request) bool { return true },
 	)
 	if err != nil {
 		return nil, err
 	}
-	msgProto := niu.NewMsgPackProtocol(nil, nil)
 	err = pool.Submit(func() {
 		for {
 			select {
 			case msg, ok := <-chatHub.MessageChan():
 				if ok {
-					var mp map[string]any
-					if msgType, err := msgProto.DecodeReq(msg.Data, &mp); err == nil {
-						fmt.Printf("recv msg type:%v, val is:%v", msgType, mp)
-					}
+					handleReceivedMsg(msg)
 				}
 			case r, ok := <-chatHub.RegisteredChan():
 				if ok {
-					fmt.Printf("line registered: userid->%v, platform->%v", r.UserId(), r.Platform())
+					handleLineRegistered(r)
 				}
 			case u, ok := <-chatHub.UnegisteredChan():
 				if ok {
-					fmt.Printf("line unregistered: userid->%v, platform->%v", u.UserId(), u.Platform())
+					handleLineUnegistered(u)
 				}
 			case e, ok := <-chatHub.ErrorChan():
 				if ok {
-					fmt.Printf("line error: userid->%v, platform->%v, err:%v", e.UserId, e.Platform, e.Error)
+					handleLineError(e)
 				}
 			default:
 				continue

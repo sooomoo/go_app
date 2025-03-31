@@ -3,6 +3,7 @@ package app
 // 全局实例，用于全局使用，如缓存，消息队列，分布式锁，分布式ID生成器，分布式认证器，分布式消息总线等
 import (
 	"context"
+	"goapp/internal/app/config"
 	"goapp/internal/app/global"
 	"goapp/internal/app/handlers/hubs"
 	"time"
@@ -14,19 +15,23 @@ import (
 	"gorm.io/gorm"
 )
 
-func Init(ctx context.Context, configFile string) error {
+func Init(ctx context.Context) error {
+	var err error = nil
 	// load config first
-	// TODO
+	global.AppConfig, err = config.Load()
+	if err != nil {
+		return err
+	}
+	global.AppConfig.Id = niu.NewUUIDWithoutDash()
 
 	appConfig := global.AppConfig
 
-	var err error = nil
 	global.Pool, err = ants.NewPool(500000, ants.WithExpiryDuration(5*time.Minute))
 	if err != nil {
 		return err
 	}
 
-	global.Db, err = gorm.Open(mysql.Open(global.AppConfig.Db.ConnectString))
+	global.Db, err = gorm.Open(mysql.Open(global.AppConfig.Database.ConnectString))
 	if err != nil {
 		return err
 	}

@@ -177,8 +177,8 @@ func (a *AuthService) GenerateAccessToken(userID int, roles []string, platform n
 		Platform: platform,
 		Type:     "a",
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(jwtConfig.AccessTtl))), // 过期时间
-			Issuer:    jwtConfig.Issuer,                                                       // 签发者
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(jwtConfig.AccessTtl) * time.Minute)), // 过期时间
+			Issuer:    jwtConfig.Issuer,                                                                     // 签发者
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -196,8 +196,8 @@ func (a *AuthService) GenerateRefreshToken(userID int, roles []string, platform 
 		Roles:    roles,
 		Type:     "r",
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(jwtConfig.RefreshTtl))), // 过期时间
-			Issuer:    jwtConfig.Issuer,                                                        // 签发者
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(jwtConfig.RefreshTtl) * time.Minute)), // 过期时间
+			Issuer:    jwtConfig.Issuer,                                                                      // 签发者
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
