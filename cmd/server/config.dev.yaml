@@ -26,15 +26,13 @@ hub:
 authenticator:
   redis_addr:
   paths_need_crypt:
-    - /api/v1/user/auth 
-    - /api/v1/user/refresh
-    - /api/v1/user/logout
-  paths_not_crypt:
     - *
+  paths_not_crypt:
+    - /v1/auth/login
   paths_need_auth: # 需要验证Token的路径
     - *
   paths_not_auth: # 不需要验证Token的路径
-    - /api/v1/user/auth
+    - /v1/auth/login
   jwt:
     issuer: niu
     secret: 1234567890
