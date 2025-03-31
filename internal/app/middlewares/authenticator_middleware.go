@@ -22,13 +22,11 @@ import (
 // 1. 验证请求是否合法有效
 // 2. 验证请求是否被篡改
 // 3. 验证请求是否被重复使用
-// 4. 跨域问题
+// 4. 如果请求已经加密，需要解密，并在处理业务逻辑之后加密响应内容
 type Authenticator struct {
-	config *config.AuthenticatorConfig
-
+	config     *config.AuthenticatorConfig
 	bufferPool sync.Pool
-
-	authSvr *services.AuthService
+	authSvr    *services.AuthService
 }
 
 func (d *Authenticator) getBuffer() *bytes.Buffer {
@@ -39,7 +37,7 @@ func (d *Authenticator) getBuffer() *bytes.Buffer {
 
 func (d *Authenticator) isPathEncrypted(path string) bool {
 	for _, p := range d.config.PathsNotCrypt {
-		if strings.EqualFold(p, path) {
+		if strings.Contains(p, "*") || strings.EqualFold(p, path) {
 			return false
 		}
 	}

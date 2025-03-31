@@ -7,7 +7,6 @@ import (
 	"goapp/internal/app/middlewares"
 	"os"
 
-	"github.com/gin-contrib/gzip"
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 )
@@ -30,7 +29,7 @@ func main() {
 	pprof.RouteRegister(r, "debug/pprof")
 
 	v1.Use(middlewares.CorsMiddleware())
-	v1.Use(gzip.Gzip(gzip.DefaultCompression))
+	v1.Use(middlewares.GzipMiddleware())
 	handlers.RegisterAuthHandlers(v1)
 
 	r.Use(middlewares.AuthenticateMiddleware())
