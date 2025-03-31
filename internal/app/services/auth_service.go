@@ -2,8 +2,10 @@ package services
 
 import (
 	"context"
+	"errors"
 	"goapp/internal/app/global"
 	"goapp/internal/app/repositories"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -32,6 +34,11 @@ type LoginResponse struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+type RefreshTokenRequest struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
 const (
 	KeyClaims = "claims"
 )
@@ -48,7 +55,7 @@ func NewAuthService() *AuthService {
 	}
 }
 
-func (s *AuthService) Authorize(ctx context.Context, req *LoginRequest, platform niu.Platform) *niu.ReplyDto[ReplyCode, LoginResponse] {
+func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest, platform niu.Platform) *niu.ReplyDto[ReplyCode, LoginResponse] {
 	reply := &niu.ReplyDto[ReplyCode, LoginResponse]{}
 	// 验证验证码
 	if req.Code != "1234" {
@@ -76,7 +83,18 @@ func (s *AuthService) Authorize(ctx context.Context, req *LoginRequest, platform
 		reply.Msg = err.Error()
 		return reply
 	}
-	refreshToken, err := s.GenerateRefreshToken(int(user.ID), platform)
+	refreshToken, err := s.GenerateRefreshToken(int(user.ID), strings.Split(user.Roles, ","), platform)
+	if err != nil {
+		reply.Code = ReplyCodeFailed
+		reply.Msg = err.Error()
+		return reply
+	}
+
+	// 将这些Token与该用户绑定
+	jwtConfig := global.AppConfig.Authenticator.Jwt
+	err = s.authRepo.SaveBindings(ctx, user.ID, platform, ctx.ClientIP(), accessToken, refreshToken,
+		time.Now().Add(time.Duration(jwtConfig.AccessTtl)).Unix(),
+		time.Now().Add(time.Duration(jwtConfig.RefreshTtl)).Unix())
 	if err != nil {
 		reply.Code = ReplyCodeFailed
 		reply.Msg = err.Error()
@@ -86,6 +104,58 @@ func (s *AuthService) Authorize(ctx context.Context, req *LoginRequest, platform
 	reply.Code = ReplyCodeSucceed
 	reply.Data = LoginResponse{accessToken, refreshToken}
 	return reply
+}
+
+func (s *AuthService) RefreshToken(ctx *gin.Context, req *RefreshTokenRequest) *niu.ReplyDto[ReplyCode, LoginResponse] {
+	authHeader := s.GetAuthorizationHeader(ctx)
+	if req.RefreshToken != authHeader {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return nil
+	}
+	userToken, err := s.authRepo.GetRefreshTokenByValue(ctx, authHeader)
+	if err != nil {
+		ctx.AbortWithError(500, err)
+		return nil
+	}
+	claims := s.GetClaims(ctx)
+	if userToken == nil || claims == nil {
+		ctx.AbortWithError(http.StatusBadRequest, errors.New("token not exist"))
+		return nil
+	}
+
+	reply := &niu.ReplyDto[ReplyCode, LoginResponse]{}
+	// 生成token
+	accessToken, err := s.GenerateAccessToken(int(claims.UserId), claims.Roles, claims.Platform)
+	if err != nil {
+		reply.Code = ReplyCodeFailed
+		reply.Msg = err.Error()
+		return reply
+	}
+	refreshToken, err := s.GenerateRefreshToken(int(claims.UserId), claims.Roles, claims.Platform)
+	if err != nil {
+		reply.Code = ReplyCodeFailed
+		reply.Msg = err.Error()
+		return reply
+	}
+
+	// 将这些Token与该用户绑定
+	jwtConfig := global.AppConfig.Authenticator.Jwt
+	err = s.authRepo.SaveBindings(ctx, int64(claims.UserId), claims.Platform, ctx.ClientIP(), accessToken, refreshToken,
+		time.Now().Add(time.Duration(jwtConfig.AccessTtl)).Unix(),
+		time.Now().Add(time.Duration(jwtConfig.RefreshTtl)).Unix())
+	if err != nil {
+		reply.Code = ReplyCodeFailed
+		reply.Msg = err.Error()
+		return reply
+	}
+
+	reply.Code = ReplyCodeSucceed
+	reply.Data = LoginResponse{accessToken, refreshToken}
+	return reply
+}
+
+func (s *AuthService) GetAuthorizationHeader(ctx *gin.Context) string {
+	return strings.TrimSpace(strings.TrimPrefix(ctx.GetHeader("Authorization"), "Bearer "))
 }
 
 func (a *AuthService) RevokeToken(ctx context.Context, token string) error {
@@ -115,7 +185,7 @@ func (a *AuthService) GenerateAccessToken(userID int, roles []string, platform n
 	return token.SignedString([]byte(jwtConfig.Secret)) // 使用 HMAC-SHA256 算法签名
 }
 
-func (a *AuthService) GenerateRefreshToken(userID int, platform niu.Platform) (string, error) {
+func (a *AuthService) GenerateRefreshToken(userID int, roles []string, platform niu.Platform) (string, error) {
 	jwtConfig := global.AppConfig.Authenticator.Jwt
 	if len(jwtConfig.Secret) == 0 {
 		panic("jwtSecret is empty")
@@ -123,6 +193,7 @@ func (a *AuthService) GenerateRefreshToken(userID int, platform niu.Platform) (s
 	claims := AuthorizedClaims{
 		UserId:   userID,
 		Platform: platform,
+		Roles:    roles,
 		Type:     "r",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(jwtConfig.RefreshTtl))), // 过期时间

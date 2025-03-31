@@ -11,7 +11,7 @@ database:
   # query code file name, default: gen.go
   outFile : 
   # generate unit test for query code
-  withUnitTest  : true
+  withUnitTest  : false
   # generated model code's package name
   modelPkgName  :
   # generate with pointer when field is nullable

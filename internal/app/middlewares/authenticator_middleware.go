@@ -91,7 +91,7 @@ func (d *Authenticator) stringfySignData(params map[string]string) []byte {
 }
 
 func (d *Authenticator) verifyToken(c *gin.Context) {
-	tokenString := strings.TrimSpace(strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer "))
+	tokenString := d.authSvr.GetAuthorizationHeader(c)
 	if d.isPathNeedAuth(c.Request.URL.Path) {
 		if len(tokenString) == 0 {
 			c.AbortWithStatus(401)
