@@ -1,11 +1,14 @@
-package services
+package service
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"goapp/internal/app/global"
-	"goapp/internal/app/repositories"
+	"goapp/internal/app/repository"
+	"math/rand"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -44,14 +47,14 @@ const (
 )
 
 type AuthService struct {
-	authRepo *repositories.RepositoryAuth
-	userRepo *repositories.RepositoryUser
+	authRepo *repository.AuthRepository
+	userRepo *repository.UserRepository
 }
 
 func NewAuthService() *AuthService {
 	return &AuthService{
-		authRepo: repositories.NewRepositoryAuth(global.Cache, global.Db),
-		userRepo: repositories.NewRepositoryUser(global.Cache, global.Db),
+		authRepo: repository.NewAuthRepository(global.Cache, global.Db),
+		userRepo: repository.NewUserRepository(global.Cache, global.Db),
 	}
 }
 
@@ -73,6 +76,10 @@ func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest, platform ni
 	if err != nil {
 		reply.Code = ReplyCodeFailed
 		reply.Msg = err.Error()
+		return reply
+	}
+	if user.Status == repository.UserStatusBlock {
+		reply.Code = ReplyCodeUserBlocked
 		return reply
 	}
 
@@ -225,7 +232,7 @@ func (a *AuthService) ParseToken(tokenString string) (*AuthorizedClaims, error) 
 	return nil, err
 }
 
-func (d *AuthService) IsReplayRequest(ctx context.Context, nonce, timestamp string) bool {
+func (d *AuthService) IsReplayRequest(ctx context.Context, requestId, timestamp string) bool {
 	timestampVal, err := strconv.ParseInt(timestamp, 10, 64)
 	if err != nil {
 		return true
@@ -233,7 +240,7 @@ func (d *AuthService) IsReplayRequest(ctx context.Context, nonce, timestamp stri
 	if time.Now().Unix()-timestampVal > 300 {
 		return true // 超过5分钟的请求视为无效
 	}
-	res, err := d.authRepo.SaveHandledRequest(ctx, nonce)
+	res, err := d.authRepo.SaveHandledRequest(ctx, requestId)
 	if err != nil {
 		return false
 	}
@@ -256,12 +263,56 @@ func (d *AuthService) GetClaims(c *gin.Context) *AuthorizedClaims {
 	return claims
 }
 
-func (a *AuthService) GetSigner(ctx *gin.Context) (niu.Signer, error) {
+func (a *AuthService) SaveClaims(ctx *gin.Context, claims *AuthorizedClaims) {
+	ctx.Set(KeyClaims, claims)
+}
+
+// 用于生成待签名的内容
+func (a *AuthService) stringfySignData(params map[string]string) []byte {
+	// 对参数名进行排序
+	keys := make([]string, 0, len(params))
+	for k := range params {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	// 拼接参数
+	b := strings.Builder{}
+	for _, k := range keys {
+		b.WriteString(fmt.Sprintf("%s=%s\n", k, params[k]))
+	}
+	return []byte(b.String())
+}
+func (a *AuthService) Sign(ctx *gin.Context, data map[string]string) (string, error) {
+	// TODO:
+
+	respSignData := a.stringfySignData(data)
+	fmt.Print(respSignData)
+	return "", nil
+}
+func (a *AuthService) SignVerify(ctx *gin.Context, data map[string]string, signature string) (bool, error) {
+	// TODO:
+
+	signdata := a.stringfySignData(data)
+	fmt.Print(signdata)
+	// if !signer.Verify(signdata, []byte(signature)) {
+	// 	c.AbortWithError(400, errors.New("invalid signature"))
+	// 	return nil
+	// }
+	return false, nil
+}
+
+func (a *AuthService) Encrypt(ctx *gin.Context, data []byte) ([]byte, error) {
+	// TODO:
+	return nil, nil
+}
+func (a *AuthService) Decrypt(ctx *gin.Context, data []byte) ([]byte, error) {
 	// TODO:
 	return nil, nil
 }
 
-func (a *AuthService) GetCryptor(ctx *gin.Context) (niu.Cryptor, error) {
-	// TODO:
-	return nil, nil
+// 生成随机验证码
+func (a *AuthService) GenerateSmsCode() string {
+	code := rand.Intn(9000) + 1000 // 生成4位数验证码
+	return fmt.Sprintf("%04d", code)
 }

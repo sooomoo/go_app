@@ -16,7 +16,7 @@ import (
 
 	"gorm.io/plugin/dbresolver"
 
-	"goapp/internal/app/repositories/dao/model"
+	"goapp/internal/app/repository/dao/model"
 )
 
 func newUserToken(db *gorm.DB, opts ...gen.DOOption) userToken {

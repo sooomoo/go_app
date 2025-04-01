@@ -1,11 +1,11 @@
-package repositories
+package repository
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"goapp/internal/app/repositories/dao/model"
-	"goapp/internal/app/repositories/dao/query"
+	"goapp/internal/app/repository/dao/model"
+	"goapp/internal/app/repository/dao/query"
 	"time"
 
 	"github.com/sooomo/niu"
@@ -21,27 +21,27 @@ const (
 	TokenTypeRefresh int32 = 2
 )
 
-type RepositoryAuth struct {
+type AuthRepository struct {
 	cache *niu.Cache
 	db    *gorm.DB
 	query *query.Query
 }
 
-func NewRepositoryAuth(cache *niu.Cache, db *gorm.DB) *RepositoryAuth {
-	return &RepositoryAuth{
+func NewAuthRepository(cache *niu.Cache, db *gorm.DB) *AuthRepository {
+	return &AuthRepository{
 		cache: cache,
 		db:    db,
 		query: query.Use(db),
 	}
 }
 
-func (a *RepositoryAuth) SaveRevokedToken(ctx context.Context, token string) error {
+func (a *AuthRepository) SaveRevokedToken(ctx context.Context, token string) error {
 	// 将Token添加到Redis集合中，表示已吊销
 	_, err := a.cache.SAdd(ctx, KeyRevokedToken, token)
 	return err
 }
 
-func (a *RepositoryAuth) IsTokenRevoked(ctx context.Context, token string) (bool, error) {
+func (a *AuthRepository) IsTokenRevoked(ctx context.Context, token string) (bool, error) {
 	// 检查Token是否存在于Redis集合中
 	exists, err := a.cache.SIsMember(ctx, KeyRevokedToken, token)
 	if err != nil {
@@ -50,7 +50,7 @@ func (a *RepositoryAuth) IsTokenRevoked(ctx context.Context, token string) (bool
 	return exists, nil
 }
 
-func (a *RepositoryAuth) SaveHandledRequest(ctx context.Context, requestId string) (bool, error) {
+func (a *AuthRepository) SaveHandledRequest(ctx context.Context, requestId string) (bool, error) {
 	exists, err := a.cache.SetNX(ctx, "handled_requests:"+requestId, "1", time.Duration(300)*time.Second)
 	if err != nil {
 		return false, err
@@ -58,7 +58,7 @@ func (a *RepositoryAuth) SaveHandledRequest(ctx context.Context, requestId strin
 	return exists, nil
 }
 
-func (a *RepositoryAuth) SaveBindings(
+func (a *AuthRepository) SaveBindings(
 	ctx context.Context, userId int64, platform niu.Platform, ip,
 	accessToken, refreshToken string,
 	accessExpire, refreshExpire int64) error {
@@ -94,7 +94,7 @@ func (a *RepositoryAuth) SaveBindings(
 	return nil
 }
 
-func (a *RepositoryAuth) GetRefreshTokenByValue(ctx context.Context, token string) (*model.UserToken, error) {
+func (a *AuthRepository) GetRefreshTokenByValue(ctx context.Context, token string) (*model.UserToken, error) {
 	key := fmt.Sprintf("refresh_token:%s", token)
 	jsonStr, err := a.cache.Get(ctx, key)
 	if err == nil {
@@ -105,4 +105,8 @@ func (a *RepositoryAuth) GetRefreshTokenByValue(ctx context.Context, token strin
 	}
 
 	return a.query.UserToken.WithContext(ctx).ReadDB().Where(a.query.UserToken.Token.Eq(token)).First()
+}
+
+func (a *AuthRepository) SaveSMSCode(ctx context.Context, phone string, code string) error {
+	return nil
 }

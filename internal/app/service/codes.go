@@ -1,4 +1,4 @@
-package services
+package service
 
 type ReplyCode string
 
@@ -8,4 +8,5 @@ const (
 	ReplyCodeInvalidMsgCode    ReplyCode = "invalid_msg_code"
 	ReplyCodeInvalidSecureCode ReplyCode = "invalid_secure_code"
 	ReplyCodeFailed            ReplyCode = "fail"
+	ReplyCodeUserBlocked       ReplyCode = "user_blocked"
 )
