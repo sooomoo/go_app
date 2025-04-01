@@ -42,6 +42,14 @@ type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+// TokenPair JWT令牌对
+type TokenPair struct {
+	AccessToken      string `json:"access_token"`
+	RefreshToken     string `json:"refresh_token"`
+	AccessExpiresIn  int64  `json:"access_expires_in"`  // 访问令牌过期时间（秒）
+	RefreshExpiresIn int64  `json:"refresh_expires_in"` // 刷新令牌过期时间（秒）
+}
+
 const (
 	KeyClaims = "claims"
 )
@@ -115,11 +123,11 @@ func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest, platform ni
 
 func (s *AuthService) RefreshToken(ctx *gin.Context, req *RefreshTokenRequest) *niu.ReplyDto[ReplyCode, LoginResponse] {
 	authHeader := s.GetAuthorizationHeader(ctx)
-	if req.RefreshToken != authHeader {
+	if len(authHeader) != 2 || authHeader[0] != "Bearer" || len(authHeader[1]) == 0 {
 		ctx.AbortWithStatus(http.StatusBadRequest)
 		return nil
 	}
-	userToken, err := s.authRepo.GetRefreshTokenByValue(ctx, authHeader)
+	userToken, err := s.authRepo.GetRefreshTokenByValue(ctx, authHeader[1])
 	if err != nil {
 		ctx.AbortWithError(500, err)
 		return nil
@@ -161,8 +169,11 @@ func (s *AuthService) RefreshToken(ctx *gin.Context, req *RefreshTokenRequest) *
 	return reply
 }
 
-func (s *AuthService) GetAuthorizationHeader(ctx *gin.Context) string {
-	return strings.TrimSpace(strings.TrimPrefix(ctx.GetHeader("Authorization"), "Bearer "))
+func (s *AuthService) GetAuthorizationHeader(ctx *gin.Context) []string {
+	// 从请求头中获取令牌
+	authHeader := ctx.GetHeader("Authorization")
+	parts := strings.SplitN(authHeader, " ", 2)
+	return parts
 }
 
 func (a *AuthService) RevokeToken(ctx context.Context, token string) error {

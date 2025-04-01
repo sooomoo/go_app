@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"fmt"
-	"goapp/internal/app/services"
+	"goapp/internal/app/service"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -22,13 +22,13 @@ func RegisterAuthHandlers(r *gin.RouterGroup) {
 
 // 手机验证码登录
 func handleLogin(c *gin.Context) {
-	var req services.LoginRequest
+	var req service.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	svr := services.NewAuthService()
+	svr := service.NewAuthService()
 	platform := niu.ParsePlatform(svr.GetPlatform(c))
 	if !niu.IsPlatformValid(platform) {
 		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("invalid platform"))
@@ -44,13 +44,13 @@ func handleLogin(c *gin.Context) {
 
 // 刷新Token
 func handleRefresh(c *gin.Context) {
-	var req services.LoginRequest
+	var req service.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	svr := services.NewAuthService()
+	svr := service.NewAuthService()
 	platform := niu.ParsePlatform(svr.GetPlatform(c))
 	if !niu.IsPlatformValid(platform) {
 		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("invalid platform"))

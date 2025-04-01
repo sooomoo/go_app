@@ -36,6 +36,7 @@ func main() {
 
 	pprof.RouteRegister(r, "debug/pprof")
 
+	v1.Use(middleware.LogMiddleware())
 	v1.Use(middleware.CorsMiddleware())
 	v1.Use(middleware.GzipMiddleware())
 	v1.Use(middleware.AuthenticateMiddleware())

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"goapp/internal/app/config"
-	"goapp/internal/app/services"
+	"goapp/internal/app/service"
 	"net/http"
 	"time"
 
@@ -61,7 +61,7 @@ func upgradeChatWebSocket(c *gin.Context) {
 	if chatHub == nil {
 		panic(errors.New("chat hub is nil"))
 	}
-	svr := services.NewAuthService()
+	svr := service.NewAuthService()
 	claims := svr.GetClaims(c)
 	if claims == nil {
 		c.AbortWithStatus(http.StatusUnauthorized)

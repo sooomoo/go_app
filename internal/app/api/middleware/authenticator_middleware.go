@@ -72,12 +72,15 @@ func (d *Authenticator) isPathNeedAuth(path string) bool {
 }
 
 func (d *Authenticator) verifyToken(c *gin.Context) {
-	tokenString := d.authSvr.GetAuthorizationHeader(c)
+	tokens := d.authSvr.GetAuthorizationHeader(c)
+	isTokenValid := len(tokens) == 2 && tokens[0] == "Bearer" || len(tokens[1]) > 0
 	if d.isPathNeedAuth(c.Request.URL.Path) {
-		if len(tokenString) == 0 {
+		if !isTokenValid {
 			c.AbortWithStatus(401)
 			return
 		}
+		tokenString := tokens[1]
+
 		revoked, err := d.authSvr.IsTokenRevoked(c, tokenString)
 		if err != nil {
 			c.AbortWithError(500, errors.New("check token revoke fail"))
@@ -93,9 +96,15 @@ func (d *Authenticator) verifyToken(c *gin.Context) {
 			c.AbortWithError(401, errors.New("invalid token"))
 			return
 		}
+		// TODO: 刷新Token时，此处的类型为 r
+		if claims.Type != "a" {
+			c.AbortWithError(401, errors.New("invalid token type"))
+			return
+		}
 
 		d.authSvr.SaveClaims(c, claims)
-	} else if len(tokenString) > 0 {
+	} else if isTokenValid {
+		tokenString := tokens[1]
 		revoked, _ := d.authSvr.IsTokenRevoked(c, tokenString)
 		if !revoked {
 			// 解析Token
