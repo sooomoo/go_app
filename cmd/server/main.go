@@ -39,7 +39,7 @@ func main() {
 	v1.Use(middleware.LogMiddleware())
 	v1.Use(middleware.CorsMiddleware())
 	v1.Use(middleware.GzipMiddleware())
-	v1.Use(middleware.AuthenticateMiddleware())
+	v1.Use(middleware.AuthMiddleware())
 	handlers.RegisterRoutes(v1)
 
 	// 创建HTTP服务器

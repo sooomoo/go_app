@@ -224,7 +224,7 @@ func (w bodyWriter) Write(b []byte) (int, error) {
 	return w.buf.Write(b)
 }
 
-func AuthenticateMiddleware() gin.HandlerFunc {
+func AuthMiddleware() gin.HandlerFunc {
 	d := &Authenticator{
 		config: &global.AppConfig.Authenticator,
 		bufferPool: sync.Pool{
