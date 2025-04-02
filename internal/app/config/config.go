@@ -55,11 +55,12 @@ type HubConfig struct {
 }
 
 type AuthenticatorConfig struct {
-	PathsNeedCrypt []string `mapstructure:"paths_need_crypt"` // 如果包含*号，表示所有请求都是加密请求
-	PathsNotCrypt  []string `mapstructure:"paths_not_crypt"`  // 指定哪些请求不加密，优先级高于 PathsNeedCrypt
-	PathsNeedAuth  []string `mapstructure:"paths_need_auth"`  // 如果包含*号，表示所有请求都需要认证
-	PathsNotAuth   []string `mapstructure:"paths_not_auth"`   // 认证排除路径，优先级高于 PathsNeedAuth
-	Jwt            struct {
+	RefreshTokenPath string   `mapstructure:"refresh_token_path"` // 刷新Token的路径，此路径需要单独处理
+	PathsNeedCrypt   []string `mapstructure:"paths_need_crypt"`   // 如果包含*号，表示所有请求都是加密请求
+	PathsNotCrypt    []string `mapstructure:"paths_not_crypt"`    // 指定哪些请求不加密，优先级高于 PathsNeedCrypt
+	PathsNeedAuth    []string `mapstructure:"paths_need_auth"`    // 如果包含*号，表示所有请求都需要认证
+	PathsNotAuth     []string `mapstructure:"paths_not_auth"`     // 认证排除路径，优先级高于 PathsNeedAuth
+	Jwt              struct {
 		Issuer     string `mapstructure:"issuer"`
 		Secret     string `mapstructure:"secret"`
 		AccessTtl  int64  `mapstructure:"access_ttl"`  // in minute

@@ -96,8 +96,13 @@ func (d *Authenticator) verifyToken(c *gin.Context) {
 			c.AbortWithError(401, errors.New("invalid token"))
 			return
 		}
-		// TODO: 刷新Token时，此处的类型为 r
-		if claims.Type != "a" {
+
+		// 刷新Token时，此处的类型为 r
+		allowTokenTyep := "a"
+		if strings.EqualFold(c.Request.URL.Path, d.config.RefreshTokenPath) {
+			allowTokenTyep = "r"
+		}
+		if claims.Type != allowTokenTyep {
 			c.AbortWithError(401, errors.New("invalid token type"))
 			return
 		}
