@@ -123,7 +123,7 @@ func (d *Authenticator) verifyToken(c *gin.Context) {
 }
 
 func (d *Authenticator) checkModified(c *gin.Context, nonce, timestamp, platform, signature string) []byte {
-	reqBody := make([]byte, 0, 0)
+	reqBody := make([]byte, 0)
 	if c.Request.Body != nil {
 		var err error
 		reqBody, err = io.ReadAll(c.Request.Body)
