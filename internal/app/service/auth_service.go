@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"goapp/internal/app/global"
 	"goapp/internal/app/repository"
+	"goapp/internal/pkg/crypto"
 	"math/rand"
 	"net/http"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -22,7 +22,7 @@ type AuthorizedClaims struct {
 	UserId               int          `json:"u"`
 	Roles                []string     `json:"r"`
 	Platform             niu.Platform `json:"p"`
-	Type                 string       `json:"t"` // 类型，如：access_token, refresh_token, message_token, etc.
+	Type                 string       `json:"t"` // 类型，如：access_token, refresh_token, etc.
 	jwt.RegisteredClaims              // 包含标准字段如 exp（过期时间）、iss（签发者）等
 }
 
@@ -44,10 +44,8 @@ type RefreshTokenRequest struct {
 
 // TokenPair JWT令牌对
 type TokenPair struct {
-	AccessToken      string `json:"access_token"`
-	RefreshToken     string `json:"refresh_token"`
-	AccessExpiresIn  int64  `json:"access_expires_in"`  // 访问令牌过期时间（秒）
-	RefreshExpiresIn int64  `json:"refresh_expires_in"` // 刷新令牌过期时间（秒）
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 const (
@@ -248,10 +246,12 @@ func (d *AuthService) IsReplayRequest(ctx context.Context, requestId, timestamp 
 	if err != nil {
 		return true
 	}
-	if time.Now().Unix()-timestampVal > 300 {
+
+	maxInterval := global.AppConfig.Authenticator.ReplayMaxInterval
+	if time.Now().Unix()-timestampVal > maxInterval {
 		return true // 超过5分钟的请求视为无效
 	}
-	res, err := d.authRepo.SaveHandledRequest(ctx, requestId)
+	res, err := d.authRepo.SaveHandledRequest(ctx, requestId, time.Duration(maxInterval)*time.Second)
 	if err != nil {
 		return false
 	}
@@ -278,33 +278,17 @@ func (a *AuthService) SaveClaims(ctx *gin.Context, claims *AuthorizedClaims) {
 	ctx.Set(KeyClaims, claims)
 }
 
-// 用于生成待签名的内容
-func (a *AuthService) stringfySignData(params map[string]string) []byte {
-	// 对参数名进行排序
-	keys := make([]string, 0, len(params))
-	for k := range params {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	// 拼接参数
-	b := strings.Builder{}
-	for _, k := range keys {
-		b.WriteString(fmt.Sprintf("%s=%s\n", k, params[k]))
-	}
-	return []byte(b.String())
-}
 func (a *AuthService) Sign(ctx *gin.Context, data map[string]string) (string, error) {
 	// TODO:
 
-	respSignData := a.stringfySignData(data)
+	respSignData := crypto.StringfyMapForSign(data)
 	fmt.Print(respSignData)
 	return "", nil
 }
 func (a *AuthService) SignVerify(ctx *gin.Context, data map[string]string, signature string) (bool, error) {
 	// TODO:
 
-	signdata := a.stringfySignData(data)
+	signdata := crypto.StringfyMapForSign(data)
 	fmt.Print(signdata)
 	// if !signer.Verify(signdata, []byte(signature)) {
 	// 	c.AbortWithError(400, errors.New("invalid signature"))

@@ -46,6 +46,7 @@ authenticator:
     secret: 1234567890
     access_ttl: 120 # 120分钟
     refresh_ttl: 43200 # 30天
+  replay_max_interval: 120 # 120秒
   
 cors:
   allow_origins: 

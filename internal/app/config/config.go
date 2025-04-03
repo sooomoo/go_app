@@ -66,6 +66,7 @@ type AuthenticatorConfig struct {
 		AccessTtl  int64  `mapstructure:"access_ttl"`  // in minute
 		RefreshTtl int64  `mapstructure:"refresh_ttl"` // in day
 	} `mapstructure:"jwt"`
+	ReplayMaxInterval int64 `mapstructure:"replay_max_interval"` // in second，超过这个间隔时间的请求会被视为重放请求
 }
 
 type CorsConfig struct {

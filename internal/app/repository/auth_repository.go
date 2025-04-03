@@ -50,8 +50,8 @@ func (a *AuthRepository) IsTokenRevoked(ctx context.Context, token string) (bool
 	return exists, nil
 }
 
-func (a *AuthRepository) SaveHandledRequest(ctx context.Context, requestId string) (bool, error) {
-	exists, err := a.cache.SetNX(ctx, "handled_requests:"+requestId, "1", time.Duration(300)*time.Second)
+func (a *AuthRepository) SaveHandledRequest(ctx context.Context, requestId string, expireAfter time.Duration) (bool, error) {
+	exists, err := a.cache.SetNX(ctx, "handled_requests:"+requestId, "1", expireAfter)
 	if err != nil {
 		return false, err
 	}

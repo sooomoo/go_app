@@ -16,8 +16,14 @@ func RegisterAuthHandlers(r *gin.RouterGroup) {
 		c.Next()
 	})
 
+	authGroup.POST("/negotiate", handleNegotiate)
 	authGroup.POST("/login", handleLogin)
 	authGroup.POST("/refresh", handleRefresh)
+}
+
+// 协商会话密钥
+func handleNegotiate(c *gin.Context) {
+	// svr := service.NewAuthService()
 }
 
 // 手机验证码登录
