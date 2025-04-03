@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 )
 
@@ -26,22 +27,45 @@ type DatabaseConfig struct {
 }
 
 type CacheConfig struct {
-	Addr      string `mapstructure:"addr"`
-	SlaveAddr string `mapstructure:"slave_addr"`
+	Addr string `mapstructure:"addr"`
+	Db   int    `mapstructure:"db"`
+}
+
+func (c *CacheConfig) GetRedisOption() *redis.Options {
+	return &redis.Options{
+		Addr: c.Addr,
+		DB:   c.Db,
+	}
 }
 
 type LockerConfig struct {
 	Addr          string `mapstructure:"addr"`
+	Db            int    `mapstructure:"db"`
 	Ttl           int64  `mapstructure:"ttl"` // in second
 	RetryStrategy string `mapstructure:"retry_strategy"`
 	Backoff       int    `mapstructure:"backoff"`
 	MaxRetry      int    `mapstructure:"max_retry"`
 }
 
+func (c *LockerConfig) GetRedisOption() *redis.Options {
+	return &redis.Options{
+		Addr: c.Addr,
+		DB:   c.Db,
+	}
+}
+
 type QueueConfig struct {
 	Addr       string `mapstructure:"addr"`
+	Db         int    `mapstructure:"db"`
 	XAddMaxLen int    `mapstructure:"xadd_max_len"`
 	BatchSize  int    `mapstructure:"batch_size"`
+}
+
+func (c *QueueConfig) GetRedisOption() *redis.Options {
+	return &redis.Options{
+		Addr: c.Addr,
+		DB:   c.Db,
+	}
 }
 
 type HubConfig struct {
@@ -54,19 +78,28 @@ type HubConfig struct {
 	EnableCompression bool     `mapstructure:"enable_compression"`
 }
 
+type KeyPair struct {
+	PublicKey  string `mapstructure:"pub"`
+	PrivateKey string `mapstructure:"pri"`
+}
+
+type JwtConfig struct {
+	Issuer     string `mapstructure:"issuer"`
+	Secret     string `mapstructure:"secret"`
+	AccessTtl  int64  `mapstructure:"access_ttl"`  // in minute
+	RefreshTtl int64  `mapstructure:"refresh_ttl"` // in day
+}
+
 type AuthenticatorConfig struct {
-	RefreshTokenPath string   `mapstructure:"refresh_token_path"` // 刷新Token的路径，此路径需要单独处理
-	PathsNeedCrypt   []string `mapstructure:"paths_need_crypt"`   // 如果包含*号，表示所有请求都是加密请求
-	PathsNotCrypt    []string `mapstructure:"paths_not_crypt"`    // 指定哪些请求不加密，优先级高于 PathsNeedCrypt
-	PathsNeedAuth    []string `mapstructure:"paths_need_auth"`    // 如果包含*号，表示所有请求都需要认证
-	PathsNotAuth     []string `mapstructure:"paths_not_auth"`     // 认证排除路径，优先级高于 PathsNeedAuth
-	Jwt              struct {
-		Issuer     string `mapstructure:"issuer"`
-		Secret     string `mapstructure:"secret"`
-		AccessTtl  int64  `mapstructure:"access_ttl"`  // in minute
-		RefreshTtl int64  `mapstructure:"refresh_ttl"` // in day
-	} `mapstructure:"jwt"`
-	ReplayMaxInterval int64 `mapstructure:"replay_max_interval"` // in second，超过这个间隔时间的请求会被视为重放请求
+	BoxKeyPair        KeyPair   `mapstructure:"box_key_pair"`       // 用于加密和解密数据
+	SignKeyPair       KeyPair   `mapstructure:"sing_key_pair"`      // 用于签名和验证数据
+	RefreshTokenPath  string    `mapstructure:"refresh_token_path"` // 刷新Token的路径，此路径需要单独处理
+	PathsNeedCrypt    []string  `mapstructure:"paths_need_crypt"`   // 如果包含*号，表示所有请求都是加密请求
+	PathsNotCrypt     []string  `mapstructure:"paths_not_crypt"`    // 指定哪些请求不加密，优先级高于 PathsNeedCrypt
+	PathsNeedAuth     []string  `mapstructure:"paths_need_auth"`    // 如果包含*号，表示所有请求都需要认证
+	PathsNotAuth      []string  `mapstructure:"paths_not_auth"`     // 认证排除路径，优先级高于 PathsNeedAuth
+	Jwt               JwtConfig `mapstructure:"jwt"`
+	ReplayMaxInterval int64     `mapstructure:"replay_max_interval"` // in second，超过这个间隔时间的请求会被视为重放请求
 }
 
 type CorsConfig struct {

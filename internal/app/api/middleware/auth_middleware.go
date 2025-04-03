@@ -122,7 +122,7 @@ func (d *Authenticator) verifyToken(c *gin.Context) {
 	}
 }
 
-func (d *Authenticator) checkModified(c *gin.Context, nonce, timestamp, platform, signature string) []byte {
+func (d *Authenticator) checkModified(c *gin.Context, sessionId, nonce, timestamp, platform, signature string) []byte {
 	reqBody := make([]byte, 0)
 	if c.Request.Body != nil {
 		var err error
@@ -135,6 +135,7 @@ func (d *Authenticator) checkModified(c *gin.Context, nonce, timestamp, platform
 
 	// 验证签名是否正确
 	verified, err := d.authSvr.SignVerify(c, map[string]string{
+		"session":   sessionId,
 		"nonce":     nonce,
 		"timestamp": timestamp,
 		"platform":  platform,
@@ -183,7 +184,7 @@ func (d *Authenticator) replaceRequestBody(c *gin.Context, reqBody []byte) {
 	c.Request.ContentLength = int64(len(reqBody))
 }
 
-func (d *Authenticator) replaceReponseBody(c *gin.Context, respBody []byte, nonce, timestamp, platform string) (contentType string, body []byte, signature string) {
+func (d *Authenticator) replaceReponseBody(c *gin.Context, respBody []byte, sessionId, nonce, timestamp, platform string) (contentType string, body []byte, signature string) {
 	respContentType := c.Writer.Header().Get("Content-Type")
 	if d.isPathNeedCrypto(c.Request.URL.Path) {
 		var err error
@@ -195,9 +196,9 @@ func (d *Authenticator) replaceReponseBody(c *gin.Context, respBody []byte, nonc
 		respContentType = niu.ContentTypeEncrypted
 	}
 
-	// 9. 生成响应签名
-
+	// 生成响应签名
 	respSignature, err := d.authSvr.Sign(c, map[string]string{
+		"session":   sessionId,
 		"nonce":     nonce,
 		"platform":  platform,
 		"timestamp": timestamp,
@@ -212,16 +213,6 @@ func (d *Authenticator) replaceReponseBody(c *gin.Context, respBody []byte, nonc
 	}
 
 	return respContentType, respBody, respSignature
-}
-
-// 自定义响应写入器
-type bodyWriter struct {
-	gin.ResponseWriter
-	buf *bytes.Buffer
-}
-
-func (w bodyWriter) Write(b []byte) (int, error) {
-	return w.buf.Write(b)
 }
 
 func AuthMiddleware() gin.HandlerFunc {
@@ -240,7 +231,8 @@ func AuthMiddleware() gin.HandlerFunc {
 		timestampStr := strings.TrimSpace(c.GetHeader("X-Timestamp"))
 		platform := strings.TrimSpace(c.GetHeader("X-Platform"))
 		signature := c.GetHeader("X-Signature")
-		if len(nonce) == 0 || len(timestampStr) == 0 || len(signature) == 0 || !niu.IsPlatformStringValid(platform) {
+		sessionId := c.GetHeader("X-Session")
+		if len(nonce) == 0 || len(timestampStr) == 0 || len(signature) == 0 || len(sessionId) == 0 || !niu.IsPlatformStringValid(platform) {
 			c.AbortWithStatus(400)
 			return
 		}
@@ -257,8 +249,13 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		d.authSvr.ParseAndStoreClientKeys(c, sessionId)
+		if c.IsAborted() {
+			return
+		}
+
 		// 3. 验证请求是否被篡改
-		reqBody := d.checkModified(c, nonce, timestampStr, platform, signature)
+		reqBody := d.checkModified(c, sessionId, nonce, timestampStr, platform, signature)
 		if c.IsAborted() {
 			return
 		}
@@ -284,7 +281,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		responseBody := bodyWriter.buf.Bytes()
 		respTimestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
 		respNonce := niu.NewUUIDWithoutDash()
-		respContentType, responseBody, respSignature := d.replaceReponseBody(c, responseBody, respNonce, respTimestamp, platform)
+		respContentType, responseBody, respSignature := d.replaceReponseBody(c, responseBody, sessionId, respNonce, respTimestamp, platform)
 		if c.IsAborted() {
 			return
 		}

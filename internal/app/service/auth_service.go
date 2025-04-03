@@ -18,6 +18,11 @@ import (
 	"github.com/sooomo/niu"
 )
 
+type ClientKeys struct {
+	SignPubKey []byte
+	BoxPubKey  []byte
+}
+
 type AuthorizedClaims struct {
 	UserId               int          `json:"u"`
 	Roles                []string     `json:"r"`
@@ -49,7 +54,8 @@ type TokenPair struct {
 }
 
 const (
-	KeyClaims = "claims"
+	KeyClaims     = "claims"
+	KeyClientKeys = "client_keys"
 )
 
 type AuthService struct {
@@ -195,6 +201,7 @@ func (a *AuthService) GenerateAccessToken(userID int, roles []string, platform n
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(jwtConfig.AccessTtl) * time.Minute)), // 过期时间
 			Issuer:    jwtConfig.Issuer,                                                                     // 签发者
+			ID:        niu.NewUUIDWithoutDash(),
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -214,6 +221,7 @@ func (a *AuthService) GenerateRefreshToken(userID int, roles []string, platform 
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(jwtConfig.RefreshTtl) * time.Minute)), // 过期时间
 			Issuer:    jwtConfig.Issuer,                                                                      // 签发者
+			ID:        niu.NewUUIDWithoutDash(),
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

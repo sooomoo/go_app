@@ -18,7 +18,8 @@ import (
 
 func main() {
 	env := os.Getenv("env")
-	err := app.Init(context.TODO())
+	ctx := context.Background()
+	err := app.Init(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -31,20 +32,23 @@ func main() {
 	}
 
 	r := gin.New()
+	r.Use(middleware.CorsMiddleware())
 	v1 := r.Group("/v1")
-	v1.Use(gin.LoggerWithWriter(os.Stdout), gin.RecoveryWithWriter(os.Stdout))
+	v1.Use(gin.RecoveryWithWriter(os.Stdout), gin.LoggerWithWriter(os.Stdout))
 
 	pprof.RouteRegister(r, "debug/pprof")
 
 	v1.Use(middleware.LogMiddleware())
-	v1.Use(middleware.CorsMiddleware())
 	v1.Use(middleware.GzipMiddleware())
-	v1.Use(middleware.AuthMiddleware())
+	v1.Use(middleware.ReplayMiddleware())
+	v1.Use(middleware.JwtMiddleware())
+	v1.Use(middleware.SignMiddleware())
+	v1.Use(middleware.CryptoMiddleware())
 	handlers.RegisterRoutes(v1)
 
 	// 创建HTTP服务器
 	srv := &http.Server{
-		Addr:    ":8001",
+		Addr:    "127.0.0.1:8001",
 		Handler: r,
 	}
 	// 优雅关闭
@@ -61,7 +65,7 @@ func main() {
 	log.Println("正在关闭服务器...")
 
 	// 设置关闭超时
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {

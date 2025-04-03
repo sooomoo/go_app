@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/panjf2000/ants/v2"
-	"github.com/redis/go-redis/v9"
 	"github.com/sooomo/niu"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -36,27 +35,25 @@ func Init(ctx context.Context) error {
 		return err
 	}
 
-	global.Cache, err = niu.NewCacheWithAddr(ctx, appConfig.Cache.Addr, appConfig.Cache.SlaveAddr)
+	global.Cache, err = niu.NewCache(ctx, appConfig.Cache.GetRedisOption(), nil)
 	if err != nil {
 		return err
 	}
 
-	global.DistributeId, err = niu.NewDistributeId(ctx, &redis.Options{
-		Addr: appConfig.Cache.Addr,
-	})
+	global.DistributeId, err = niu.NewDistributeId(ctx, appConfig.Cache.GetRedisOption())
 	if err != nil {
 		return err
 	}
 
 	global.Locker, err = niu.NewDistributeLocker(
-		ctx, &redis.Options{Addr: appConfig.Locker.Addr},
+		ctx, appConfig.Locker.GetRedisOption(),
 		time.Duration(appConfig.Locker.Ttl)*time.Second,
 		niu.LinearRetryStrategy(time.Duration(appConfig.Locker.Backoff)*time.Second))
 	if err != nil {
 		return err
 	}
 
-	global.Queue, err = niu.NewRedisMessageQueue(ctx, &redis.Options{Addr: appConfig.Queue.Addr}, global.Pool, appConfig.Queue.XAddMaxLen, appConfig.Queue.BatchSize)
+	global.Queue, err = niu.NewRedisMessageQueue(ctx, appConfig.Queue.GetRedisOption(), global.Pool, appConfig.Queue.XAddMaxLen, appConfig.Queue.BatchSize)
 	if err != nil {
 		return err
 	}

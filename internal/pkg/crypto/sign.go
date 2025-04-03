@@ -16,6 +16,13 @@ const (
 	SignatureLength = 64 // Ed25519签名长度
 )
 
+func Base64Encode(data []byte) string {
+	return base64Encoding.EncodeToString(data)
+}
+func Base64Decode(data string) ([]byte, error) {
+	return base64Encoding.DecodeString(data)
+}
+
 // 用于生成待签名的内容
 func StringfyMap(params map[string]string) []byte {
 	// 对参数名进行排序

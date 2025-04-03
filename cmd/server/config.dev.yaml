@@ -5,18 +5,20 @@ database:
   connect_string: root:abc12345@tcp(127.0.0.1:3306)/niu?charset=utf8mb4&parseTime=True&loc=Local
 
 cache:
-  addr: 127.0.0.1:6379/0
-  slave_addr: 
+  addr: 127.0.0.1:6379
+  db: 1
 
 locker:
-  addr: 127.0.0.1:6379/1
+  addr: 127.0.0.1:6379
+  db: 2
   ttl: 15 # 15秒
   retry_strategy: linear # linear or exponential
   backoff: 2 # 2秒
   max_retry: 3
 
 queue:
-  addr: 127.0.0.1:6379/2
+  addr: 127.0.0.1:6379
+  db: 3
   xadd_maxlen: 1024 
   batch_size: 100
 
@@ -32,6 +34,12 @@ hub:
 
 
 authenticator:
+  box_key_pair:
+    pri: QOt6ci/nXbN+Z4L5PIHPK1znlj8r3uuORhbY6I2mUS4=
+    pub: sLo9W2GPUX5WisWrou7bVvtdi2ohJMuWaIdk8NJeZpQ=
+  sing_key_pair:
+    pri: 88Jx6gGU5EKb5xxsVG7TsKaBMZbnffPELrG49tm5gGE=
+    pub: toiY2nSANv516ng1gtpoDtTJk4hvaflO8RtMauoAyVA=
   refresh_token_path: /v1/auth/refresh
   paths_need_crypt:
     - "*"
@@ -49,8 +57,9 @@ authenticator:
   replay_max_interval: 120 # 120秒
   
 cors:
-  allow_origins: 
-    - https://github.com
+  allow_origins:
+    - http://localhost:5173
+    - http://127.0.0.1:5173
   allow_methods:
     - GET
     - POST
@@ -64,6 +73,7 @@ cors:
     - X-Timestamp
     - X-Signature
     - X-Platform
+    - X-Session
   expose_headers: 
     - X-Nonce
     - X-Timestamp
