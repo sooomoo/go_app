@@ -281,14 +281,14 @@ func (a *AuthService) SaveClaims(ctx *gin.Context, claims *AuthorizedClaims) {
 func (a *AuthService) Sign(ctx *gin.Context, data map[string]string) (string, error) {
 	// TODO:
 
-	respSignData := crypto.StringfyMapForSign(data)
+	respSignData := crypto.StringfyMap(data)
 	fmt.Print(respSignData)
 	return "", nil
 }
 func (a *AuthService) SignVerify(ctx *gin.Context, data map[string]string, signature string) (bool, error) {
 	// TODO:
 
-	signdata := crypto.StringfyMapForSign(data)
+	signdata := crypto.StringfyMap(data)
 	fmt.Print(signdata)
 	// if !signer.Verify(signdata, []byte(signature)) {
 	// 	c.AbortWithError(400, errors.New("invalid signature"))

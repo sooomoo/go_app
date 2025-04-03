@@ -17,7 +17,7 @@ const (
 )
 
 // 用于生成待签名的内容
-func StringfyMapForSign(params map[string]string) []byte {
+func StringfyMap(params map[string]string) []byte {
 	// 对参数名进行排序
 	keys := make([]string, 0, len(params))
 	for k := range params {
@@ -31,6 +31,7 @@ func StringfyMapForSign(params map[string]string) []byte {
 	for _, k := range keys {
 		buf.WriteString(fmt.Sprintf("%s=%s&", k, params[k]))
 	}
+	buf.Truncate(buf.Len() - 1) // 去掉最后一个&
 	return buf.Bytes()
 }
 
