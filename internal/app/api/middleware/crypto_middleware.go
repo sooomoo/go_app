@@ -3,7 +3,7 @@ package middleware
 import (
 	"errors"
 	"goapp/internal/app/global"
-	"goapp/internal/app/service"
+	"goapp/internal/pkg/crypto"
 	"io"
 	"strconv"
 	"strings"
@@ -21,7 +21,6 @@ func CryptoMiddleware() gin.HandlerFunc {
 		}
 
 		// 解密
-		svc := service.NewAuthService()
 		contentType := c.GetHeader("Content-Type")
 		if !strings.EqualFold(contentType, niu.ContentTypeEncrypted) {
 			c.AbortWithStatus(400)
@@ -34,7 +33,13 @@ func CryptoMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		reqBody, err = svc.Decrypt(c, reqBody)
+		keys := getClientKeys(c)
+		if keys == nil {
+			c.AbortWithError(400, errors.New("bad ckeys"))
+			return
+		}
+
+		reqBody, err = crypto.Decrypt(keys.ShareKey, reqBody)
 		if err != nil {
 			c.AbortWithError(400, errors.New("decrypt fail"))
 			return
@@ -60,7 +65,7 @@ func CryptoMiddleware() gin.HandlerFunc {
 
 		// 加密
 		responseBody := bodyWriter.buf.Bytes()
-		respBody, err := svc.Encrypt(c, responseBody)
+		respBody, err := crypto.Encrypt(keys.ShareKey, responseBody)
 		if err != nil {
 			c.AbortWithError(500, errors.New("encrypt fail"))
 			return

@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"errors"
+	"goapp/internal/app/global"
 	"goapp/internal/pkg/crypto"
 
 	"github.com/gin-gonic/gin"
@@ -29,6 +30,7 @@ const (
 type ClientKeys struct {
 	SignPubKey []byte
 	BoxPubKey  []byte
+	ShareKey   []byte
 }
 
 func parseAndStoreClientKeys(ctx *gin.Context, sessionId string) {
@@ -51,7 +53,13 @@ func parseAndStoreClientKeys(ctx *gin.Context, sessionId string) {
 	}
 	signPubKey := remain[7:39]
 	boxPubKey := remain[39:71]
-	ctx.Set(KeyClientKeys, &ClientKeys{signPubKey, boxPubKey})
+	shareKey, err := crypto.NegotiateShareKey(boxPubKey, global.AppConfig.Authenticator.BoxKeyPair.PublicKey)
+	if err != nil {
+		ctx.AbortWithError(400, errors.New("negotiate fail"))
+		return
+	}
+
+	ctx.Set(KeyClientKeys, &ClientKeys{signPubKey, boxPubKey, shareKey})
 }
 
 func getClientKeys(ctx *gin.Context) *ClientKeys {

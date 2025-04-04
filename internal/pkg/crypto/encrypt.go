@@ -28,19 +28,18 @@ func NewNegotiateKeyPair() (pubKey, priKey []byte, err error) {
 }
 
 // 通过与对方公钥协商，获得共享密钥
-func NegotiateShareKey(remotePubKey, selfPriKey []byte) ([]byte, error) {
+func NegotiateShareKey(remotePubKey []byte, selfPriKeyBase64 string) ([]byte, error) {
+	selfPriKey, err := base64Encoding.DecodeString(selfPriKeyBase64)
+	if err != nil {
+		return nil, err
+	}
 	return curve25519.X25519(selfPriKey, remotePubKey)
 }
 
 // Encrypt AES-GCM 加密
 //
-// key: 共享密钥，必须是base64编码的32位字符串
-func Encrypt(key string, data []byte) ([]byte, error) {
-	secret, err := base64Encoding.DecodeString(key)
-	if err != nil {
-		return nil, err
-	}
-
+// key: 共享密钥
+func Encrypt(secret []byte, data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(secret)
 	if err != nil {
 		return nil, err
@@ -61,13 +60,8 @@ func Encrypt(key string, data []byte) ([]byte, error) {
 
 // Decrypt AES-GCM 解密
 //
-// key: 共享密钥，必须是base64编码的32位字符串
-func Decrypt(key string, data []byte) ([]byte, error) {
-	secret, err := base64Encoding.DecodeString(key)
-	if err != nil {
-		return nil, err
-	}
-
+// key: 共享密钥
+func Decrypt(secret []byte, data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(secret)
 	if err != nil {
 		return nil, err

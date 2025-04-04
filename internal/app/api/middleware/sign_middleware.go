@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"errors"
-	"goapp/internal/app/service"
+	"goapp/internal/pkg/crypto"
 	"io"
 	"strconv"
 	"strings"
@@ -20,8 +20,13 @@ func SignMiddleware() gin.HandlerFunc {
 		signature := strings.TrimSpace(c.GetHeader("X-Signature"))
 		sessionId := strings.TrimSpace(c.GetHeader("X-Session"))
 
+		keys := getClientKeys(c)
+		if keys == nil {
+			c.AbortWithError(400, errors.New("bad skeys"))
+			return
+		}
+
 		// 1. 验证请求是否签名是否正确
-		svc := service.NewAuthService()
 		dataToVerify := map[string]string{
 			"session":   sessionId,
 			"nonce":     nonce,
@@ -47,7 +52,7 @@ func SignMiddleware() gin.HandlerFunc {
 		}
 
 		// 验证签名是否正确
-		verified, err := svc.SignVerify(c, dataToVerify, signature)
+		verified, err := crypto.VerifySignMap(keys.SignPubKey, dataToVerify, signature)
 		if err != nil {
 			c.AbortWithError(500, errors.New("verify signature fail"))
 			return
@@ -84,7 +89,7 @@ func SignMiddleware() gin.HandlerFunc {
 		}
 
 		// 生成响应签名
-		respSignature, err := svc.Sign(c, dataToSign)
+		respSignature, err := crypto.SignMap(keys.SignPubKey, dataToSign)
 		if err != nil {
 			c.AbortWithError(500, errors.New("sign fail"))
 			return

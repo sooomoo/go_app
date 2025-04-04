@@ -85,3 +85,27 @@ func VerifySign(pubKey string, data []byte, signature string) (bool, error) {
 
 	return ed25519.Verify(pub, data, sig), nil
 }
+
+// 使用Ed25519签名
+//
+// priKey: 私钥
+// data: 待签名的数据
+func SignMap(priKey []byte, mp map[string]string) (string, error) {
+	data := StringfyMap(mp)
+	signature := ed25519.Sign(priKey, data)
+	return base64Encoding.EncodeToString(signature), nil
+}
+
+// 使用Ed25519验证签名
+//
+// pubKey: 公钥
+// data: 待验证的数据
+func VerifySignMap(pubKey []byte, mp map[string]string, signature string) (bool, error) {
+	sig, err := base64Encoding.DecodeString(signature)
+	if err != nil {
+		return false, err
+	}
+
+	data := StringfyMap(mp)
+	return ed25519.Verify(pubKey, data, sig), nil
+}
