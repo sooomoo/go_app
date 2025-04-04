@@ -35,11 +35,11 @@ hub:
 
 authenticator:
   box_key_pair:
-    pri: QOt6ci/nXbN+Z4L5PIHPK1znlj8r3uuORhbY6I2mUS4=
-    pub: sLo9W2GPUX5WisWrou7bVvtdi2ohJMuWaIdk8NJeZpQ=
-  sing_key_pair:
-    pri: 88Jx6gGU5EKb5xxsVG7TsKaBMZbnffPELrG49tm5gGE=
-    pub: toiY2nSANv516ng1gtpoDtTJk4hvaflO8RtMauoAyVA=
+    pri: khOEvWcNj0CkvIMGJOaK3FJSp29BWmgJQ15GkK1tXSU
+    pub: yAlQ2dupb9qW5HFYCtvoBr6TDlA58UHUGdTTJTWdnAU
+  sign_key_pair:
+    pri: nS3l3YV9HBJZ3n0fjt_UB5Ek7eqk67Q0yCixs7FnGU4k9NVf7KzEevzc1YW1at22JqEvO1Hne575xy2VaXE_aQ
+    pub: JPTVX-ysxHr83NWFtWrdtiahLztR53ue-cctlWlxP2k
   refresh_token_path: /v1/auth/refresh
   paths_need_crypt:
     - "*"

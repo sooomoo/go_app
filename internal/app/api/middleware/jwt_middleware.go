@@ -14,7 +14,7 @@ func JwtMiddleware() gin.HandlerFunc {
 		svc := service.NewAuthService()
 		// 解析客户端的Token（如果有）
 		tokens := svc.GetAuthorizationHeader(c)
-		isTokenValid := len(tokens) == 2 && tokens[0] == "Bearer" || len(tokens[1]) > 0
+		isTokenValid := len(tokens) == 2 && tokens[0] == "Bearer" && len(tokens[1]) > 0
 		if isPathNeedAuth(c.Request.URL.Path) {
 			if !isTokenValid {
 				c.AbortWithStatus(401)

@@ -10,7 +10,7 @@ import (
 )
 
 var bufferPool = niu.NewByteBufferPool(0, 1024)
-var base64Encoding = base64.StdEncoding
+var base64Encoding = base64.RawURLEncoding
 
 const (
 	SignatureLength = 64 // Ed25519签名长度
@@ -107,5 +107,7 @@ func VerifySignMap(pubKey []byte, mp map[string]string, signature string) (bool,
 	}
 
 	data := StringfyMap(mp)
+	strData := string(data)
+	fmt.Println("strData", strData)
 	return ed25519.Verify(pubKey, data, sig), nil
 }
