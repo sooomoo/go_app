@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"encoding/base64"
 	"fmt"
+	"goapp/internal/app/global"
 	"sort"
 
 	"github.com/sooomo/niu"
@@ -25,6 +26,10 @@ func Base64Decode(data string) ([]byte, error) {
 
 // 用于生成待签名的内容
 func StringfyMap(params map[string]string) []byte {
+	if len(params) == 0 {
+		return nil
+	}
+
 	// 对参数名进行排序
 	keys := make([]string, 0, len(params))
 	for k := range params {
@@ -90,8 +95,23 @@ func VerifySign(pubKey string, data []byte, signature string) (bool, error) {
 //
 // priKey: 私钥
 // data: 待签名的数据
-func SignMap(priKey []byte, mp map[string]string) (string, error) {
+func SignMap(mp map[string]string) (string, error) {
+	key := global.AppConfig.Authenticator.SignKeyPair.PrivateKey
+	pKey := global.AppConfig.Authenticator.SignKeyPair.PublicKey
+	if len(key) == 0 {
+		panic("sign key is empty")
+	}
+	priKey, err := base64Encoding.DecodeString(key)
+	if err != nil {
+		return "", err
+	}
+	pubKey, err := base64Encoding.DecodeString(pKey)
+	if err != nil {
+		return "", err
+	}
+
 	data := StringfyMap(mp)
+	priKey = append(priKey, pubKey...)
 	signature := ed25519.Sign(priKey, data)
 	return base64Encoding.EncodeToString(signature), nil
 }
@@ -107,7 +127,6 @@ func VerifySignMap(pubKey []byte, mp map[string]string, signature string) (bool,
 	}
 
 	data := StringfyMap(mp)
-	strData := string(data)
-	fmt.Println("strData", strData)
+	fmt.Println("data", string(data))
 	return ed25519.Verify(pubKey, data, sig), nil
 }

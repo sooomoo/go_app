@@ -20,6 +20,7 @@ type bodyWriter struct {
 
 func (w bodyWriter) Write(b []byte) (int, error) {
 	return w.buf.Write(b)
+	// w.ResponseWriter.Write(b)
 }
 
 const (
@@ -45,21 +46,24 @@ func parseAndStoreClientKeys(ctx *gin.Context, sessionId string) {
 		return
 	}
 
-	nonce := raw[:17]
-	remain := raw[17:]
-	for i := range remain {
-		elem := remain[i]
-		remain[i] = elem ^ nonce[i%17]
-	}
-	signPubKey := remain[7:39]
-	boxPubKey := remain[39:71]
-	shareKey, err := crypto.NegotiateShareKey(boxPubKey, global.AppConfig.Authenticator.BoxKeyPair.PublicKey)
-	if err != nil {
-		ctx.AbortWithError(400, errors.New("negotiate fail"))
-		return
+	for i := 17; i < len(raw); i++ {
+		elem := raw[i]
+		raw[i] = elem ^ raw[i%17]
 	}
 
-	ctx.Set(KeyClientKeys, &ClientKeys{signPubKey, boxPubKey, shareKey})
+	signPubKey := raw[24:56]
+	boxPubKey := raw[56:]
+	if global.AppConfig.Authenticator.EnableCrypto {
+		shareKey, err := crypto.NegotiateShareKey(boxPubKey, global.AppConfig.Authenticator.BoxKeyPair.PrivateKey)
+		if err != nil {
+			ctx.AbortWithError(400, errors.New("negotiate fail"))
+			return
+		}
+
+		ctx.Set(KeyClientKeys, &ClientKeys{signPubKey, boxPubKey, shareKey})
+	} else {
+		ctx.Set(KeyClientKeys, &ClientKeys{signPubKey, boxPubKey, nil})
+	}
 }
 
 func getClientKeys(ctx *gin.Context) *ClientKeys {

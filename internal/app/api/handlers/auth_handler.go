@@ -27,18 +27,24 @@ func handleLogin(c *gin.Context) {
 		return
 	}
 
-	svr := service.NewAuthService()
-	platform := niu.ParsePlatform(svr.GetPlatform(c))
-	if !niu.IsPlatformValid(platform) {
-		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("invalid platform"))
-		return
-	}
+	c.JSON(200, &niu.ReplyDto[service.ReplyCode, string]{
+		Code: service.ReplyCodeSucceed,
+		Msg:  "success",
+		Data: "123",
+	})
 
-	reply := svr.Authorize(c, &req, platform)
+	// svr := service.NewAuthService()
+	// platform := niu.ParsePlatform(svr.GetPlatform(c))
+	// if !niu.IsPlatformValid(platform) {
+	// 	c.AbortWithError(http.StatusBadRequest, fmt.Errorf("invalid platform"))
+	// 	return
+	// }
 
-	// c.SetSameSite(http.SameSiteLaxMode)
-	// c.SetCookie("x-csrf-token", "22222", 0, "/", "", false, false)
-	c.JSON(200, reply)
+	// reply := svr.Authorize(c, &req, platform)
+
+	// // c.SetSameSite(http.SameSiteLaxMode)
+	// // c.SetCookie("x-csrf-token", "22222", 0, "/", "", false, false)
+	// c.JSON(200, reply)
 }
 
 // 刷新Token

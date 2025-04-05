@@ -1,9 +1,11 @@
 package middleware
 
 import (
+	"bytes"
 	"errors"
 	"goapp/internal/pkg/crypto"
 	"io"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -34,7 +36,7 @@ func SignMiddleware() gin.HandlerFunc {
 			"platform":  platform,
 			"method":    c.Request.Method,
 			"path":      c.Request.URL.Path,
-			"query":     c.Request.URL.RawQuery,
+			"query":     string(crypto.StringfyMap(convertValuesToMap(c.Request.URL.Query()))),
 		}
 		if c.Request.Method != "GET" {
 			reqBody, err := io.ReadAll(c.Request.Body)
@@ -65,11 +67,15 @@ func SignMiddleware() gin.HandlerFunc {
 		// 代理响应写入器
 		respBuf := bufferPool.Get()
 		defer bufferPool.Put(respBuf)
-		bodyWriter := &bodyWriter{ResponseWriter: c.Writer, buf: respBuf}
+		bodyWriter := &signBodyWriter{ResponseWriter: c.Writer, buf: respBuf}
 		c.Writer = bodyWriter
 
 		c.Next()
 		if c.IsAborted() {
+			return
+		}
+
+		if c.Writer.Status() < 200 || c.Writer.Status() >= 300 {
 			return
 		}
 
@@ -89,15 +95,37 @@ func SignMiddleware() gin.HandlerFunc {
 		}
 
 		// 生成响应签名
-		respSignature, err := crypto.SignMap(keys.SignPubKey, dataToSign)
+		respSignature, err := crypto.SignMap(dataToSign)
 		if err != nil {
 			c.AbortWithError(500, errors.New("sign fail"))
 			return
 		}
 
 		// 8. 写入响应头
-		c.Header("X-Signature", respTimestamp)
-		c.Header("X-Nonce", respNonce)
-		c.Header("X-Timestamp", respSignature)
+		bodyWriter.ResponseWriter.Header().Set("X-Timestamp", respTimestamp)
+		bodyWriter.ResponseWriter.Header().Set("X-Nonce", respNonce)
+		bodyWriter.ResponseWriter.Header().Set("X-Signature", respSignature)
+		bodyWriter.ResponseWriter.Header().Set("Access-Control-Expose-Headers", "X-Signature,X-Nonce,X-Timestamp")
+		bodyWriter.ResponseWriter.Write(responseBody)
+		bodyWriter.ResponseWriter.WriteHeader(c.Writer.Status())
 	}
+}
+
+func convertValuesToMap(values url.Values) map[string]string {
+	mp := make(map[string]string)
+	for k, v := range values {
+		mp[k] = strings.Join(v, ",")
+	}
+	return mp
+}
+
+// 自定义响应写入器
+type signBodyWriter struct {
+	gin.ResponseWriter
+	buf *bytes.Buffer
+}
+
+func (w signBodyWriter) Write(b []byte) (int, error) {
+	return w.buf.Write(b)
+	// w.ResponseWriter.Write(b)
 }

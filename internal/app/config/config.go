@@ -93,6 +93,7 @@ type JwtConfig struct {
 type AuthenticatorConfig struct {
 	BoxKeyPair        KeyPair   `mapstructure:"box_key_pair"`       // 用于加密和解密数据
 	SignKeyPair       KeyPair   `mapstructure:"sign_key_pair"`      // 用于签名和验证数据
+	EnableCrypto      bool      `mapstructure:"enable_crypto"`      // 是否启用加密
 	RefreshTokenPath  string    `mapstructure:"refresh_token_path"` // 刷新Token的路径，此路径需要单独处理
 	PathsNeedCrypt    []string  `mapstructure:"paths_need_crypt"`   // 如果包含*号，表示所有请求都是加密请求
 	PathsNotCrypt     []string  `mapstructure:"paths_not_crypt"`    // 指定哪些请求不加密，优先级高于 PathsNeedCrypt
@@ -113,7 +114,7 @@ type CorsConfig struct {
 }
 
 func Load() (*AppConfig, error) {
-	env := os.Getenv("ENV")
+	env := os.Getenv("env")
 	// 设置配置文件名称和类型
 	viper.SetConfigName(fmt.Sprintf("config.%s", env))
 	viper.SetConfigType("yaml")

@@ -39,23 +39,24 @@ func NegotiateShareKey(remotePubKey []byte, selfPriKeyBase64 string) ([]byte, er
 // Encrypt AES-GCM 加密
 //
 // key: 共享密钥
-func Encrypt(secret []byte, data []byte) ([]byte, error) {
+func Encrypt(secret []byte, data []byte) (string, error) {
 	block, err := aes.NewCipher(secret)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	nonce, err := niu.SecureBytes(aesgcm.NonceSize())
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return aesgcm.Seal(data[:0], nonce, data, nil), nil
+	encrypted := aesgcm.Seal(nonce, nonce, data, nil)
+	return base64Encoding.EncodeToString(encrypted), nil
 }
 
 // Decrypt AES-GCM 解密
@@ -72,8 +73,16 @@ func Decrypt(secret []byte, data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	nonce := data[:aesgcm.NonceSize()]
-	cipherData := data[aesgcm.NonceSize():]
+	raw, err := base64Encoding.DecodeString(string(data))
+	if err != nil {
+		return nil, err
+	}
+	nonce := raw[:12]
+	cipherData := raw[12:]
 
-	return aesgcm.Open(nil, nonce, cipherData, nil)
+	res, err := aesgcm.Open(nil, nonce, cipherData, nil)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }

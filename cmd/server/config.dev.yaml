@@ -35,16 +35,17 @@ hub:
 
 authenticator:
   box_key_pair:
-    pri: khOEvWcNj0CkvIMGJOaK3FJSp29BWmgJQ15GkK1tXSU
-    pub: yAlQ2dupb9qW5HFYCtvoBr6TDlA58UHUGdTTJTWdnAU
+    pri: WV6RiixviXRntro4x3y3J12ZFgOVw1jfaHBaRvuUD3k
+    pub: O6TL8sB1cDQZOEmRYscyPBurNk9Vgw6ezdqOlOTxnSI
   sign_key_pair:
-    pri: nS3l3YV9HBJZ3n0fjt_UB5Ek7eqk67Q0yCixs7FnGU4k9NVf7KzEevzc1YW1at22JqEvO1Hne575xy2VaXE_aQ
-    pub: JPTVX-ysxHr83NWFtWrdtiahLztR53ue-cctlWlxP2k
+    pri: bkZWXemlxFdUpqrUxYApS2sMbQ1hk1vcfRHMv3AtaJ4
+    pub: iO7IS_stxNgDl7m_2vpCY-WrLm-r4VQ7MtopUKNeuMA
+  enable_crypto: true
   refresh_token_path: /v1/auth/refresh
   paths_need_crypt:
     - "*"
   paths_not_crypt:
-    - /v1/auth/login
+    - 
   paths_need_auth: # 需要验证Token的路径
     - "*"
   paths_not_auth: # 不需要验证Token的路径

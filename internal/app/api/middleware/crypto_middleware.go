@@ -64,6 +64,11 @@ func CryptoMiddleware() gin.HandlerFunc {
 		}
 
 		// 加密
+
+		if c.Writer.Status() < 200 || c.Writer.Status() >= 300 {
+			return
+		}
+
 		responseBody := bodyWriter.buf.Bytes()
 		respBody, err := crypto.Encrypt(keys.ShareKey, responseBody)
 		if err != nil {
@@ -71,9 +76,10 @@ func CryptoMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Header("Content-Type", niu.ContentTypeEncrypted)
-		c.Header("Content-Length", strconv.Itoa(len(respBody)))
-		bodyWriter.ResponseWriter.Write(respBody)
+		bodyWriter.ResponseWriter.Header().Set("Content-Type", niu.ContentTypeEncrypted)
+		bodyWriter.ResponseWriter.Header().Set("Content-Length", strconv.Itoa(len(respBody)))
+		bodyWriter.ResponseWriter.WriteString(respBody)
+		bodyWriter.ResponseWriter.WriteHeader(c.Writer.Status())
 	}
 }
 
