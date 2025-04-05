@@ -39,7 +39,7 @@ func main() {
 	pprof.RouteRegister(r, "debug/pprof")
 
 	v1.Use(middleware.LogMiddleware())
-	// v1.Use(middleware.GzipMiddleware())
+	v1.Use(middleware.GzipMiddleware())
 	v1.Use(middleware.ReplayMiddleware())
 	v1.Use(middleware.JwtMiddleware())
 	v1.Use(middleware.SignMiddleware())
