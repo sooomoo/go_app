@@ -69,10 +69,6 @@ func JwtMiddleware() gin.HandlerFunc {
 		}
 
 		c.Next()
-
-		for k, v := range c.Writer.Header() {
-			c.Header(k, strings.Join(v, ","))
-		}
 	}
 }
 

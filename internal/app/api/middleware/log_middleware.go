@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +16,12 @@ func LogMiddleware() gin.HandlerFunc {
 
 		// 处理请求
 		c.Next()
+
+		fmt.Println("header")
+		for k, v := range c.Writer.Header() {
+			c.Header(k, strings.Join(v, ","))
+			fmt.Printf("%s: %s\n", k, strings.Join(v, ","))
+		}
 
 		// 结束时间
 		endTime := time.Now()

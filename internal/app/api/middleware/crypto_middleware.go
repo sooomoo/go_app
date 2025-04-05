@@ -15,7 +15,8 @@ import (
 func CryptoMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get请求以及指定了不需要加密的路径放行
-		if c.Request.Method == "GET" || !isPathNeedCrypto(c.Request.URL.Path) {
+		cryptoEnabled := global.AppConfig.Authenticator.EnableCrypto
+		if c.Request.Method == "GET" || !isPathNeedCrypto(c.Request.URL.Path) || !cryptoEnabled {
 			c.Next()
 			return
 		}
@@ -76,8 +77,8 @@ func CryptoMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		bodyWriter.ResponseWriter.Header().Set("Content-Type", niu.ContentTypeEncrypted)
-		bodyWriter.ResponseWriter.Header().Set("Content-Length", strconv.Itoa(len(respBody)))
+		c.Header("Content-Type", niu.ContentTypeEncrypted)
+		c.Header("Content-Length", strconv.Itoa(len(respBody)))
 		bodyWriter.ResponseWriter.WriteString(respBody)
 		bodyWriter.ResponseWriter.WriteHeader(c.Writer.Status())
 	}

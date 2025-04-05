@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"bytes"
 	"errors"
 	"goapp/internal/pkg/crypto"
 	"io"
@@ -67,7 +66,7 @@ func SignMiddleware() gin.HandlerFunc {
 		// 代理响应写入器
 		respBuf := bufferPool.Get()
 		defer bufferPool.Put(respBuf)
-		bodyWriter := &signBodyWriter{ResponseWriter: c.Writer, buf: respBuf}
+		bodyWriter := &bodyWriter{ResponseWriter: c.Writer, buf: respBuf}
 		c.Writer = bodyWriter
 
 		c.Next()
@@ -102,10 +101,11 @@ func SignMiddleware() gin.HandlerFunc {
 		}
 
 		// 8. 写入响应头
-		bodyWriter.ResponseWriter.Header().Set("X-Timestamp", respTimestamp)
-		bodyWriter.ResponseWriter.Header().Set("X-Nonce", respNonce)
-		bodyWriter.ResponseWriter.Header().Set("X-Signature", respSignature)
-		bodyWriter.ResponseWriter.Header().Set("Access-Control-Expose-Headers", "X-Signature,X-Nonce,X-Timestamp")
+		c.Header("x-timestamp", respTimestamp)
+		c.Header("x-nonce", respNonce)
+		c.Header("x-signature", respSignature)
+		c.Header("Content-Length", strconv.Itoa(len(responseBody)))
+
 		bodyWriter.ResponseWriter.Write(responseBody)
 		bodyWriter.ResponseWriter.WriteHeader(c.Writer.Status())
 	}
@@ -117,15 +117,4 @@ func convertValuesToMap(values url.Values) map[string]string {
 		mp[k] = strings.Join(v, ",")
 	}
 	return mp
-}
-
-// 自定义响应写入器
-type signBodyWriter struct {
-	gin.ResponseWriter
-	buf *bytes.Buffer
-}
-
-func (w signBodyWriter) Write(b []byte) (int, error) {
-	return w.buf.Write(b)
-	// w.ResponseWriter.Write(b)
 }

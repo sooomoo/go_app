@@ -20,7 +20,9 @@ type bodyWriter struct {
 
 func (w bodyWriter) Write(b []byte) (int, error) {
 	return w.buf.Write(b)
-	// w.ResponseWriter.Write(b)
+}
+func (w bodyWriter) WriteString(s string) (int, error) {
+	return w.buf.WriteString(s)
 }
 
 const (
