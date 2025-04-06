@@ -49,10 +49,10 @@ func main() {
 	handlers.RegisterRoutes(v1)
 
 	// 创建HTTP服务器
-	srv := &http.Server{Addr: global.AppConfig.Addr, Handler: r}
+	svr := &http.Server{Addr: global.AppConfig.Addr, Handler: r}
 	// 优雅关闭
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := svr.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("启动服务器失败: %v", err)
 		}
 	}()
@@ -62,7 +62,7 @@ func main() {
 		c, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 
-		if err := srv.Shutdown(c); err != nil {
+		if err := svr.Shutdown(c); err != nil {
 			log.Fatalf("服务器强制关闭: %v", err)
 		}
 
