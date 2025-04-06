@@ -5,19 +5,18 @@ import (
 	"goapp/internal/app"
 	"goapp/internal/app/api/handlers"
 	"goapp/internal/app/api/middleware"
+	"goapp/internal/app/global"
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
+	"github.com/sooomo/niu"
 )
 
 func main() {
-	env := os.Getenv("env")
 	ctx := context.Background()
 	err := app.Init(ctx)
 	if err != nil {
@@ -25,6 +24,7 @@ func main() {
 	}
 
 	// 设置Gin模式
+	env := os.Getenv("env")
 	if env == "release" {
 		gin.SetMode(gin.ReleaseMode)
 	} else if env == "test" {
@@ -36,7 +36,9 @@ func main() {
 	v1 := r.Group("/v1")
 	v1.Use(gin.RecoveryWithWriter(os.Stdout), gin.LoggerWithWriter(os.Stdout))
 
-	pprof.RouteRegister(r, "debug/pprof")
+	if env == "dev" {
+		pprof.RouteRegister(r, "debug/pprof")
+	}
 
 	v1.Use(middleware.LogMiddleware())
 	v1.Use(middleware.GzipMiddleware())
@@ -47,10 +49,7 @@ func main() {
 	handlers.RegisterRoutes(v1)
 
 	// 创建HTTP服务器
-	srv := &http.Server{
-		Addr:    "127.0.0.1:8001",
-		Handler: r,
-	}
+	srv := &http.Server{Addr: global.AppConfig.Addr, Handler: r}
 	// 优雅关闭
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -58,19 +57,17 @@ func main() {
 		}
 	}()
 
-	// 捕获终止信号
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("正在关闭服务器...")
+	niu.WaitSysSignal(func() {
+		log.Println("正在关闭服务器...")
+		c, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
 
-	// 设置关闭超时
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
+		if err := srv.Shutdown(c); err != nil {
+			log.Fatalf("服务器强制关闭: %v", err)
+		}
 
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("服务器强制关闭: %v", err)
-	}
-
-	log.Println("服务器已优雅地关闭")
+		// 释放资源
+		app.Release()
+		log.Println("服务器已优雅地关闭")
+	})
 }
