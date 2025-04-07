@@ -76,6 +76,10 @@ func upgradeChatWebSocket(c *gin.Context) {
 	// 此处可以踢出其它不希望的连接：比如多个平台只允许一个连接
 	// 也可以指定某一平台仅允许一个连接
 	// TODO
+	// userLines := chatHub.GetUserLines(userId)
+	// if userLines != nil {
+	// 	userLines.CloseAll()
+	// }
 
 	err := chatHub.UpgradeWebSocket(userId, claims.Platform, sessionId, c.Writer, c.Request)
 	if err != nil {
