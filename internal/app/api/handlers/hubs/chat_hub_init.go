@@ -68,7 +68,16 @@ func upgradeChatWebSocket(c *gin.Context) {
 		return
 	}
 	userId := fmt.Sprintf("%d", claims.UserId)
-	err := chatHub.UpgradeWebSocket(userId, claims.Platform, c.Writer, c.Request)
+
+	// SessionId需要在用户层面保持唯一：即一个用户的所有连接的Id是唯一的，但不同用户的SessionId可以相同
+	// 最好是全局唯一
+	sessionId := c.GetHeader("X-Session")
+
+	// 此处可以踢出其它不希望的连接：比如多个平台只允许一个连接
+	// 也可以指定某一平台仅允许一个连接
+	// TODO
+
+	err := chatHub.UpgradeWebSocket(userId, claims.Platform, sessionId, c.Writer, c.Request)
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 	}

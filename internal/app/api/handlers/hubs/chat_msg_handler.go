@@ -6,7 +6,7 @@ import (
 	"github.com/sooomo/niu"
 )
 
-func handleReceivedMsg(msg *niu.HubMessage) {
+func handleReceivedMsg(msg *niu.LineMessage) {
 	msgProto := niu.NewMsgPackProtocol(nil, nil)
 	var mp map[string]any
 	if msgType, err := msgProto.DecodeReq(msg.Data, &mp); err == nil {
