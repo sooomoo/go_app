@@ -8,9 +8,8 @@ import (
 
 func handleReceivedMsg(msg *niu.LineMessage) {
 	msgProto := niu.NewMsgPackProtocol(nil, nil)
-	var mp map[string]any
-	if msgType, err := msgProto.DecodeReq(msg.Data, &mp); err == nil {
-		fmt.Printf("recv msg type:%v, val is:%v", msgType, mp)
+	if packet, err := msgProto.DecodeReq(msg.Data); err == nil {
+		fmt.Printf("recv msg type:%v ", packet)
 	}
 	// TODO
 }

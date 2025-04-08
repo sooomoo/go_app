@@ -65,7 +65,6 @@ func CryptoMiddleware() gin.HandlerFunc {
 		}
 
 		// 加密
-
 		if c.Writer.Status() < 200 || c.Writer.Status() >= 300 {
 			return
 		}
