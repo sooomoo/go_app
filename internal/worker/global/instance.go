@@ -58,3 +58,9 @@ func Init(ctx context.Context) error {
 
 	return err
 }
+
+func Release() {
+	if pool != nil {
+		pool.Release()
+	}
+}

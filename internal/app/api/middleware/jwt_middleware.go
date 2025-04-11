@@ -5,6 +5,7 @@ import (
 	"goapp/internal/app/global"
 	"goapp/internal/app/service"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -33,7 +34,7 @@ func JwtMiddleware() gin.HandlerFunc {
 			}
 			// 解析Token
 			claims, err := svc.ParseToken(tokenString)
-			if err != nil {
+			if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
 				c.AbortWithError(401, errors.New("invalid token"))
 				return
 			}
@@ -55,7 +56,7 @@ func JwtMiddleware() gin.HandlerFunc {
 			if !revoked {
 				// 解析Token
 				claims, err := svc.ParseToken(tokenString)
-				if err == nil {
+				if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
 					// 忽略错误
 					svc.SaveClaims(c, claims)
 				}

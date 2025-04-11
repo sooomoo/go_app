@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"goapp/internal/app/global"
 	"goapp/internal/app/repository"
-	"goapp/internal/pkg/crypto"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -25,11 +24,20 @@ type ClientKeys struct {
 
 type AuthorizedClaims struct {
 	UserId               int          `json:"u"`
-	Roles                []string     `json:"r"`
+	Roles                Role         `json:"r"`
 	Platform             niu.Platform `json:"p"`
 	Type                 string       `json:"t"` // 类型，如：access_token, refresh_token, etc.
 	jwt.RegisteredClaims              // 包含标准字段如 exp（过期时间）、iss（签发者）等
 }
+
+type Role int
+
+const (
+	RoleUser Role = 0b00000000 // 普通用户
+	RolePro  Role = 0b00000001 // 普通用户
+
+	RoleAdmin Role = 0b10000000 // 管理员
+)
 
 type LoginRequest struct {
 	Phone      string `json:"phone" binding:"required"`
@@ -96,13 +104,13 @@ func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest, platform ni
 	}
 
 	// 生成token
-	accessToken, err := s.GenerateAccessToken(int(user.ID), strings.Split(user.Roles, ","), platform)
+	accessToken, err := s.GenerateAccessToken(int(user.ID), Role(user.Role), platform)
 	if err != nil {
 		reply.Code = ReplyCodeFailed
 		reply.Msg = err.Error()
 		return reply
 	}
-	refreshToken, err := s.GenerateRefreshToken(int(user.ID), strings.Split(user.Roles, ","), platform)
+	refreshToken, err := s.GenerateRefreshToken(int(user.ID), Role(user.Role), platform)
 	if err != nil {
 		reply.Code = ReplyCodeFailed
 		reply.Msg = err.Error()
@@ -181,21 +189,31 @@ func (s *AuthService) GetAuthorizationHeader(ctx *gin.Context) []string {
 }
 
 func (a *AuthService) RevokeToken(ctx context.Context, token string) error {
-	return a.authRepo.SaveRevokedToken(ctx, token) // 调用Repository层的方法
+	claims, err := a.ParseToken(token)
+	if err != nil {
+		return err
+	}
+
+	expire := time.Duration(global.AppConfig.Authenticator.Jwt.AccessTtl) * time.Minute
+	if claims.Type == "r" {
+		expire = time.Duration(global.AppConfig.Authenticator.Jwt.RefreshTtl) * time.Minute
+	}
+
+	return a.authRepo.SaveRevokedToken(ctx, token, expire) // 调用Repository层的方法
 }
 
 func (a *AuthService) IsTokenRevoked(ctx context.Context, token string) (bool, error) {
 	return a.authRepo.IsTokenRevoked(ctx, token) // 调用Repository层的方法
 }
 
-func (a *AuthService) GenerateAccessToken(userID int, roles []string, platform niu.Platform) (string, error) {
+func (a *AuthService) GenerateAccessToken(userID int, role Role, platform niu.Platform) (string, error) {
 	jwtConfig := global.AppConfig.Authenticator.Jwt
 	if len(jwtConfig.Secret) == 0 {
 		panic("jwtSecret is empty")
 	}
 	claims := AuthorizedClaims{
 		UserId:   userID,
-		Roles:    roles,
+		Roles:    role,
 		Platform: platform,
 		Type:     "a",
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -208,7 +226,7 @@ func (a *AuthService) GenerateAccessToken(userID int, roles []string, platform n
 	return token.SignedString([]byte(jwtConfig.Secret)) // 使用 HMAC-SHA256 算法签名
 }
 
-func (a *AuthService) GenerateRefreshToken(userID int, roles []string, platform niu.Platform) (string, error) {
+func (a *AuthService) GenerateRefreshToken(userID int, role Role, platform niu.Platform) (string, error) {
 	jwtConfig := global.AppConfig.Authenticator.Jwt
 	if len(jwtConfig.Secret) == 0 {
 		panic("jwtSecret is empty")
@@ -216,7 +234,7 @@ func (a *AuthService) GenerateRefreshToken(userID int, roles []string, platform 
 	claims := AuthorizedClaims{
 		UserId:   userID,
 		Platform: platform,
-		Roles:    roles,
+		Roles:    role,
 		Type:     "r",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(jwtConfig.RefreshTtl) * time.Minute)), // 过期时间
@@ -239,6 +257,7 @@ func (a *AuthService) ParseToken(tokenString string) (*AuthorizedClaims, error) 
 		func(token *jwt.Token) (any, error) {
 			return []byte(jwtConfig.Secret), nil // 返回用于验证签名的密钥
 		},
+		jwt.WithExpirationRequired(),
 	)
 	if err != nil {
 		return nil, err
@@ -266,10 +285,6 @@ func (d *AuthService) IsReplayRequest(ctx context.Context, requestId, timestamp 
 	return !res
 }
 
-func (d *AuthService) GetPlatform(c *gin.Context) string {
-	return strings.TrimSpace(c.GetHeader("X-Platform"))
-}
-
 func (d *AuthService) GetClaims(c *gin.Context) *AuthorizedClaims {
 	val, exist := c.Get(KeyClaims)
 	if !exist {
@@ -284,34 +299,6 @@ func (d *AuthService) GetClaims(c *gin.Context) *AuthorizedClaims {
 
 func (a *AuthService) SaveClaims(ctx *gin.Context, claims *AuthorizedClaims) {
 	ctx.Set(KeyClaims, claims)
-}
-
-func (a *AuthService) Sign(ctx *gin.Context, data map[string]string) (string, error) {
-	// TODO:
-
-	respSignData := crypto.StringfyMap(data)
-	fmt.Print(respSignData)
-	return "", nil
-}
-func (a *AuthService) SignVerify(ctx *gin.Context, data map[string]string, signature string) (bool, error) {
-	// TODO:
-
-	signdata := crypto.StringfyMap(data)
-	fmt.Print(signdata)
-	// if !signer.Verify(signdata, []byte(signature)) {
-	// 	c.AbortWithError(400, errors.New("invalid signature"))
-	// 	return nil
-	// }
-	return false, nil
-}
-
-func (a *AuthService) Encrypt(ctx *gin.Context, data []byte) ([]byte, error) {
-	// TODO:
-	return nil, nil
-}
-func (a *AuthService) Decrypt(ctx *gin.Context, data []byte) ([]byte, error) {
-	// TODO:
-	return nil, nil
 }
 
 // 生成随机验证码

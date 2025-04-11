@@ -59,7 +59,7 @@ func main() {
 
 	niu.WaitSysSignal(func() {
 		log.Println("正在关闭服务器...")
-		c, cancel := context.WithTimeout(ctx, 5*time.Second)
+		c, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
 		if err := svr.Shutdown(c); err != nil {

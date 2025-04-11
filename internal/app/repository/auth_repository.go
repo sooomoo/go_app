@@ -8,6 +8,7 @@ import (
 	"goapp/internal/app/repository/dao/query"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/sooomo/niu"
 	"gorm.io/gorm"
 )
@@ -16,9 +17,11 @@ const (
 	KeyRevokedToken = "revoked_tokens"
 )
 
+type TokenType int32
+
 const (
-	TokenTypeAccess  int32 = 1
-	TokenTypeRefresh int32 = 2
+	TokenTypeAccess  TokenType = 1
+	TokenTypeRefresh TokenType = 2
 )
 
 type AuthRepository struct {
@@ -35,19 +38,19 @@ func NewAuthRepository(cache *niu.Cache, db *gorm.DB) *AuthRepository {
 	}
 }
 
-func (a *AuthRepository) SaveRevokedToken(ctx context.Context, token string) error {
-	// 将Token添加到Redis集合中，表示已吊销
-	_, err := a.cache.SAdd(ctx, KeyRevokedToken, token)
+func (a *AuthRepository) SaveRevokedToken(ctx context.Context, token string, expire time.Duration) error {
+	// 将Token添加到Redis中,过期时间为token的最大有效时间（比如两小时）
+	// 因为Token在使用时，会验证其有效期
+	_, err := a.cache.Set(ctx, fmt.Sprintf("revoked_token:%s", token), "1", expire)
 	return err
 }
 
 func (a *AuthRepository) IsTokenRevoked(ctx context.Context, token string) (bool, error) {
-	// 检查Token是否存在于Redis集合中
-	exists, err := a.cache.SIsMember(ctx, KeyRevokedToken, token)
-	if err != nil {
-		return false, err
+	val, err := a.cache.Get(ctx, fmt.Sprintf("revoked_token:%s", token))
+	if err == redis.Nil {
+		return false, nil
 	}
-	return exists, nil
+	return val == "1", err
 }
 
 func (a *AuthRepository) SaveHandledRequest(ctx context.Context, requestId string, expireAfter time.Duration) (bool, error) {
@@ -65,7 +68,7 @@ func (a *AuthRepository) SaveBindings(
 	accessDto := &model.UserToken{
 		UserID:    userId,
 		Platform:  int32(platform),
-		Type:      TokenTypeAccess,
+		Type:      int32(TokenTypeAccess),
 		Token:     accessToken,
 		IP:        ip,
 		CreatedAt: time.Now().Unix(),
@@ -74,7 +77,7 @@ func (a *AuthRepository) SaveBindings(
 	refreshDto := &model.UserToken{
 		UserID:    userId,
 		Platform:  int32(platform),
-		Type:      TokenTypeRefresh,
+		Type:      int32(TokenTypeRefresh),
 		Token:     refreshToken,
 		IP:        ip,
 		CreatedAt: time.Now().Unix(),

@@ -14,7 +14,7 @@ type User struct {
 	Password   string `gorm:"column:password;not null" json:"password"`
 	AvatarURL  string `gorm:"column:avatar_url;not null" json:"avatar_url"`
 	Email      string `gorm:"column:email;not null" json:"email"`
-	Roles      string `gorm:"column:roles;not null" json:"roles"`
+	Role       int32  `gorm:"column:role;not null" json:"role"`
 	IPInit     string `gorm:"column:ip_init;not null" json:"ip_init"`
 	IPLatest   string `gorm:"column:ip_latest;not null" json:"ip_latest"`
 	Status     int32  `gorm:"column:status;not null" json:"status"`

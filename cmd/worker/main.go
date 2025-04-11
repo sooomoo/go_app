@@ -23,6 +23,6 @@ func main() {
 	niu.WaitSysSignal(func() {
 		cancel()
 		// Cleanup Resources
-		global.GetCache().Close()
+		global.Release()
 	})
 }

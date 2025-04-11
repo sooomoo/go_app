@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"goapp/internal/app/service"
 	"net/http"
 
@@ -55,16 +54,11 @@ func handleRefresh(c *gin.Context) {
 		return
 	}
 
-	svr := service.NewAuthService()
-	platform := niu.ParsePlatform(svr.GetPlatform(c))
-	if !niu.IsPlatformValid(platform) {
-		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("invalid platform"))
-		return
-	}
+	// svr := service.NewAuthService()
 
-	reply := svr.Authorize(c, &req, platform)
+	// reply := svr.Authorize(c, &req, platform)
 
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("x-csrf-token", "22222", 0, "/", "", false, false)
-	c.JSON(200, reply)
+	// c.SetSameSite(http.SameSiteLaxMode)
+	// c.SetCookie("x-csrf-token", "22222", 0, "/", "", false, false)
+	// c.JSON(200, reply)
 }

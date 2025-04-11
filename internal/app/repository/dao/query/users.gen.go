@@ -33,7 +33,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Password = field.NewString(tableName, "password")
 	_user.AvatarURL = field.NewString(tableName, "avatar_url")
 	_user.Email = field.NewString(tableName, "email")
-	_user.Roles = field.NewString(tableName, "roles")
+	_user.Role = field.NewInt32(tableName, "role")
 	_user.IPInit = field.NewString(tableName, "ip_init")
 	_user.IPLatest = field.NewString(tableName, "ip_latest")
 	_user.Status = field.NewInt32(tableName, "status")
@@ -57,7 +57,7 @@ type user struct {
 	Password   field.String
 	AvatarURL  field.String
 	Email      field.String
-	Roles      field.String
+	Role       field.Int32
 	IPInit     field.String
 	IPLatest   field.String
 	Status     field.Int32
@@ -87,7 +87,7 @@ func (u *user) updateTableName(table string) *user {
 	u.Password = field.NewString(table, "password")
 	u.AvatarURL = field.NewString(table, "avatar_url")
 	u.Email = field.NewString(table, "email")
-	u.Roles = field.NewString(table, "roles")
+	u.Role = field.NewInt32(table, "role")
 	u.IPInit = field.NewString(table, "ip_init")
 	u.IPLatest = field.NewString(table, "ip_latest")
 	u.Status = field.NewInt32(table, "status")
@@ -126,7 +126,7 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["password"] = u.Password
 	u.fieldMap["avatar_url"] = u.AvatarURL
 	u.fieldMap["email"] = u.Email
-	u.fieldMap["roles"] = u.Roles
+	u.fieldMap["role"] = u.Role
 	u.fieldMap["ip_init"] = u.IPInit
 	u.fieldMap["ip_latest"] = u.IPLatest
 	u.fieldMap["status"] = u.Status
