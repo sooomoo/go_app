@@ -1,0 +1,70 @@
+services:
+  mongo1:
+    image: mongo:latest
+    container_name: mongo1
+    command: mongod --replSet rs0 --bind_ip_all
+    volumes:
+      - mongo_data_1:/data/db
+    networks:
+      - mongo_net
+    ports:  ["27017:27017"]
+    restart: always
+  mongo2:
+    image: mongo:latest
+    container_name: mongo2 
+    command: mongod --replSet rs0 --bind_ip_all
+    volumes:
+      - mongo_data_2:/data/db
+    networks:
+      - mongo_net
+    ports:  ["27018:27017"]
+    restart: always
+  mongo3:
+    image: mongo:latest
+    container_name: mongo3 
+    command: mongod --replSet rs0 --bind_ip_all
+    volumes:
+      - mongo_data_3:/data/db
+    networks:
+      - mongo_net
+    ports:  ["27019:27017"]
+    restart: always
+volumes:
+  mongo_data_1:
+  mongo_data_2:
+  mongo_data_3:
+networks:
+  mongo_net:
+    driver: bridge
+
+
+
+# 以下为操作步骤：
+# 
+# # 启动容器​
+# docker-compose up -d
+
+# # ​执行初始化脚本​：如果执行失败，需要删除之前的容器和数据卷才能重新初始化
+# # 192.168.3.90 为本机局域网 IP 地址
+# docker exec mongo1 mongosh --eval '
+# rs.initiate({
+#   _id: "rs0",
+#   members: [
+#     { _id: 0, host: "192.168.3.90:27017" },
+#     { _id: 1, host: "192.168.3.90:27018" },
+#     { _id: 2, host: "192.168.3.90:27019" }
+#   ]
+# })'
+
+# # 检查副本集状态​
+# docker exec mongo1 mongosh --eval "rs.status()"
+
+# # 连接副本集
+# mongodb://192.168.3.90:27017,192.168.3.90:27017,192.168.3.90:27017/?replicaSet=rs0
+
+# ; ​测试数据同步​
+# # 主节点写入
+# docker exec mongo1 mongosh --eval 'db.test.insertOne({message: "dev test"})'
+
+# # 从节点读取
+# docker exec mongo2 mongosh --eval 'db.getMongo().setReadPref("primaryPreferred"); db.test.find()'
