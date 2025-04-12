@@ -9,8 +9,8 @@ const TableNameUserToken = "user_tokens"
 // UserToken mapped from table <user_tokens>
 type UserToken struct {
 	UserID    int64  `gorm:"column:user_id;primaryKey" json:"user_id"`
-	Platform  int32  `gorm:"column:platform;primaryKey" json:"platform"`
-	Type      int32  `gorm:"column:type;primaryKey" json:"type"`
+	Platform  int32  `gorm:"column:platform;not null" json:"platform"`
+	Type      int32  `gorm:"column:type;not null" json:"type"`
 	Token     string `gorm:"column:token;not null" json:"token"`
 	IP        string `gorm:"column:ip;not null" json:"ip"`
 	CreatedAt int64  `gorm:"column:created_at;not null" json:"created_at"`

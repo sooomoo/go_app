@@ -9,9 +9,9 @@ const TableNameUser = "users"
 // User mapped from table <users>
 type User struct {
 	ID         int64  `gorm:"column:id;primaryKey" json:"id"`
-	Phone      string `gorm:"column:phone;not null;comment:如008615900001111" json:"phone"` // 如008615900001111
+	Phone      string `gorm:"column:phone;not null;comment:如08615900001111" json:"phone"` // 如08615900001111
 	Name       string `gorm:"column:name;not null" json:"name"`
-	Password   string `gorm:"column:password;not null" json:"password"`
+	Password   string `gorm:"column:password;not null;comment:hash之后的密码" json:"password"` // hash之后的密码
 	AvatarURL  string `gorm:"column:avatar_url;not null" json:"avatar_url"`
 	Email      string `gorm:"column:email;not null" json:"email"`
 	Role       int32  `gorm:"column:role;not null" json:"role"`

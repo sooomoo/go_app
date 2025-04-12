@@ -52,9 +52,9 @@ type user struct {
 
 	ALL        field.Asterisk
 	ID         field.Int64
-	Phone      field.String // 如008615900001111
+	Phone      field.String // 如08615900001111
 	Name       field.String
-	Password   field.String
+	Password   field.String // hash之后的密码
 	AvatarURL  field.String
 	Email      field.String
 	Role       field.Int32
