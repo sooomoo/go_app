@@ -13,6 +13,8 @@ var Cache *niu.Cache
 
 var DistributeId *niu.DistributeId
 
+var UserIdGenerator *niu.IdGenerator
+
 var Locker *niu.DistributeLocker
 
 var Queue niu.MessageQueue

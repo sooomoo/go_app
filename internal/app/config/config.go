@@ -88,7 +88,7 @@ type JwtConfig struct {
 	Issuer     string `mapstructure:"issuer"`
 	Secret     string `mapstructure:"secret"`
 	AccessTtl  int64  `mapstructure:"access_ttl"`  // in minute
-	RefreshTtl int64  `mapstructure:"refresh_ttl"` // in day
+	RefreshTtl int64  `mapstructure:"refresh_ttl"` // in minute
 }
 
 type AuthenticatorConfig struct {

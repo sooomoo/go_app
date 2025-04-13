@@ -28,6 +28,8 @@ func ReplayMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		c.Set("platform", platform)
+
 		c.Next()
 	}
 }

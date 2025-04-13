@@ -4,6 +4,7 @@ type ReplyCode string
 
 const (
 	ReplyCodeSucceed           ReplyCode = "succeed"
+	ReplayInvalidArgs          ReplyCode = "invalid_args"
 	ReplyCodeInvalidPhone      ReplyCode = "invalid_phone"
 	ReplyCodeInvalidMsgCode    ReplyCode = "invalid_msg_code"
 	ReplyCodeInvalidSecureCode ReplyCode = "invalid_secure_code"

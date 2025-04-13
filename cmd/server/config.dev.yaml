@@ -80,6 +80,6 @@ cors:
     - X-Nonce
     - X-Timestamp
     - X-Signature
-  all_credentials: true
+  allow_credentials: true
   max_age: 120 # 120分钟
   allow_web_sockets: true 

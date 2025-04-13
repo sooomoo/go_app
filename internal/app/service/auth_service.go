@@ -23,21 +23,12 @@ type ClientKeys struct {
 }
 
 type AuthorizedClaims struct {
-	UserId               int          `json:"u"`
-	Roles                Role         `json:"r"`
-	Platform             niu.Platform `json:"p"`
-	Type                 string       `json:"t"` // 类型，如：access_token, refresh_token, etc.
-	jwt.RegisteredClaims              // 包含标准字段如 exp（过期时间）、iss（签发者）等
+	UserId               int             `json:"u"`
+	Roles                repository.Role `json:"r"`
+	Platform             niu.Platform    `json:"p"`
+	Type                 string          `json:"t"` // 类型，如：access_token, refresh_token, etc.
+	jwt.RegisteredClaims                 // 包含标准字段如 exp（过期时间）、iss（签发者）等
 }
-
-type Role int
-
-const (
-	RoleUser Role = 0b00000000 // 普通用户
-	RolePro  Role = 0b00000001 // 普通用户
-
-	RoleAdmin Role = 0b10000000 // 管理员
-)
 
 type LoginRequest struct {
 	Phone      string `json:"phone" binding:"required"`
@@ -78,7 +69,7 @@ func NewAuthService() *AuthService {
 	}
 }
 
-func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest, platform niu.Platform) *niu.ReplyDto[ReplyCode, LoginResponse] {
+func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *niu.ReplyDto[ReplyCode, LoginResponse] {
 	reply := &niu.ReplyDto[ReplyCode, LoginResponse]{}
 	// 验证验证码
 	if req.Code != "1234" {
@@ -103,14 +94,15 @@ func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest, platform ni
 		return reply
 	}
 
+	platform := niu.ParsePlatform(ctx.GetString("platform"))
 	// 生成token
-	accessToken, err := s.GenerateAccessToken(int(user.ID), Role(user.Role), platform)
+	accessToken, err := s.GenerateAccessToken(int(user.ID), repository.Role(user.Role), platform)
 	if err != nil {
 		reply.Code = ReplyCodeFailed
 		reply.Msg = err.Error()
 		return reply
 	}
-	refreshToken, err := s.GenerateRefreshToken(int(user.ID), Role(user.Role), platform)
+	refreshToken, err := s.GenerateRefreshToken(int(user.ID), repository.Role(user.Role), platform)
 	if err != nil {
 		reply.Code = ReplyCodeFailed
 		reply.Msg = err.Error()
@@ -130,6 +122,11 @@ func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest, platform ni
 
 	reply.Code = ReplyCodeSucceed
 	reply.Data = LoginResponse{accessToken, refreshToken}
+
+	ctx.SetSameSite(http.SameSiteStrictMode)
+	ctx.SetCookie("atk", reply.Data.AccessToken, int((time.Duration(jwtConfig.AccessTtl) * time.Minute).Seconds()), "/", "http://localhost", false, false)
+	ctx.SetCookie("rtk", reply.Data.RefreshToken, int((time.Duration(jwtConfig.RefreshTtl) * time.Minute).Seconds()), "/", "http://localhost", false, false)
+
 	return reply
 }
 
@@ -206,7 +203,7 @@ func (a *AuthService) IsTokenRevoked(ctx context.Context, token string) (bool, e
 	return a.authRepo.IsTokenRevoked(ctx, token) // 调用Repository层的方法
 }
 
-func (a *AuthService) GenerateAccessToken(userID int, role Role, platform niu.Platform) (string, error) {
+func (a *AuthService) GenerateAccessToken(userID int, role repository.Role, platform niu.Platform) (string, error) {
 	jwtConfig := global.AppConfig.Authenticator.Jwt
 	if len(jwtConfig.Secret) == 0 {
 		panic("jwtSecret is empty")
@@ -226,7 +223,7 @@ func (a *AuthService) GenerateAccessToken(userID int, role Role, platform niu.Pl
 	return token.SignedString([]byte(jwtConfig.Secret)) // 使用 HMAC-SHA256 算法签名
 }
 
-func (a *AuthService) GenerateRefreshToken(userID int, role Role, platform niu.Platform) (string, error) {
+func (a *AuthService) GenerateRefreshToken(userID int, role repository.Role, platform niu.Platform) (string, error) {
 	jwtConfig := global.AppConfig.Authenticator.Jwt
 	if len(jwtConfig.Secret) == 0 {
 		panic("jwtSecret is empty")

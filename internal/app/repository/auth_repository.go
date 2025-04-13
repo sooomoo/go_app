@@ -88,9 +88,9 @@ func (a *AuthRepository) SaveBindings(
 		return err
 	}
 
-	dur := time.Now().Sub(time.Unix(refreshDto.ExpireAt, 0))
+	dur := time.Since(time.Unix(refreshDto.ExpireAt, 0))
 	refreshDtoJson, err := json.Marshal(refreshDto)
-	if err != nil {
+	if err == nil {
 		a.cache.Set(ctx, fmt.Sprintf("refresh_token:%s", refreshToken), string(refreshDtoJson), dur)
 	}
 

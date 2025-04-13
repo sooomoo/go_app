@@ -45,6 +45,11 @@ func Init(ctx context.Context) error {
 		return err
 	}
 
+	global.UserIdGenerator, err = global.DistributeId.NewGenerator(ctx, "id_gen:user", 100000)
+	if err != nil {
+		return err
+	}
+
 	global.Locker, err = niu.NewDistributeLocker(
 		ctx, appConfig.Locker.GetRedisOption(),
 		time.Duration(appConfig.Locker.Ttl)*time.Second,
