@@ -83,7 +83,8 @@ func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *niu.ReplyD
 	}
 
 	// 通过手机号注册或获取用户信息
-	user, err := s.userRepo.Upsert(ctx, req.Phone)
+	ip := ctx.ClientIP()
+	user, err := s.userRepo.Upsert(ctx, req.Phone, ip)
 	if err != nil {
 		reply.Code = ReplyCodeFailed
 		reply.Msg = err.Error()
@@ -111,7 +112,7 @@ func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *niu.ReplyD
 
 	// 将这些Token与该用户绑定
 	jwtConfig := global.AppConfig.Authenticator.Jwt
-	err = s.authRepo.SaveBindings(ctx, user.ID, platform, ctx.ClientIP(), accessToken, refreshToken,
+	err = s.authRepo.SaveBindings(ctx, user.ID, platform, ip, accessToken, refreshToken,
 		time.Now().Add(time.Duration(jwtConfig.AccessTtl)).Unix(),
 		time.Now().Add(time.Duration(jwtConfig.RefreshTtl)).Unix())
 	if err != nil {

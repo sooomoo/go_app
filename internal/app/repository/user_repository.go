@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sooomo/niu"
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 )
 
@@ -38,49 +39,48 @@ func NewUserRepository(cache *niu.Cache, db *gorm.DB) *UserRepository {
 	}
 }
 
-func (r *UserRepository) Upsert(ctx context.Context, phone string) (*model.User, error) {
-
-	err := r.query.Transaction(func(tx *query.Query) error {
-		u, err := tx.User.WithContext(ctx).Where(tx.User.Phone.Eq(phone)).First()
-		if err != nil && err != gorm.ErrRecordNotFound {
-			return err
-		}
-		if err == gorm.ErrRecordNotFound {
-			userId, err := global.UserIdGenerator.Next(ctx)
-			if err != nil {
-				return err
-			}
-			// add new one
-			u = &model.User{
-				ID:        int64(userId),
-				Phone:     phone,
-				Name:      phone[3:6] + "****" + phone[10:],
-				Role:      int32(RoleNormal),
-				Status:    UserStatusNormal,
-				CreatedAt: time.Now().Unix(),
-				UpdatedAt: time.Now().Unix(),
-			}
-
-			err = tx.User.WithContext(ctx).Save(u)
-			if err != nil {
-				return err
-			}
-		} else {
-			// update
-			res, err := tx.User.WithContext(ctx).Where(tx.User.ID.Eq(u.ID)).Update(tx.User.UpdatedAt, time.Now().Unix())
-			if err != nil {
-				return err
-			}
-			if res.RowsAffected < 1 {
-				// return errors.New("update fail")
-			}
-		}
-		return nil
-	})
+func (r *UserRepository) Upsert(ctx context.Context, phone, ip string) (*model.User, error) {
+	userId, err := global.UserIdGenerator.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return r.query.User.WithContext(ctx).ReadDB().Where(r.query.User.Phone.Eq(phone)).First()
+
+	// var ret model.User
+	// err = r.query.User.WithContext(ctx).Clauses(clause.OnConflict{
+	// 	Columns: []clause.Column{{Name: r.query.User.Phone.ColumnName().String()}},
+	// 	DoUpdates: clause.Assignments(map[string]any{
+	// 		r.query.User.UpdatedAt.ColumnName().String(): time.Now().Unix(),
+	// 		r.query.User.IPLatest.ColumnName().String():  ip,
+	// 	}),
+	// }).DO.Returning(&ret).Create(&model.User{
+	// 	ID:        int64(userId),
+	// 	Phone:     phone,
+	// 	Name:      phone[3:6] + "****" + phone[10:],
+	// 	Role:      int32(RoleNormal),
+	// 	Status:    UserStatusNormal,
+	// 	IPInit:    ip,
+	// 	IPLatest:  ip,
+	// 	CreatedAt: time.Now().Unix(),
+	// 	UpdatedAt: time.Now().Unix(),
+	// })
+	ret, err := r.query.User.WithContext(ctx).Assign(field.Attrs(&model.User{
+		IPLatest:  ip,
+		UpdatedAt: time.Now().Unix(),
+	})).Attrs(field.Attrs(&model.User{
+		ID:        int64(userId),
+		Phone:     phone,
+		Name:      phone[3:6] + "****" + phone[10:],
+		Role:      int32(RoleNormal),
+		Status:    UserStatusNormal,
+		IPInit:    ip,
+		IPLatest:  ip,
+		CreatedAt: time.Now().Unix(),
+		UpdatedAt: time.Now().Unix(),
+	})).Where(r.query.User.Phone.Eq(phone)).FirstOrCreate()
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 
 func (r *UserRepository) GetById(ctx context.Context, userId int64) (*model.User, error) {
