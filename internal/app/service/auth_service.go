@@ -123,9 +123,11 @@ func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *niu.ReplyD
 	reply.Code = ReplyCodeSucceed
 	reply.Data = LoginResponse{accessToken, refreshToken}
 
-	ctx.SetSameSite(http.SameSiteStrictMode)
-	ctx.SetCookie("atk", reply.Data.AccessToken, int((time.Duration(jwtConfig.AccessTtl) * time.Minute).Seconds()), "/", "http://localhost", false, false)
-	ctx.SetCookie("rtk", reply.Data.RefreshToken, int((time.Duration(jwtConfig.RefreshTtl) * time.Minute).Seconds()), "/", "http://localhost", false, false)
+	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
+	atkMaxAge := int((time.Duration(jwtConfig.AccessTtl) * time.Minute).Seconds())
+	rtkMaxAge := int((time.Duration(jwtConfig.RefreshTtl) * time.Minute).Seconds())
+	ctx.SetCookie(jwtConfig.CookieAccessTokenKey, reply.Data.AccessToken, atkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
+	ctx.SetCookie(jwtConfig.CookieRefreshTokenKey, reply.Data.RefreshToken, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
 
 	return reply
 }

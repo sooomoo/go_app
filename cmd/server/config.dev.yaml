@@ -1,6 +1,6 @@
 name: niu-dev
 worker_id: 1
-addr: 127.0.0.1:8001
+addr: localhost:8001
 
 database:
   connect_string: root:abc12345@tcp(127.0.0.1:3306)/niu?charset=utf8mb4&parseTime=True&loc=Local
@@ -33,7 +33,6 @@ hub:
   handshake_timeout: 10    # 10秒
   enable_compression: false
 
-
 authenticator:
   box_key_pair:
     pri: WV6RiixviXRntro4x3y3J12ZFgOVw1jfaHBaRvuUD3k
@@ -56,6 +55,12 @@ authenticator:
     secret: 1234567890
     access_ttl: 120 # 120分钟
     refresh_ttl: 43200 # 30天
+    cookie_domain: 
+    cookie_secure: false
+    cookie_httponly: false
+    cookie_access_token_key: acc
+    cookie_refresh_token_key: ref
+    cookie_same_site_mode: 1 # 1: default , 2: lax, 3: strict, 4: none
   replay_max_interval: 120 # 120秒
   
 cors:
@@ -80,6 +85,7 @@ cors:
     - X-Nonce
     - X-Timestamp
     - X-Signature
+    - Set-Cookie
   allow_credentials: true
   max_age: 120 # 120分钟
   allow_web_sockets: true 
