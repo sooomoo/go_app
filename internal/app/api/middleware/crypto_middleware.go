@@ -16,21 +16,8 @@ func CryptoMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get请求以及指定了不需要加密的路径放行
 		cryptoEnabled := global.AppConfig.Authenticator.EnableCrypto
-		if c.Request.Method == "GET" || !isPathNeedCrypto(c.Request.URL.Path) || !cryptoEnabled {
+		if !isPathNeedCrypto(c.Request.URL.Path) || !cryptoEnabled {
 			c.Next()
-			return
-		}
-
-		// 解密
-		contentType := c.GetHeader("Content-Type")
-		if !strings.EqualFold(contentType, niu.ContentTypeEncrypted) {
-			c.AbortWithStatus(400)
-			return
-		}
-
-		reqBody, err := io.ReadAll(c.Request.Body)
-		if err != nil {
-			c.AbortWithStatus(500)
 			return
 		}
 
@@ -40,18 +27,34 @@ func CryptoMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		reqBody, err = crypto.Decrypt(keys.ShareKey, reqBody)
-		if err != nil {
-			c.AbortWithError(400, errors.New("decrypt fail"))
-			return
-		}
+		// Get 请求不需要解密
+		if c.Request.Method != "GET" {
+			// 解密
+			contentType := c.GetHeader("Content-Type")
+			if !strings.EqualFold(contentType, niu.ContentTypeEncrypted) {
+				c.AbortWithStatus(400)
+				return
+			}
 
-		buf := bufferPool.Get()
-		defer bufferPool.Put(buf)
-		buf.Write(reqBody)
-		c.Request.Body = io.NopCloser(buf)
-		c.Request.ContentLength = int64(len(reqBody))
-		c.Request.Header.Set("Content-Type", getDecryptContentType(c.Request.URL.Path))
+			reqBody, err := io.ReadAll(c.Request.Body)
+			if err != nil {
+				c.AbortWithStatus(500)
+				return
+			}
+
+			reqBody, err = crypto.Decrypt(keys.ShareKey, reqBody)
+			if err != nil {
+				c.AbortWithError(400, errors.New("decrypt fail"))
+				return
+			}
+
+			buf := bufferPool.Get()
+			defer bufferPool.Put(buf)
+			buf.Write(reqBody)
+			c.Request.Body = io.NopCloser(buf)
+			c.Request.ContentLength = int64(len(reqBody))
+			c.Request.Header.Set("Content-Type", getDecryptContentType(c.Request.URL.Path))
+		}
 
 		// 代理响应写入器
 		respBuf := bufferPool.Get()

@@ -36,16 +36,6 @@ type LoginRequest struct {
 	SecureCode string `json:"secure_code" binding:"required"`
 }
 
-type LoginResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-}
-
-type RefreshTokenRequest struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-}
-
 // TokenPair JWT令牌对
 type TokenPair struct {
 	AccessToken  string `json:"access_token"`
@@ -69,8 +59,8 @@ func NewAuthService() *AuthService {
 	}
 }
 
-func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *niu.ReplyDto[ReplyCode, LoginResponse] {
-	reply := &niu.ReplyDto[ReplyCode, LoginResponse]{}
+func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *niu.ReplyDto[ReplyCode, *TokenPair] {
+	reply := &niu.ReplyDto[ReplyCode, *TokenPair]{}
 	// 验证验证码
 	if req.Code != "1234" {
 		reply.Code = ReplyCodeInvalidMsgCode
@@ -97,13 +87,7 @@ func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *niu.ReplyD
 
 	platform := niu.ParsePlatform(ctx.GetString("platform"))
 	// 生成token
-	accessToken, err := s.GenerateAccessToken(int(user.ID), repository.Role(user.Role), platform)
-	if err != nil {
-		reply.Code = ReplyCodeFailed
-		reply.Msg = err.Error()
-		return reply
-	}
-	refreshToken, err := s.GenerateRefreshToken(int(user.ID), repository.Role(user.Role), platform)
+	tokenpair, err := s.GenerateTokenPair(int(user.ID), repository.Role(user.Role), platform)
 	if err != nil {
 		reply.Code = ReplyCodeFailed
 		reply.Msg = err.Error()
@@ -112,7 +96,7 @@ func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *niu.ReplyD
 
 	// 将这些Token与该用户绑定
 	jwtConfig := global.AppConfig.Authenticator.Jwt
-	err = s.authRepo.SaveBindings(ctx, user.ID, platform, ip, accessToken, refreshToken,
+	err = s.authRepo.SaveBindings(ctx, user.ID, platform, ip, tokenpair.AccessToken, tokenpair.RefreshToken,
 		time.Now().Add(time.Duration(jwtConfig.AccessTtl)).Unix(),
 		time.Now().Add(time.Duration(jwtConfig.RefreshTtl)).Unix())
 	if err != nil {
@@ -122,7 +106,7 @@ func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *niu.ReplyD
 	}
 
 	reply.Code = ReplyCodeSucceed
-	reply.Data = LoginResponse{accessToken, refreshToken}
+	reply.Data = tokenpair
 
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
 	atkMaxAge := int((time.Duration(jwtConfig.AccessTtl) * time.Minute).Seconds())
@@ -133,13 +117,10 @@ func (s *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *niu.ReplyD
 	return reply
 }
 
-func (s *AuthService) RefreshToken(ctx *gin.Context, req *RefreshTokenRequest) *niu.ReplyDto[ReplyCode, LoginResponse] {
+func (s *AuthService) RefreshToken(ctx *gin.Context) *niu.ReplyDto[ReplyCode, *TokenPair] {
 	authHeader := s.GetAuthorizationHeader(ctx)
-	if len(authHeader) != 2 || authHeader[0] != "Bearer" || len(authHeader[1]) == 0 {
-		ctx.AbortWithStatus(http.StatusBadRequest)
-		return nil
-	}
-	userToken, err := s.authRepo.GetRefreshTokenByValue(ctx, authHeader[1])
+	token := authHeader[1]
+	userToken, err := s.authRepo.GetRefreshTokenByValue(ctx, token)
 	if err != nil {
 		ctx.AbortWithError(500, err)
 		return nil
@@ -150,15 +131,15 @@ func (s *AuthService) RefreshToken(ctx *gin.Context, req *RefreshTokenRequest) *
 		return nil
 	}
 
-	reply := &niu.ReplyDto[ReplyCode, LoginResponse]{}
-	// 生成token
-	accessToken, err := s.GenerateAccessToken(int(claims.UserId), claims.Roles, claims.Platform)
+	err = s.RevokeToken(ctx, token)
 	if err != nil {
-		reply.Code = ReplyCodeFailed
-		reply.Msg = err.Error()
-		return reply
+		ctx.AbortWithError(500, err)
+		return nil
 	}
-	refreshToken, err := s.GenerateRefreshToken(int(claims.UserId), claims.Roles, claims.Platform)
+
+	reply := &niu.ReplyDto[ReplyCode, *TokenPair]{}
+	// 生成token
+	tokenpair, err := s.GenerateTokenPair(int(claims.UserId), claims.Roles, claims.Platform)
 	if err != nil {
 		reply.Code = ReplyCodeFailed
 		reply.Msg = err.Error()
@@ -167,7 +148,7 @@ func (s *AuthService) RefreshToken(ctx *gin.Context, req *RefreshTokenRequest) *
 
 	// 将这些Token与该用户绑定
 	jwtConfig := global.AppConfig.Authenticator.Jwt
-	err = s.authRepo.SaveBindings(ctx, int64(claims.UserId), claims.Platform, ctx.ClientIP(), accessToken, refreshToken,
+	err = s.authRepo.SaveBindings(ctx, int64(claims.UserId), claims.Platform, ctx.ClientIP(), tokenpair.AccessToken, tokenpair.RefreshToken,
 		time.Now().Add(time.Duration(jwtConfig.AccessTtl)).Unix(),
 		time.Now().Add(time.Duration(jwtConfig.RefreshTtl)).Unix())
 	if err != nil {
@@ -177,7 +158,14 @@ func (s *AuthService) RefreshToken(ctx *gin.Context, req *RefreshTokenRequest) *
 	}
 
 	reply.Code = ReplyCodeSucceed
-	reply.Data = LoginResponse{accessToken, refreshToken}
+	reply.Data = tokenpair
+
+	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
+	atkMaxAge := int((time.Duration(jwtConfig.AccessTtl) * time.Minute).Seconds())
+	rtkMaxAge := int((time.Duration(jwtConfig.RefreshTtl) * time.Minute).Seconds())
+	ctx.SetCookie(jwtConfig.CookieAccessTokenKey, reply.Data.AccessToken, atkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
+	ctx.SetCookie(jwtConfig.CookieRefreshTokenKey, reply.Data.RefreshToken, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
+
 	return reply
 }
 
@@ -204,6 +192,18 @@ func (a *AuthService) RevokeToken(ctx context.Context, token string) error {
 
 func (a *AuthService) IsTokenRevoked(ctx context.Context, token string) (bool, error) {
 	return a.authRepo.IsTokenRevoked(ctx, token) // 调用Repository层的方法
+}
+
+func (a *AuthService) GenerateTokenPair(userID int, role repository.Role, platform niu.Platform) (*TokenPair, error) {
+	accessToken, err := a.GenerateAccessToken(userID, role, platform)
+	if err != nil {
+		return nil, err
+	}
+	refreshToken, err := a.GenerateRefreshToken(userID, role, platform)
+	if err != nil {
+		return nil, err
+	}
+	return &TokenPair{accessToken, refreshToken}, nil
 }
 
 func (a *AuthService) GenerateAccessToken(userID int, role repository.Role, platform niu.Platform) (string, error) {

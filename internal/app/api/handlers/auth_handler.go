@@ -16,6 +16,7 @@ func RegisterAuthHandlers(r *gin.RouterGroup) {
 
 	authGroup.POST("/login", handleLogin)
 	authGroup.POST("/refresh", handleRefresh)
+	authGroup.POST("/logout", handleLogout)
 }
 
 // 手机验证码登录
@@ -29,28 +30,20 @@ func handleLogin(c *gin.Context) {
 		return
 	}
 
-	c.Status(401)
-	// svr := service.NewAuthService()
-	// reply := svr.Authorize(c, &req)
+	svr := service.NewAuthService()
+	reply := svr.Authorize(c, &req)
 
-	// c.JSON(200, reply)
+	c.JSON(200, reply)
 }
 
 // 刷新Token
 func handleRefresh(c *gin.Context) {
-	var req service.LoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
-		return
-	}
+	svr := service.NewAuthService()
+	reply := svr.RefreshToken(c)
+	c.JSON(200, reply)
+}
 
+// 退出登录
+func handleLogout(c *gin.Context) {
 	c.Status(200)
-
-	// svr := service.NewAuthService()
-
-	// reply := svr.Authorize(c, &req, platform)
-
-	// c.SetSameSite(http.SameSiteLaxMode)
-	// c.SetCookie("x-csrf-token", "22222", 0, "/", "", false, false)
-	// c.JSON(200, reply)
 }

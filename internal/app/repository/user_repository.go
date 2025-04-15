@@ -71,5 +71,5 @@ func (r *UserRepository) Upsert(ctx context.Context, phone, ip string) (*model.U
 }
 
 func (r *UserRepository) GetById(ctx context.Context, userId int64) (*model.User, error) {
-	return r.query.User.WithContext(ctx).ReadDB().Where(r.query.User.ID.Eq(userId)).First()
+	return r.query.User.WithContext(ctx).Where(r.query.User.ID.Eq(userId)).First()
 }

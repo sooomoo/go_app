@@ -1,13 +1,23 @@
 package handlers
 
-import "github.com/gin-gonic/gin"
+import (
+	"goapp/internal/app/service"
+
+	"github.com/gin-gonic/gin"
+)
 
 func RegisterUserRoutes(r *gin.RouterGroup) {
-	g := r.Group("/usr")
-	g.GET("/:id", func(ctx *gin.Context) {
-		// Get user info
-	})
+	g := r.Group("/user")
+	g.GET("/info", handleGetSelfUserInfo)
 	g.POST("/:id", func(ctx *gin.Context) {
 		// update user info
 	})
+}
+
+func handleGetSelfUserInfo(c *gin.Context) {
+	user, err := service.NewUserService().GetSelfInfo(c)
+	if err != nil {
+		c.AbortWithError(500, err)
+	}
+	c.JSON(200, user)
 }
