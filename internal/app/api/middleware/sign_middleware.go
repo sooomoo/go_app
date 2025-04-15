@@ -20,6 +20,7 @@ func SignMiddleware() gin.HandlerFunc {
 		platform := strings.TrimSpace(c.GetHeader("X-Platform"))
 		signature := strings.TrimSpace(c.GetHeader("X-Signature"))
 		sessionId := strings.TrimSpace(c.GetHeader("X-Session"))
+		authorization := strings.TrimSpace(c.GetHeader("Authorization"))
 
 		keys := getClientKeys(c)
 		if keys == nil {
@@ -29,13 +30,14 @@ func SignMiddleware() gin.HandlerFunc {
 
 		// 1. 验证请求是否签名是否正确
 		dataToVerify := map[string]string{
-			"session":   sessionId,
-			"nonce":     nonce,
-			"timestamp": timestampStr,
-			"platform":  platform,
-			"method":    c.Request.Method,
-			"path":      c.Request.URL.Path,
-			"query":     string(crypto.StringfyMap(convertValuesToMap(c.Request.URL.Query()))),
+			"session":       sessionId,
+			"nonce":         nonce,
+			"timestamp":     timestampStr,
+			"platform":      platform,
+			"method":        c.Request.Method,
+			"path":          c.Request.URL.Path,
+			"query":         string(crypto.StringfyMap(convertValuesToMap(c.Request.URL.Query()))),
+			"authorization": authorization,
 		}
 		if c.Request.Method != "GET" {
 			reqBody, err := io.ReadAll(c.Request.Body)
