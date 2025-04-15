@@ -127,6 +127,5 @@ func VerifySignMap(pubKey []byte, mp map[string]string, signature string) (bool,
 	}
 
 	data := StringfyMap(mp)
-	fmt.Println("data", string(data))
 	return ed25519.Verify(pubKey, data, sig), nil
 }

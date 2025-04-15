@@ -29,10 +29,11 @@ func handleLogin(c *gin.Context) {
 		return
 	}
 
-	svr := service.NewAuthService()
-	reply := svr.Authorize(c, &req)
+	c.Status(401)
+	// svr := service.NewAuthService()
+	// reply := svr.Authorize(c, &req)
 
-	c.JSON(200, reply)
+	// c.JSON(200, reply)
 }
 
 // 刷新Token
@@ -42,6 +43,8 @@ func handleRefresh(c *gin.Context) {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
+
+	c.Status(200)
 
 	// svr := service.NewAuthService()
 

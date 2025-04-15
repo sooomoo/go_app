@@ -40,6 +40,10 @@ func NegotiateShareKey(remotePubKey []byte, selfPriKeyBase64 string) ([]byte, er
 //
 // key: 共享密钥
 func Encrypt(secret []byte, data []byte) (string, error) {
+	if len(data) == 0 {
+		return "", nil
+	}
+
 	block, err := aes.NewCipher(secret)
 	if err != nil {
 		return "", err
@@ -63,6 +67,10 @@ func Encrypt(secret []byte, data []byte) (string, error) {
 //
 // key: 共享密钥
 func Decrypt(secret []byte, data []byte) ([]byte, error) {
+	if len(data) == 0 {
+		return data, nil
+	}
+
 	block, err := aes.NewCipher(secret)
 	if err != nil {
 		return nil, err

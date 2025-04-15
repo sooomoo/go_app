@@ -34,7 +34,7 @@ func main() {
 	r := gin.New()
 	r.Use(middleware.CorsMiddleware())
 	v1 := r.Group("/v1")
-	v1.Use(gin.RecoveryWithWriter(os.Stdout), gin.LoggerWithWriter(os.Stdout))
+	v1.Use(gin.RecoveryWithWriter(os.Stdout))
 
 	if env == "dev" {
 		pprof.RouteRegister(r, "debug/pprof")
