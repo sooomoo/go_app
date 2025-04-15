@@ -15,10 +15,6 @@ func NewNegotiateKeyPair() (pubKey, priKey []byte, err error) {
 		return nil, nil, err
 	}
 
-	private[0] &= 248
-	private[31] &= 127
-	private[31] |= 64
-
 	public, err := curve25519.X25519(private[:], curve25519.Basepoint)
 	if err != nil {
 		return nil, nil, err
