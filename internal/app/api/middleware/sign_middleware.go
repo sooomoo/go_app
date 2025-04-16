@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"errors"
+	"fmt"
+	"goapp/internal/app/service"
 	"goapp/internal/pkg/crypto"
 	"io"
 	"net/url"
@@ -15,12 +17,13 @@ import (
 
 func SignMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		nonce := strings.TrimSpace(c.GetHeader("X-Nonce"))
-		timestampStr := strings.TrimSpace(c.GetHeader("X-Timestamp"))
-		platform := strings.TrimSpace(c.GetHeader("X-Platform"))
-		signature := strings.TrimSpace(c.GetHeader("X-Signature"))
-		sessionId := strings.TrimSpace(c.GetHeader("X-Session"))
 		authorization := strings.TrimSpace(c.GetHeader("Authorization"))
+
+		var extendData *service.RequestExtendData
+		extData, ok := c.Get(service.KeyExtendData)
+		if ok {
+			extendData = extData.(*service.RequestExtendData)
+		}
 
 		keys := getClientKeys(c)
 		if keys == nil {
@@ -30,15 +33,18 @@ func SignMiddleware() gin.HandlerFunc {
 
 		// 1. 验证请求是否签名是否正确
 		dataToVerify := map[string]string{
-			"session":       sessionId,
-			"nonce":         nonce,
-			"timestamp":     timestampStr,
-			"platform":      platform,
-			"method":        c.Request.Method,
-			"path":          c.Request.URL.Path,
-			"query":         string(crypto.StringfyMap(convertValuesToMap(c.Request.URL.Query()))),
-			"authorization": authorization,
+			"session":   extendData.SessionId,
+			"nonce":     extendData.Nonce,
+			"timestamp": extendData.Timestamp,
+			"platform":  fmt.Sprintf("%d", extendData.Platform),
+			"method":    c.Request.Method,
+			"path":      c.Request.URL.Path,
+			"query":     string(crypto.StringfyMap(convertValuesToMap(c.Request.URL.Query()))),
 		}
+		if extendData.Platform != niu.Web {
+			dataToVerify["authorization"] = authorization
+		}
+
 		if c.Request.Method != "GET" {
 			reqBody, err := io.ReadAll(c.Request.Body)
 			if err != nil {
@@ -55,7 +61,7 @@ func SignMiddleware() gin.HandlerFunc {
 		}
 
 		// 验证签名是否正确
-		verified, err := crypto.VerifySignMap(keys.SignPubKey, dataToVerify, signature)
+		verified, err := crypto.VerifySignMap(keys.SignPubKey, dataToVerify, extendData.Signature)
 		if err != nil {
 			c.AbortWithError(500, errors.New("verify signature fail"))
 			return
@@ -85,9 +91,9 @@ func SignMiddleware() gin.HandlerFunc {
 		respTimestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
 		respNonce := niu.NewUUIDWithoutDash()
 		dataToSign := map[string]string{
-			"session":   sessionId,
+			"session":   extendData.SessionId,
 			"nonce":     respNonce,
-			"platform":  platform,
+			"platform":  fmt.Sprintf("%d", extendData.Platform),
 			"timestamp": respTimestamp,
 			"method":    c.Request.Method,
 			"path":      c.Request.RequestURI,

@@ -28,7 +28,14 @@ func ReplayMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("platform", platform)
+		extData := &service.RequestExtendData{
+			Nonce:     nonce,
+			Timestamp: timestampStr,
+			Platform:  niu.ParsePlatform(platform),
+			Signature: signature,
+			SessionId: sessionId,
+		}
+		c.Set(service.KeyExtendData, extData)
 
 		c.Next()
 	}

@@ -17,9 +17,18 @@ import (
 	"github.com/sooomo/niu"
 )
 
+type RequestExtendData struct {
+	Nonce     string
+	Timestamp string
+	Platform  niu.Platform
+	Signature string
+	SessionId string
+}
+
 type ClientKeys struct {
 	SignPubKey []byte
 	BoxPubKey  []byte
+	ShareKey   []byte
 }
 
 type AuthorizedClaims struct {
@@ -45,6 +54,7 @@ type TokenPair struct {
 const (
 	KeyClaims     = "claims"
 	KeyClientKeys = "client_keys"
+	KeyExtendData = "extend_data"
 )
 
 type AuthService struct {

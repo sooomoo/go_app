@@ -8,22 +8,41 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sooomo/niu"
 )
 
 func JwtMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		svc := service.NewAuthService()
 		// 解析客户端的Token（如果有）
-		tokens := svc.GetAuthorizationHeader(c)
-		isTokenValid := len(tokens) == 2 && tokens[0] == "Bearer" && len(tokens[1]) > 0
+		var extendData *service.RequestExtendData
+		extData, ok := c.Get(service.KeyExtendData)
+		if ok {
+			extendData = extData.(*service.RequestExtendData)
+		}
+		isTokenValid := false
+		token := ""
+		// web 的 token 在 cookie 里面
+		if extendData.Platform == niu.Web {
+			acc, err := c.Cookie(global.AppConfig.Authenticator.Jwt.CookieAccessTokenKey)
+			if err == nil {
+				token = acc
+			}
+			isTokenValid = len(token) > 0
+		} else {
+			tokens := svc.GetAuthorizationHeader(c)
+			isTokenValid = len(tokens) == 2 && tokens[0] == "Bearer" && len(tokens[1]) > 0
+			if isTokenValid {
+				token = tokens[1]
+			}
+		}
 		if isPathNeedAuth(c.Request.URL.Path) {
 			if !isTokenValid {
 				c.AbortWithStatus(401)
 				return
 			}
-			tokenString := tokens[1]
 
-			revoked, err := svc.IsTokenRevoked(c, tokenString)
+			revoked, err := svc.IsTokenRevoked(c, token)
 			if err != nil {
 				c.AbortWithError(500, errors.New("check token revoke fail"))
 				return
@@ -33,7 +52,7 @@ func JwtMiddleware() gin.HandlerFunc {
 				return
 			}
 			// 解析Token
-			claims, err := svc.ParseToken(tokenString)
+			claims, err := svc.ParseToken(token)
 			if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
 				c.AbortWithError(401, errors.New("invalid token"))
 				return
@@ -51,11 +70,10 @@ func JwtMiddleware() gin.HandlerFunc {
 
 			svc.SaveClaims(c, claims)
 		} else if isTokenValid {
-			tokenString := tokens[1]
-			revoked, _ := svc.IsTokenRevoked(c, tokenString)
+			revoked, _ := svc.IsTokenRevoked(c, token)
 			if !revoked {
 				// 解析Token
-				claims, err := svc.ParseToken(tokenString)
+				claims, err := svc.ParseToken(token)
 				if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
 					// 忽略错误
 					svc.SaveClaims(c, claims)

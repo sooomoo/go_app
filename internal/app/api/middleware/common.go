@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"goapp/internal/app/global"
+	"goapp/internal/app/service"
 	"goapp/internal/pkg/crypto"
 	"net"
 	"net/http"
@@ -48,17 +49,6 @@ func (g *bodyWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return hijacker.Hijack()
 }
 
-const (
-	KeyClaims     = "claims"
-	KeyClientKeys = "client_keys"
-)
-
-type ClientKeys struct {
-	SignPubKey []byte
-	BoxPubKey  []byte
-	ShareKey   []byte
-}
-
 func parseAndStoreClientKeys(ctx *gin.Context, sessionId string) {
 	raw, err := crypto.Base64Decode(sessionId)
 	if err != nil {
@@ -85,18 +75,26 @@ func parseAndStoreClientKeys(ctx *gin.Context, sessionId string) {
 			return
 		}
 
-		ctx.Set(KeyClientKeys, &ClientKeys{signPubKey, boxPubKey, shareKey})
+		ctx.Set(service.KeyClientKeys, &service.ClientKeys{
+			SignPubKey: signPubKey,
+			BoxPubKey:  boxPubKey,
+			ShareKey:   shareKey,
+		})
 	} else {
-		ctx.Set(KeyClientKeys, &ClientKeys{signPubKey, boxPubKey, nil})
+		ctx.Set(service.KeyClientKeys, &service.ClientKeys{
+			SignPubKey: signPubKey,
+			BoxPubKey:  boxPubKey,
+			ShareKey:   nil,
+		})
 	}
 }
 
-func getClientKeys(ctx *gin.Context) *ClientKeys {
-	val, exist := ctx.Get(KeyClientKeys)
+func getClientKeys(ctx *gin.Context) *service.ClientKeys {
+	val, exist := ctx.Get(service.KeyClientKeys)
 	if !exist {
 		return nil
 	}
-	keys, ok := val.(*ClientKeys)
+	keys, ok := val.(*service.ClientKeys)
 	if !ok {
 		return nil
 	}
