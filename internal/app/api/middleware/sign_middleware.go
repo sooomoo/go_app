@@ -33,16 +33,14 @@ func SignMiddleware() gin.HandlerFunc {
 
 		// 1. 验证请求是否签名是否正确
 		dataToVerify := map[string]string{
-			"session":   extendData.SessionId,
-			"nonce":     extendData.Nonce,
-			"timestamp": extendData.Timestamp,
-			"platform":  fmt.Sprintf("%d", extendData.Platform),
-			"method":    c.Request.Method,
-			"path":      c.Request.URL.Path,
-			"query":     string(crypto.StringfyMap(convertValuesToMap(c.Request.URL.Query()))),
-		}
-		if extendData.Platform != niu.Web {
-			dataToVerify["authorization"] = authorization
+			"session":       extendData.SessionId,
+			"nonce":         extendData.Nonce,
+			"timestamp":     extendData.Timestamp,
+			"platform":      fmt.Sprintf("%d", extendData.Platform),
+			"method":        c.Request.Method,
+			"path":          c.Request.URL.Path,
+			"query":         string(crypto.StringfyMap(convertValuesToMap(c.Request.URL.Query()))),
+			"authorization": authorization,
 		}
 
 		if c.Request.Method != "GET" {
