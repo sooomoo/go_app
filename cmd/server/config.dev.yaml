@@ -60,7 +60,7 @@ authenticator:
     cookie_httponly: false
     cookie_access_token_key: acc
     cookie_refresh_token_key: ref
-    cookie_same_site_mode: 1 # 1: default , 2: lax, 3: strict, 4: none
+    cookie_same_site_mode: 3 # 1: default , 2: lax, 3: strict, 4: none
   replay_max_interval: 120 # 120秒
   
 cors:
