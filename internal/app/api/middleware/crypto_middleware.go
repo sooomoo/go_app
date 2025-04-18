@@ -73,15 +73,24 @@ func CryptoMiddleware() gin.HandlerFunc {
 		}
 
 		responseBody := bodyWriter.buf.Bytes()
-		respBody, err := crypto.Encrypt(keys.ShareKey, responseBody)
-		if err != nil {
-			c.AbortWithError(500, errors.New("encrypt fail"))
-			return
+		contentType := c.Writer.Header().Get("Content-Type")
+		// 仅加密 json 和文本响应
+		if strings.Contains(contentType, "application/json") || strings.Contains(contentType, "text/plain") {
+			respBody, err := crypto.Encrypt(keys.ShareKey, responseBody)
+			if err != nil {
+				c.AbortWithError(500, errors.New("encrypt fail"))
+				return
+			}
+
+			c.Header("X-RawType", contentType)
+			c.Header("Content-Type", niu.ContentTypeEncrypted)
+			c.Header("Content-Length", strconv.Itoa(len(respBody)))
+			bodyWriter.ResponseWriter.WriteString(respBody)
+		} else {
+			c.Header("Content-Length", strconv.Itoa(len(responseBody)))
+			bodyWriter.ResponseWriter.Write(responseBody)
 		}
 
-		c.Header("Content-Type", niu.ContentTypeEncrypted)
-		c.Header("Content-Length", strconv.Itoa(len(respBody)))
-		bodyWriter.ResponseWriter.WriteString(respBody)
 		bodyWriter.ResponseWriter.WriteHeader(c.Writer.Status())
 	}
 }

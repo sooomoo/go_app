@@ -85,6 +85,7 @@ cors:
     - X-Nonce
     - X-Timestamp
     - X-Signature
+    - X-RawType
     - Set-Cookie
   allow_credentials: true
   max_age: 120 # 120分钟
