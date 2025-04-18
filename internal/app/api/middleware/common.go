@@ -100,3 +100,15 @@ func getClientKeys(ctx *gin.Context) *service.ClientKeys {
 	}
 	return keys
 }
+
+func getPlatform(ctx *gin.Context) niu.Platform {
+	extData, ok := ctx.Get(service.KeyExtendData)
+	if ok {
+		extendData, ok := extData.(*service.RequestExtendData)
+		if ok {
+			return extendData.Platform
+		}
+	}
+
+	return niu.Unspecify
+}

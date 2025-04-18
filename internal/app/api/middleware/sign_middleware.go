@@ -42,6 +42,9 @@ func SignMiddleware() gin.HandlerFunc {
 			"query":         string(crypto.StringfyMap(convertValuesToMap(c.Request.URL.Query()))),
 			"authorization": authorization,
 		}
+		if getPlatform(c) == niu.Web {
+			delete(dataToVerify, "authorization")
+		}
 
 		if c.Request.Method != "GET" {
 			reqBody, err := io.ReadAll(c.Request.Body)

@@ -57,7 +57,7 @@ authenticator:
     refresh_ttl: 43200 # 30天
     cookie_domain: 
     cookie_secure: false
-    cookie_httponly: false
+    cookie_httponly: true
     cookie_access_token_key: acc
     cookie_refresh_token_key: ref
     cookie_same_site_mode: 3 # 1: default , 2: lax, 3: strict, 4: none

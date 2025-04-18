@@ -8,21 +8,30 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sooomo/niu"
 )
 
 func JwtMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		svc := service.NewAuthService()
 		// 解析客户端的Token（如果有）
+		token := ""
 		tokens := svc.GetAuthorizationHeader(c)
-		isTokenValid := len(tokens) == 2 && tokens[0] == "Bearer" && len(tokens[1]) > 0
+		if len(tokens) == 2 && tokens[0] == "Bearer" && len(tokens[1]) > 0 {
+			token = tokens[1]
+		}
+
+		// web单独处理
+		if getPlatform(c) == niu.Web {
+			token, _ = c.Cookie(global.AppConfig.Authenticator.Jwt.CookieAccessTokenKey)
+		}
 		if isPathNeedAuth(c.Request.URL.Path) {
-			if !isTokenValid {
+			if len(token) == 0 {
 				c.AbortWithStatus(401)
 				return
 			}
 
-			revoked, err := svc.IsTokenRevoked(c, tokens[1])
+			revoked, err := svc.IsTokenRevoked(c, token)
 			if err != nil {
 				c.AbortWithError(500, errors.New("check token revoke fail"))
 				return
@@ -32,7 +41,7 @@ func JwtMiddleware() gin.HandlerFunc {
 				return
 			}
 			// 解析Token
-			claims, err := svc.ParseToken(tokens[1])
+			claims, err := svc.ParseToken(token)
 			if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
 				c.AbortWithError(401, errors.New("invalid token"))
 				return
@@ -49,11 +58,11 @@ func JwtMiddleware() gin.HandlerFunc {
 			}
 
 			svc.SaveClaims(c, claims)
-		} else if isTokenValid {
-			revoked, _ := svc.IsTokenRevoked(c, tokens[1])
+		} else if len(token) > 0 {
+			revoked, _ := svc.IsTokenRevoked(c, token)
 			if !revoked {
 				// 解析Token
-				claims, err := svc.ParseToken(tokens[1])
+				claims, err := svc.ParseToken(token)
 				if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
 					// 忽略错误
 					svc.SaveClaims(c, claims)
