@@ -32,6 +32,9 @@ func handleLogin(c *gin.Context) {
 
 	svr := service.NewAuthService()
 	reply := svr.Authorize(c, &req)
+	if c.IsAborted() {
+		return
+	}
 
 	c.JSON(200, reply)
 }
@@ -40,6 +43,9 @@ func handleLogin(c *gin.Context) {
 func handleRefresh(c *gin.Context) {
 	svr := service.NewAuthService()
 	reply := svr.RefreshToken(c)
+	if c.IsAborted() {
+		return
+	}
 	c.JSON(200, reply)
 }
 

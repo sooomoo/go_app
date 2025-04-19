@@ -41,7 +41,6 @@ authenticator:
     pri: bkZWXemlxFdUpqrUxYApS2sMbQ1hk1vcfRHMv3AtaJ4
     pub: iO7IS_stxNgDl7m_2vpCY-WrLm-r4VQ7MtopUKNeuMA
   enable_crypto: true
-  refresh_token_path: /v1/auth/refresh
   paths_need_crypt:
     - "*"
   paths_not_crypt:
@@ -50,6 +49,7 @@ authenticator:
     - "*"
   paths_not_auth: # 不需要验证Token的路径
     - /v1/auth/login
+    - /v1/auth/refresh
   jwt:
     issuer: niu
     secret: 1234567890

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"goapp/internal/app/repository/dao/model"
 	"goapp/internal/app/repository/dao/query"
 	"time"
 
@@ -61,53 +60,39 @@ func (a *AuthRepository) SaveHandledRequest(ctx context.Context, requestId strin
 	return exists, nil
 }
 
-func (a *AuthRepository) SaveBindings(
-	ctx context.Context, userId int64, platform niu.Platform, ip,
-	accessToken, refreshToken string,
-	accessExpire, refreshExpire int64) error {
-	accessDto := &model.UserToken{
-		UserID:    userId,
-		Platform:  int32(platform),
-		Type:      int32(TokenTypeAccess),
-		Token:     accessToken,
-		IP:        ip,
-		CreatedAt: time.Now().Unix(),
-		ExpireAt:  accessExpire,
-	}
-	refreshDto := &model.UserToken{
-		UserID:    userId,
-		Platform:  int32(platform),
-		Type:      int32(TokenTypeRefresh),
-		Token:     refreshToken,
-		IP:        ip,
-		CreatedAt: time.Now().Unix(),
-		ExpireAt:  refreshExpire,
-	}
-	err := a.query.UserToken.WithContext(ctx).WriteDB().Save(accessDto, refreshDto)
+type RefreshTokenCredentials struct {
+	UserId    int          `json:"user_id"`
+	Platform  niu.Platform `json:"platform"`
+	ClientId  string       `json:"client_id"`
+	UserAgent string       `json:"user_agent"`
+	Ip        string       `json:"ip"`
+}
+
+func (a *AuthRepository) SaveRefreshToken(ctx context.Context, token string, credendials *RefreshTokenCredentials, expire time.Duration) error {
+	key := fmt.Sprintf("refresh_token:%s", token)
+	val, err := json.Marshal(credendials)
 	if err != nil {
 		return err
 	}
 
-	dur := time.Since(time.Unix(refreshDto.ExpireAt, 0))
-	refreshDtoJson, err := json.Marshal(refreshDto)
-	if err == nil {
-		a.cache.Set(ctx, fmt.Sprintf("refresh_token:%s", refreshToken), string(refreshDtoJson), dur)
-	}
-
-	return nil
+	_, err = a.cache.Set(ctx, key, val, expire)
+	return err
 }
 
-func (a *AuthRepository) GetRefreshTokenByValue(ctx context.Context, token string) (*model.UserToken, error) {
+func (a *AuthRepository) GetRefreshTokenByValue(ctx context.Context, token string) (*RefreshTokenCredentials, error) {
 	key := fmt.Sprintf("refresh_token:%s", token)
 	jsonStr, err := a.cache.Get(ctx, key)
-	if err == nil {
-		var dto model.UserToken
-		if err = json.Unmarshal([]byte(jsonStr), &dto); err == nil {
-			return &dto, nil
-		}
+	if err != nil {
+		return nil, err
 	}
 
-	return a.query.UserToken.WithContext(ctx).ReadDB().Where(a.query.UserToken.Token.Eq(token)).First()
+	var dto RefreshTokenCredentials
+	err = json.Unmarshal([]byte(jsonStr), &dto)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto, nil
 }
 
 func (a *AuthRepository) SaveSMSCode(ctx context.Context, phone string, code string) error {

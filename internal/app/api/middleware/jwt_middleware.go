@@ -8,23 +8,13 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sooomo/niu"
 )
 
 func JwtMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		svc := service.NewAuthService()
 		// 解析客户端的Token（如果有）
-		token := ""
-		tokens := svc.GetAuthorizationHeader(c)
-		if len(tokens) == 2 && tokens[0] == "Bearer" && len(tokens[1]) > 0 {
-			token = tokens[1]
-		}
-
-		// web单独处理
-		if getPlatform(c) == niu.Web {
-			token, _ = c.Cookie(global.AppConfig.Authenticator.Jwt.CookieAccessTokenKey)
-		}
+		token := svc.GetAccessToken(c)
 		if isPathNeedAuth(c.Request.URL.Path) {
 			if len(token) == 0 {
 				c.AbortWithStatus(401)
@@ -41,19 +31,9 @@ func JwtMiddleware() gin.HandlerFunc {
 				return
 			}
 			// 解析Token
-			claims, err := svc.ParseToken(token)
+			claims, err := svc.ParseAccessToken(token)
 			if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
 				c.AbortWithError(401, errors.New("invalid token"))
-				return
-			}
-
-			// 刷新Token时，此处的类型为 r
-			allowTokenTyep := "a"
-			if strings.EqualFold(c.Request.URL.Path, global.AppConfig.Authenticator.RefreshTokenPath) {
-				allowTokenTyep = "r"
-			}
-			if claims.Type != allowTokenTyep {
-				c.AbortWithError(401, errors.New("invalid token type"))
 				return
 			}
 
@@ -62,7 +42,7 @@ func JwtMiddleware() gin.HandlerFunc {
 			revoked, _ := svc.IsTokenRevoked(c, token)
 			if !revoked {
 				// 解析Token
-				claims, err := svc.ParseToken(token)
+				claims, err := svc.ParseAccessToken(token)
 				if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
 					// 忽略错误
 					svc.SaveClaims(c, claims)
