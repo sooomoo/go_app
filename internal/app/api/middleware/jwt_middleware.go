@@ -32,7 +32,8 @@ func JwtMiddleware() gin.HandlerFunc {
 			}
 			// 解析Token
 			claims, err := svc.ParseAccessToken(token)
-			if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
+			ua := svc.GetUserAgentHashed(c)
+			if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) || claims.UserAgent != ua {
 				c.AbortWithError(401, errors.New("invalid token"))
 				return
 			}

@@ -24,8 +24,8 @@ func handleLogin(c *gin.Context) {
 	var req service.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
-		c.JSON(200, &niu.ReplyDto[service.ReplyCode, any]{
-			Code: service.ReplayInvalidArgs,
+		c.JSON(200, &niu.ReplyDto[service.RespCode, any]{
+			Code: service.RespCodeInvalidArgs,
 		})
 		return
 	}

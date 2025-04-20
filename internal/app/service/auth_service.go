@@ -33,6 +33,7 @@ type ClientKeys struct {
 type AuthorizedClaims struct {
 	UserId               int          `json:"u"`
 	Platform             niu.Platform `json:"p"`
+	UserAgent            string       `json:"g"`
 	jwt.RegisteredClaims              // 包含标准字段如 exp（过期时间）、iss（签发者）等
 }
 
@@ -42,11 +43,14 @@ type LoginRequest struct {
 	SecureCode string `json:"secure_code" binding:"required"`
 }
 
-// TokenPair JWT令牌对
-type TokenPair struct {
+// AuthResponse JWT令牌对
+type AuthResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+	ClientId     string `json:"client_id"`
 }
+
+type AuthResponseDto = ResponseDto[*AuthResponse]
 
 const (
 	KeyClaims     = "claims"
@@ -66,14 +70,14 @@ func NewAuthService() *AuthService {
 	}
 }
 
-func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *niu.ReplyDto[ReplyCode, *TokenPair] {
+func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthResponseDto {
 	// 验证验证码
 	if req.Code != "1234" {
-		return &niu.ReplyDto[ReplyCode, *TokenPair]{Code: ReplyCodeInvalidMsgCode}
+		return &AuthResponseDto{Code: RespCodeInvalidMsgCode}
 	}
 	// 验证安全码
 	if req.SecureCode != "8888" {
-		return &niu.ReplyDto[ReplyCode, *TokenPair]{Code: ReplyCodeInvalidSecureCode}
+		return &AuthResponseDto{Code: RespCodeInvalidSecureCode}
 	}
 
 	// 通过手机号注册或获取用户信息
@@ -90,8 +94,10 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *niu.ReplyD
 	}
 
 	platform := a.GetPlatform(ctx)
+	ua := a.GetUserAgentHashed(ctx)
+
 	// 生成token
-	tokenpair, err := a.GenerateTokenPair(int(user.ID), repository.Role(user.Role), platform)
+	accessToken, refreshToken, err := a.GenerateTokenPair(int(user.ID), ua, platform)
 	if err != nil {
 		ctx.AbortWithError(500, err)
 		return nil
@@ -99,11 +105,11 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *niu.ReplyD
 
 	clientId := niu.NewUUIDWithoutDash()
 	// 将这些Token与该用户绑定
-	err = a.authRepo.SaveRefreshToken(ctx, tokenpair.RefreshToken, &repository.RefreshTokenCredentials{
+	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, &repository.RefreshTokenCredentials{
 		UserId:    int(user.ID),
 		Platform:  platform,
 		Ip:        ip,
-		UserAgent: "",
+		UserAgent: ua,
 		ClientId:  clientId,
 	}, time.Duration(global.AppConfig.Authenticator.Jwt.RefreshTtl)*time.Minute)
 	if err != nil {
@@ -111,12 +117,15 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *niu.ReplyD
 		return nil
 	}
 
-	a.setupAuthorizedCookie(ctx, *tokenpair, clientId)
+	if platform == niu.Web {
+		a.setupAuthorizedCookie(ctx, accessToken, refreshToken, clientId)
+		return &AuthResponseDto{Code: RespCodeSucceed}
+	}
 
-	return &niu.ReplyDto[ReplyCode, *TokenPair]{Code: ReplyCodeSucceed, Data: tokenpair}
+	return &AuthResponseDto{Code: RespCodeSucceed, Data: &AuthResponse{accessToken, refreshToken, clientId}}
 }
 
-func (a *AuthService) RefreshToken(ctx *gin.Context) *niu.ReplyDto[ReplyCode, *TokenPair] {
+func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 	token := a.GetRefreshToken(ctx)
 	if len(token) == 0 {
 		ctx.AbortWithStatus(401)
@@ -140,7 +149,9 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *niu.ReplyDto[ReplyCode, *T
 	ip := ctx.ClientIP()
 	clientId := a.GetClientId(ctx)
 	platform := a.GetPlatform(ctx)
-	if clientId != credentials.ClientId || platform != credentials.Platform {
+	ua := a.GetUserAgentHashed(ctx)
+
+	if clientId != credentials.ClientId || platform != credentials.Platform || ua != credentials.UserAgent {
 		ctx.AbortWithStatus(401) // client need re-login
 		return nil
 	}
@@ -152,34 +163,38 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *niu.ReplyDto[ReplyCode, *T
 	}
 
 	// 轮换 clientid 与 refresh token
-	tokenpair, err := a.GenerateTokenPair(int(credentials.UserId), 0, platform)
+	accessToken, refreshToken, err := a.GenerateTokenPair(int(credentials.UserId), ua, platform)
 	if err != nil {
-		return &niu.ReplyDto[ReplyCode, *TokenPair]{Code: ReplyCodeFailed, Msg: err.Error()}
+		return &AuthResponseDto{Code: RespCodeFailed, Msg: err.Error()}
 	}
 	clientId = niu.NewUUIDWithoutDash()
 	// 将这些Token与该用户绑定
-	err = a.authRepo.SaveRefreshToken(ctx, tokenpair.RefreshToken, &repository.RefreshTokenCredentials{
+	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, &repository.RefreshTokenCredentials{
 		UserId:    credentials.UserId,
 		Platform:  platform,
 		Ip:        ip,
-		UserAgent: "",
+		UserAgent: ua,
 		ClientId:  clientId,
 	}, time.Duration(global.AppConfig.Authenticator.Jwt.RefreshTtl)*time.Minute)
 	if err != nil {
-		return &niu.ReplyDto[ReplyCode, *TokenPair]{Code: ReplyCodeFailed, Msg: err.Error()}
+		return &AuthResponseDto{Code: RespCodeFailed, Msg: err.Error()}
 	}
-	a.setupAuthorizedCookie(ctx, *tokenpair, clientId)
 
-	return &niu.ReplyDto[ReplyCode, *TokenPair]{Code: ReplyCodeSucceed, Data: tokenpair}
+	if platform == niu.Web {
+		a.setupAuthorizedCookie(ctx, accessToken, refreshToken, clientId)
+		return &AuthResponseDto{Code: RespCodeSucceed}
+	}
+
+	return &AuthResponseDto{Code: RespCodeSucceed, Data: &AuthResponse{accessToken, refreshToken, clientId}}
 }
 
-func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, tokenpair TokenPair, clientId string) {
+func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, accessToken, refreshToken, clientId string) {
 	jwtConfig := global.AppConfig.Authenticator.Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
 	atkMaxAge := int((time.Duration(jwtConfig.AccessTtl) * time.Minute).Seconds())
 	rtkMaxAge := int((time.Duration(jwtConfig.RefreshTtl) * time.Minute).Seconds())
-	ctx.SetCookie(jwtConfig.CookieAccessTokenKey, tokenpair.AccessToken, atkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
-	ctx.SetCookie(jwtConfig.CookieRefreshTokenKey, tokenpair.RefreshToken, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
+	ctx.SetCookie(jwtConfig.CookieAccessTokenKey, accessToken, atkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
+	ctx.SetCookie(jwtConfig.CookieRefreshTokenKey, refreshToken, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 	ctx.SetCookie("cli", clientId, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 }
 
@@ -240,6 +255,15 @@ func (a *AuthService) GetClientId(ctx *gin.Context) string {
 	return strings.TrimSpace(authHeader[7:])
 }
 
+func (a *AuthService) GetUserAgentHashed(ctx *gin.Context) string {
+	ua := ctx.Request.Header.Get("User-Agent")
+	ua = strings.TrimSpace(ua)
+	if len(ua) > 0 {
+		ua = niu.HashSha256(ua)
+	}
+	return ua
+}
+
 func (a *AuthService) RevokeToken(ctx context.Context, token string, tokenType repository.TokenType) error {
 	expire := time.Duration(global.AppConfig.Authenticator.Jwt.AccessTtl) * time.Minute
 	if tokenType == repository.TokenTypeRefresh {
@@ -253,23 +277,24 @@ func (a *AuthService) IsTokenRevoked(ctx context.Context, token string) (bool, e
 	return a.authRepo.IsTokenRevoked(ctx, token) // 调用Repository层的方法
 }
 
-func (a *AuthService) GenerateTokenPair(userID int, role repository.Role, platform niu.Platform) (*TokenPair, error) {
-	accessToken, err := a.GenerateAccessToken(userID, platform)
+func (a *AuthService) GenerateTokenPair(userID int, userAgent string, platform niu.Platform) (string, string, error) {
+	accessToken, err := a.GenerateAccessToken(userID, userAgent, platform)
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
 	refreshToken := niu.NewUUIDWithoutDash()
-	return &TokenPair{accessToken, refreshToken}, nil
+	return accessToken, refreshToken, nil
 }
 
-func (a *AuthService) GenerateAccessToken(userID int, platform niu.Platform) (string, error) {
+func (a *AuthService) GenerateAccessToken(userID int, userAgent string, platform niu.Platform) (string, error) {
 	jwtConfig := global.AppConfig.Authenticator.Jwt
 	if len(jwtConfig.Secret) == 0 {
 		panic("jwtSecret is empty")
 	}
 	claims := AuthorizedClaims{
-		UserId:   userID,
-		Platform: platform,
+		UserId:    userID,
+		Platform:  platform,
+		UserAgent: userAgent,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(jwtConfig.AccessTtl) * time.Minute)), // 过期时间
 			Issuer:    jwtConfig.Issuer,                                                                     // 签发者
