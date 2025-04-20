@@ -131,32 +131,23 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 		ctx.AbortWithStatus(401)
 		return nil
 	}
-	revoked, err := a.IsTokenRevoked(ctx, token)
-	if err != nil || revoked {
-		ctx.AbortWithStatus(401)
-		return nil
-	}
 
-	credentials, err := a.authRepo.GetRefreshTokenByValue(ctx, token)
-	if err != nil {
-		ctx.AbortWithError(500, err)
-		return nil
-	}
+	credentials := a.authRepo.GetRefreshTokenByValue(ctx, token)
 	if credentials == nil {
 		ctx.AbortWithStatus(401) // client need re-login
 		return nil
 	}
+
 	ip := ctx.ClientIP()
 	clientId := a.GetClientId(ctx)
 	platform := a.GetPlatform(ctx)
 	ua := a.GetUserAgentHashed(ctx)
-
 	if clientId != credentials.ClientId || platform != credentials.Platform || ua != credentials.UserAgent {
 		ctx.AbortWithStatus(401) // client need re-login
 		return nil
 	}
 
-	err = a.RevokeToken(ctx, token, repository.TokenTypeRefresh)
+	err := a.authRepo.DeleteRefreshToken(ctx, token)
 	if err != nil {
 		ctx.AbortWithError(500, err)
 		return nil
@@ -165,10 +156,10 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 	// 轮换 clientid 与 refresh token
 	accessToken, refreshToken, err := a.GenerateTokenPair(int(credentials.UserId), ua, platform)
 	if err != nil {
-		return &AuthResponseDto{Code: RespCodeFailed, Msg: err.Error()}
+		ctx.AbortWithStatus(401) // token 已经删除，此时只能重新登录
+		return nil
 	}
 	clientId = niu.NewUUIDWithoutDash()
-	// 将这些Token与该用户绑定
 	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, &repository.RefreshTokenCredentials{
 		UserId:    credentials.UserId,
 		Platform:  platform,
@@ -177,7 +168,8 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 		ClientId:  clientId,
 	}, time.Duration(global.AppConfig.Authenticator.Jwt.RefreshTtl)*time.Minute)
 	if err != nil {
-		return &AuthResponseDto{Code: RespCodeFailed, Msg: err.Error()}
+		ctx.AbortWithStatus(401) // token 已经删除，此时只能重新登录
+		return nil
 	}
 
 	if platform == niu.Web {
@@ -195,7 +187,7 @@ func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, accessToken, refre
 	rtkMaxAge := int((time.Duration(jwtConfig.RefreshTtl) * time.Minute).Seconds())
 	ctx.SetCookie(jwtConfig.CookieAccessTokenKey, accessToken, atkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 	ctx.SetCookie(jwtConfig.CookieRefreshTokenKey, refreshToken, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
-	ctx.SetCookie("cli", clientId, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
+	ctx.SetCookie(jwtConfig.CookieClientIdKey, clientId, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 }
 
 func (a *AuthService) GetPlatform(ctx *gin.Context) niu.Platform {

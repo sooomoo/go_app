@@ -79,20 +79,26 @@ func (a *AuthRepository) SaveRefreshToken(ctx context.Context, token string, cre
 	return err
 }
 
-func (a *AuthRepository) GetRefreshTokenByValue(ctx context.Context, token string) (*RefreshTokenCredentials, error) {
+func (a *AuthRepository) DeleteRefreshToken(ctx context.Context, token string) error {
+	key := fmt.Sprintf("refresh_token:%s", token)
+	_, err := a.cache.KeyDel(ctx, key)
+	return err
+}
+
+func (a *AuthRepository) GetRefreshTokenByValue(ctx context.Context, token string) *RefreshTokenCredentials {
 	key := fmt.Sprintf("refresh_token:%s", token)
 	jsonStr, err := a.cache.Get(ctx, key)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	var dto RefreshTokenCredentials
 	err = json.Unmarshal([]byte(jsonStr), &dto)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
-	return &dto, nil
+	return &dto
 }
 
 func (a *AuthRepository) SaveSMSCode(ctx context.Context, phone string, code string) error {

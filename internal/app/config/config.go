@@ -94,6 +94,7 @@ type JwtConfig struct {
 	CookieHttpOnly        bool   `mapstructure:"cookie_httponly"`
 	CookieAccessTokenKey  string `mapstructure:"cookie_access_token_key"`
 	CookieRefreshTokenKey string `mapstructure:"cookie_refresh_token_key"`
+	CookieClientIdKey     string `mapstructure:"cookie_client_id_key"`
 	CookieSameSiteMode    int    `mapstructure:"cookie_same_site_mode"`
 }
 
