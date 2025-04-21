@@ -61,17 +61,33 @@ func upgradeChatWebSocket(c *gin.Context) {
 	if chatHub == nil {
 		panic(errors.New("chat hub is nil"))
 	}
-	svr := service.NewAuthService()
-	claims := svr.GetClaims(c)
-	if claims == nil {
-		c.AbortWithStatus(http.StatusUnauthorized)
+	svc := service.NewAuthService()
+	token := svc.GetAccessToken(c)
+	revoked, err := svc.IsTokenRevoked(c, token)
+	if err != nil {
+		c.AbortWithError(500, errors.New("check token revoke fail"))
+		return
+	}
+	if revoked {
+		c.AbortWithStatus(401)
+		return
+	}
+	// 解析Token
+	claims, err := svc.ParseAccessToken(token)
+	ua := svc.GetUserAgentHashed(c)
+	if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) || claims.UserAgent != ua {
+		c.AbortWithError(401, errors.New("invalid token"))
 		return
 	}
 	userId := fmt.Sprintf("%d", claims.UserId)
 
 	// SessionId需要在用户层面保持唯一：即一个用户的所有连接的Id是唯一的，但不同用户的SessionId可以相同
 	// 最好是全局唯一
-	sessionId := c.GetHeader("X-Session")
+	sessionId, _ := c.Cookie("sid")
+	if len(sessionId) == 0 {
+		c.AbortWithError(401, errors.New("invalid token"))
+		return
+	}
 
 	// 此处可以踢出其它不希望的连接：比如多个平台只允许一个连接
 	// 也可以指定某一平台仅允许一个连接
@@ -81,8 +97,10 @@ func upgradeChatWebSocket(c *gin.Context) {
 	// 	userLines.CloseAll()
 	// }
 
-	err := chatHub.UpgradeWebSocket(userId, claims.Platform, sessionId, c.Writer, c.Request)
+	err = chatHub.UpgradeWebSocket(userId, claims.Platform, sessionId, c.Writer, c.Request)
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 	}
+	time.Sleep(time.Second * 2)
+	chatHub.PushMessage([]string{userId}, []byte("hello"))
 }

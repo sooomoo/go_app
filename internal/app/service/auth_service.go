@@ -203,8 +203,15 @@ func (a *AuthService) GetPlatform(ctx *gin.Context) niu.Platform {
 }
 
 func (a *AuthService) GetAccessToken(ctx *gin.Context) string {
+	pla := a.GetPlatform(ctx)
+	if pla == niu.Unspecify {
+		str, _ := ctx.Cookie("pla")
+		if len(str) > 0 {
+			pla = niu.ParsePlatform(str)
+		}
+	}
 	// web单独处理
-	if a.GetPlatform(ctx) == niu.Web {
+	if pla == niu.Web {
 		token, _ := ctx.Cookie(global.AppConfig.Authenticator.Jwt.CookieAccessTokenKey)
 		return token
 	}

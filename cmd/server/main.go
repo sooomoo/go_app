@@ -4,6 +4,7 @@ import (
 	"context"
 	"goapp/internal/app"
 	"goapp/internal/app/api/handlers"
+	"goapp/internal/app/api/handlers/hubs"
 	"goapp/internal/app/api/middleware"
 	"goapp/internal/app/global"
 	"log"
@@ -32,15 +33,16 @@ func main() {
 	}
 
 	r := gin.New()
+	r.Use(gin.RecoveryWithWriter(os.Stdout))
+	r.Use(middleware.LogMiddleware())
 	r.Use(middleware.CorsMiddleware())
-	v1 := r.Group("/v1")
-	v1.Use(gin.RecoveryWithWriter(os.Stdout))
 
 	if env == "dev" {
 		pprof.RouteRegister(r, "debug/pprof")
 	}
+	v1 := r.Group("/v1")
 
-	v1.Use(middleware.LogMiddleware())
+	hubs.RegisterHubs(v1)
 	v1.Use(middleware.GzipMiddleware())
 	v1.Use(middleware.ReplayMiddleware())
 	v1.Use(middleware.JwtMiddleware())
