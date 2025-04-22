@@ -69,9 +69,11 @@ func (m *PacketProtocol) EncodeResp(msgType, requestId int32, code byte, payload
 	out := []byte{byte(msgType)}
 	out = append(out, byte(requestId>>24&0x000F), byte(requestId>>16&0x000F), byte(requestId>>8&0x000F), byte(requestId&0x000F))
 	out = append(out, byte(timestamp>>24&0x000F), byte(timestamp>>16&0x000F), byte(timestamp>>8&0x000F), byte(timestamp&0x000F))
+	out = append(out, code)
 
 	if len(body) > 0 && m.cryptor != nil {
-		body, err := m.cryptor.Encrypt(body)
+		var err error
+		body, err = m.cryptor.Encrypt(body)
 		if err != nil {
 			return nil, err
 		}

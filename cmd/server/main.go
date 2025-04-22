@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"goapp/internal/app"
-	"goapp/internal/app/api/handlers"
-	"goapp/internal/app/api/hubs"
-	"goapp/internal/app/api/middleware"
 	"goapp/internal/app/global"
+	"goapp/internal/app/routes/api"
+	"goapp/internal/app/routes/hubs"
+	"goapp/internal/app/routes/middleware"
 	"goapp/pkg/core"
 	"log"
 	"net/http"
@@ -60,7 +60,7 @@ func main() {
 		v1.Use(middleware.JwtMiddleware())
 		v1.Use(middleware.SignMiddleware())
 		v1.Use(middleware.CryptoMiddleware())
-		handlers.RegisterRoutes(v1)
+		api.RegisterRoutes(v1)
 	}
 
 	// 创建HTTP服务器
