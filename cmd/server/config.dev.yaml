@@ -58,9 +58,6 @@ authenticator:
     cookie_domain: 
     cookie_secure: false
     cookie_httponly: true
-    cookie_access_token_key: acc
-    cookie_refresh_token_key: ref
-    cookie_client_id_key: cli
     cookie_same_site_mode: 3 # 1: default , 2: lax, 3: strict, 4: none
   replay_max_interval: 120 # 120秒
   
@@ -85,6 +82,7 @@ cors:
     - X-Signature
     - X-Platform
     - X-Session
+    - X-Client
   expose_headers: 
     - X-Nonce
     - X-Timestamp

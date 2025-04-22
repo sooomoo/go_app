@@ -85,17 +85,14 @@ type KeyPair struct {
 }
 
 type JwtConfig struct {
-	Issuer                string `mapstructure:"issuer"`
-	Secret                string `mapstructure:"secret"`
-	AccessTtl             int64  `mapstructure:"access_ttl"`    // in minute
-	RefreshTtl            int64  `mapstructure:"refresh_ttl"`   // in minute
-	CookieDomain          string `mapstructure:"cookie_domain"` // 设置 cookie 时使用的域名，可以设置为 .niu.com， 这样 api.niu.com, img.niu.com 都能访问
-	CookieSecure          bool   `mapstructure:"cookie_secure"`
-	CookieHttpOnly        bool   `mapstructure:"cookie_httponly"`
-	CookieAccessTokenKey  string `mapstructure:"cookie_access_token_key"`
-	CookieRefreshTokenKey string `mapstructure:"cookie_refresh_token_key"`
-	CookieClientIdKey     string `mapstructure:"cookie_client_id_key"`
-	CookieSameSiteMode    int    `mapstructure:"cookie_same_site_mode"`
+	Issuer             string `mapstructure:"issuer"`
+	Secret             string `mapstructure:"secret"`
+	AccessTtl          int64  `mapstructure:"access_ttl"`    // in minute
+	RefreshTtl         int64  `mapstructure:"refresh_ttl"`   // in minute
+	CookieDomain       string `mapstructure:"cookie_domain"` // 设置 cookie 时使用的域名，可以设置为 .niu.com， 这样 api.niu.com, img.niu.com 都能访问
+	CookieSecure       bool   `mapstructure:"cookie_secure"`
+	CookieHttpOnly     bool   `mapstructure:"cookie_httponly"`
+	CookieSameSiteMode int    `mapstructure:"cookie_same_site_mode"`
 }
 
 type AuthenticatorConfig struct {

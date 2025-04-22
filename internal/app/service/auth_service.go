@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"goapp/internal/app/global"
 	"goapp/internal/app/repository"
+	"goapp/internal/app/service/headers"
 	"math/rand"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -24,10 +24,10 @@ type RequestExtendData struct {
 	SessionId string
 }
 
-type ClientKeys struct {
-	SignPubKey []byte
-	BoxPubKey  []byte
-	ShareKey   []byte
+type SessionClientKeys struct {
+	SignPubKey []byte // 客户端签名公钥
+	BoxPubKey  []byte // 客户端加密公钥
+	ShareKey   []byte // 与BoxPubKey协商出来的加密密钥
 }
 
 type AuthorizedClaims struct {
@@ -93,8 +93,8 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 		return nil
 	}
 
-	platform := a.GetPlatform(ctx)
-	ua := a.GetUserAgentHashed(ctx)
+	platform := headers.GetPlatform(ctx)
+	ua := headers.GetUserAgentHashed(ctx)
 
 	// 生成token
 	accessToken, refreshToken, err := a.GenerateTokenPair(int(user.ID), ua, platform)
@@ -126,7 +126,7 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 }
 
 func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
-	token := a.GetRefreshToken(ctx)
+	token := headers.GetRefreshToken(ctx)
 	if len(token) == 0 {
 		ctx.AbortWithStatus(401)
 		return nil
@@ -139,9 +139,9 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 	}
 
 	ip := ctx.ClientIP()
-	clientId := a.GetClientId(ctx)
-	platform := a.GetPlatform(ctx)
-	ua := a.GetUserAgentHashed(ctx)
+	clientId := headers.GetClientId(ctx)
+	platform := headers.GetPlatform(ctx)
+	ua := headers.GetUserAgentHashed(ctx)
 	if clientId != credentials.ClientId || platform != credentials.Platform || ua != credentials.UserAgent {
 		ctx.AbortWithStatus(401) // client need re-login
 		return nil
@@ -185,82 +185,9 @@ func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, accessToken, refre
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
 	atkMaxAge := int((time.Duration(jwtConfig.AccessTtl) * time.Minute).Seconds())
 	rtkMaxAge := int((time.Duration(jwtConfig.RefreshTtl) * time.Minute).Seconds())
-	ctx.SetCookie(jwtConfig.CookieAccessTokenKey, accessToken, atkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
-	ctx.SetCookie(jwtConfig.CookieRefreshTokenKey, refreshToken, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
-	ctx.SetCookie(jwtConfig.CookieClientIdKey, clientId, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
-}
-
-func (a *AuthService) GetPlatform(ctx *gin.Context) niu.Platform {
-	extData, ok := ctx.Get(KeyExtendData)
-	if ok {
-		extendData, ok := extData.(*RequestExtendData)
-		if ok {
-			return extendData.Platform
-		}
-	}
-
-	return niu.Unspecify
-}
-
-func (a *AuthService) GetAccessToken(ctx *gin.Context) string {
-	pla := a.GetPlatform(ctx)
-	if pla == niu.Unspecify {
-		str, _ := ctx.Cookie("pla")
-		if len(str) > 0 {
-			pla = niu.ParsePlatform(str)
-		}
-	}
-	// web单独处理
-	if pla == niu.Web {
-		token, _ := ctx.Cookie(global.AppConfig.Authenticator.Jwt.CookieAccessTokenKey)
-		return token
-	}
-
-	// 从请求头中获取令牌
-	authHeader := ctx.GetHeader("Authorization")
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		return ""
-	}
-	return strings.TrimSpace(authHeader[7:])
-}
-
-func (a *AuthService) GetRefreshToken(ctx *gin.Context) string {
-	// web单独处理
-	if a.GetPlatform(ctx) == niu.Web {
-		token, _ := ctx.Cookie(global.AppConfig.Authenticator.Jwt.CookieRefreshTokenKey)
-		return token
-	}
-
-	// 从请求头中获取令牌
-	authHeader := ctx.GetHeader("Authorization")
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		return ""
-	}
-	return strings.TrimSpace(authHeader[7:])
-}
-
-func (a *AuthService) GetClientId(ctx *gin.Context) string {
-	// web单独处理
-	if a.GetPlatform(ctx) == niu.Web {
-		token, _ := ctx.Cookie("cli")
-		return token
-	}
-
-	// 从请求头中获取令牌
-	authHeader := ctx.GetHeader("Authorization")
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		return ""
-	}
-	return strings.TrimSpace(authHeader[7:])
-}
-
-func (a *AuthService) GetUserAgentHashed(ctx *gin.Context) string {
-	ua := ctx.Request.Header.Get("User-Agent")
-	ua = strings.TrimSpace(ua)
-	if len(ua) > 0 {
-		ua = niu.HashSha256(ua)
-	}
-	return ua
+	ctx.SetCookie(headers.CookieKeyAccessToken, accessToken, atkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
+	ctx.SetCookie(headers.CookieKeyRefreshToken, refreshToken, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
+	ctx.SetCookie(headers.CookieKeyClientId, clientId, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 }
 
 func (a *AuthService) RevokeToken(ctx context.Context, token string, tokenType repository.TokenType) error {

@@ -3,8 +3,10 @@ package middleware
 import (
 	"errors"
 	"goapp/internal/app/global"
+	"goapp/internal/app/service/headers"
 	"goapp/internal/pkg/crypto"
 	"io"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -28,9 +30,9 @@ func CryptoMiddleware() gin.HandlerFunc {
 		}
 
 		// Get 请求不需要解密
-		if c.Request.Method != "GET" {
+		if c.Request.Method != http.MethodGet {
 			// 解密
-			contentType := c.GetHeader("Content-Type")
+			contentType := c.GetHeader(headers.HeaderContentType)
 			if !strings.EqualFold(contentType, niu.ContentTypeEncrypted) {
 				c.AbortWithStatus(400)
 				return
@@ -53,7 +55,7 @@ func CryptoMiddleware() gin.HandlerFunc {
 			buf.Write(reqBody)
 			c.Request.Body = io.NopCloser(buf)
 			c.Request.ContentLength = int64(len(reqBody))
-			c.Request.Header.Set("Content-Type", getDecryptContentType(c.Request.URL.Path))
+			c.Request.Header.Set(headers.HeaderContentType, getDecryptContentType(c.Request.URL.Path))
 		}
 
 		// 代理响应写入器
@@ -73,7 +75,7 @@ func CryptoMiddleware() gin.HandlerFunc {
 		}
 
 		responseBody := bodyWriter.buf.Bytes()
-		contentType := c.Writer.Header().Get("Content-Type")
+		contentType := c.Writer.Header().Get(headers.HeaderContentType)
 		// 仅加密 json 和文本响应
 		if strings.Contains(contentType, "application/json") || strings.Contains(contentType, "text/plain") {
 			respBody, err := crypto.Encrypt(keys.ShareKey, responseBody)
@@ -82,12 +84,12 @@ func CryptoMiddleware() gin.HandlerFunc {
 				return
 			}
 
-			c.Header("X-RawType", contentType)
-			c.Header("Content-Type", niu.ContentTypeEncrypted)
-			c.Header("Content-Length", strconv.Itoa(len(respBody)))
+			c.Header(headers.HeaderRawType, contentType)
+			c.Header(headers.HeaderContentType, niu.ContentTypeEncrypted)
+			c.Header(headers.HeaderContentLength, strconv.Itoa(len(respBody)))
 			bodyWriter.ResponseWriter.WriteString(respBody)
 		} else {
-			c.Header("Content-Length", strconv.Itoa(len(responseBody)))
+			c.Header(headers.HeaderContentLength, strconv.Itoa(len(responseBody)))
 			bodyWriter.ResponseWriter.Write(responseBody)
 		}
 

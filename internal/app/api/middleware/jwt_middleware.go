@@ -4,6 +4,7 @@ import (
 	"errors"
 	"goapp/internal/app/global"
 	"goapp/internal/app/service"
+	"goapp/internal/app/service/headers"
 	"strings"
 	"time"
 
@@ -14,7 +15,7 @@ func JwtMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		svc := service.NewAuthService()
 		// 解析客户端的Token（如果有）
-		token := svc.GetAccessToken(c)
+		token := headers.GetAccessToken(c)
 		if isPathNeedAuth(c.Request.URL.Path) {
 			if len(token) == 0 {
 				c.AbortWithStatus(401)
@@ -32,7 +33,7 @@ func JwtMiddleware() gin.HandlerFunc {
 			}
 			// 解析Token
 			claims, err := svc.ParseAccessToken(token)
-			ua := svc.GetUserAgentHashed(c)
+			ua := headers.GetUserAgentHashed(c)
 			if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) || claims.UserAgent != ua {
 				c.AbortWithError(401, errors.New("invalid token"))
 				return
@@ -52,7 +53,7 @@ func JwtMiddleware() gin.HandlerFunc {
 		}
 
 		// 解析并存储客户端的Key
-		parseAndStoreClientKeys(c, strings.TrimSpace(c.GetHeader("X-Session")))
+		parseAndStoreClientKeys(c, headers.GetSessionId(c))
 		if c.IsAborted() {
 			return
 		}

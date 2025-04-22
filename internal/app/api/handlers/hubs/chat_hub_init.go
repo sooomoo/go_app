@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"goapp/internal/app/config"
 	"goapp/internal/app/service"
+	"goapp/internal/app/service/headers"
 	"net/http"
 	"time"
 
@@ -62,28 +63,13 @@ func upgradeChatWebSocket(c *gin.Context) {
 		panic(errors.New("chat hub is nil"))
 	}
 	svc := service.NewAuthService()
-	token := svc.GetAccessToken(c)
-	revoked, err := svc.IsTokenRevoked(c, token)
-	if err != nil {
-		c.AbortWithError(500, errors.New("check token revoke fail"))
-		return
-	}
-	if revoked {
-		c.AbortWithStatus(401)
-		return
-	}
 	// 解析Token
-	claims, err := svc.ParseAccessToken(token)
-	ua := svc.GetUserAgentHashed(c)
-	if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) || claims.UserAgent != ua {
-		c.AbortWithError(401, errors.New("invalid token"))
-		return
-	}
+	claims := svc.GetClaims(c)
 	userId := fmt.Sprintf("%d", claims.UserId)
 
 	// SessionId需要在用户层面保持唯一：即一个用户的所有连接的Id是唯一的，但不同用户的SessionId可以相同
 	// 最好是全局唯一
-	sessionId, _ := c.Cookie("sid")
+	sessionId := headers.GetSessionId(c)
 	if len(sessionId) == 0 {
 		c.AbortWithError(401, errors.New("invalid token"))
 		return
@@ -97,10 +83,8 @@ func upgradeChatWebSocket(c *gin.Context) {
 	// 	userLines.CloseAll()
 	// }
 
-	err = chatHub.UpgradeWebSocket(userId, claims.Platform, sessionId, c.Writer, c.Request)
+	err := chatHub.UpgradeWebSocket(userId, claims.Platform, sessionId, c.Writer, c.Request)
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 	}
-	time.Sleep(time.Second * 2)
-	chatHub.PushMessage([]string{userId}, []byte("hello"))
 }

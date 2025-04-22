@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"goapp/internal/app/service"
+	"goapp/internal/app/service/headers"
 	"goapp/internal/pkg/crypto"
 	"io"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -17,7 +19,7 @@ import (
 
 func SignMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authorization := strings.TrimSpace(c.GetHeader("Authorization"))
+		authorization := strings.TrimSpace(c.GetHeader(headers.HeaderAuthorization))
 
 		var extendData *service.RequestExtendData
 		extData, ok := c.Get(service.KeyExtendData)
@@ -42,11 +44,11 @@ func SignMiddleware() gin.HandlerFunc {
 			"query":         string(crypto.StringfyMap(convertValuesToMap(c.Request.URL.Query()))),
 			"authorization": authorization,
 		}
-		if getPlatform(c) == niu.Web {
+		if headers.GetPlatform(c) == niu.Web {
 			delete(dataToVerify, "authorization")
 		}
 
-		if c.Request.Method != "GET" {
+		if c.Request.Method != http.MethodGet {
 			reqBody, err := io.ReadAll(c.Request.Body)
 			if err != nil {
 				c.AbortWithStatus(500)
@@ -110,10 +112,10 @@ func SignMiddleware() gin.HandlerFunc {
 		}
 
 		// 8. 写入响应头
-		c.Header("x-timestamp", respTimestamp)
-		c.Header("x-nonce", respNonce)
-		c.Header("x-signature", respSignature)
-		c.Header("Content-Length", strconv.Itoa(len(responseBody)))
+		c.Header(headers.HeaderTimestamp, respTimestamp)
+		c.Header(headers.HeaderNonce, respNonce)
+		c.Header(headers.HeaderSignature, respSignature)
+		c.Header(headers.HeaderContentLength, strconv.Itoa(len(responseBody)))
 
 		bodyWriter.ResponseWriter.Write(responseBody)
 		bodyWriter.ResponseWriter.WriteHeader(c.Writer.Status())

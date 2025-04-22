@@ -33,6 +33,9 @@ func main() {
 	}
 
 	r := gin.New()
+	r.Use(func(ctx *gin.Context) {
+		ctx.Next()
+	})
 	r.Use(gin.RecoveryWithWriter(os.Stdout))
 	r.Use(middleware.LogMiddleware())
 	r.Use(middleware.CorsMiddleware())
@@ -40,15 +43,25 @@ func main() {
 	if env == "dev" {
 		pprof.RouteRegister(r, "debug/pprof")
 	}
-	v1 := r.Group("/v1")
 
-	hubs.RegisterHubs(v1)
-	v1.Use(middleware.GzipMiddleware())
-	v1.Use(middleware.ReplayMiddleware())
-	v1.Use(middleware.JwtMiddleware())
-	v1.Use(middleware.SignMiddleware())
-	v1.Use(middleware.CryptoMiddleware())
-	handlers.RegisterRoutes(v1)
+	// Hub 相关配置：hub 不需要与 api 一样的版本管理（v1）
+	// 它可以通过 subprotocols 来管理版本
+	hubGroup := r.Group("/hub")
+	{
+		hubGroup.Use(middleware.JwtMiddleware())
+		hubs.RegisterHubs(hubGroup)
+	}
+
+	// 普通 API 请求相关配置
+	v1 := r.Group("/v1")
+	{
+		v1.Use(middleware.GzipMiddleware())
+		v1.Use(middleware.ReplayMiddleware())
+		v1.Use(middleware.JwtMiddleware())
+		v1.Use(middleware.SignMiddleware())
+		v1.Use(middleware.CryptoMiddleware())
+		handlers.RegisterRoutes(v1)
+	}
 
 	// 创建HTTP服务器
 	svr := &http.Server{Addr: global.AppConfig.Addr, Handler: r}

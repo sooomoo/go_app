@@ -49,16 +49,16 @@ func (g *bodyWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return hijacker.Hijack()
 }
 
-func parseAndStoreClientKeys(ctx *gin.Context, sessionId string) {
+func parseAndStoreClientKeys(ctx *gin.Context, sessionId string) *service.SessionClientKeys {
 	raw, err := crypto.Base64Decode(sessionId)
 	if err != nil {
 		ctx.AbortWithError(400, errors.New("bad session id"))
-		return
+		return nil
 	}
 
 	if len(raw) != 88 {
 		ctx.AbortWithError(400, errors.New("bad session id"))
-		return
+		return nil
 	}
 
 	for i := 17; i < len(raw); i++ {
@@ -72,43 +72,35 @@ func parseAndStoreClientKeys(ctx *gin.Context, sessionId string) {
 		shareKey, err := crypto.NegotiateShareKey(boxPubKey, global.AppConfig.Authenticator.BoxKeyPair.PrivateKey)
 		if err != nil {
 			ctx.AbortWithError(400, errors.New("negotiate fail"))
-			return
+			return nil
 		}
 
-		ctx.Set(service.KeyClientKeys, &service.ClientKeys{
+		skeys := &service.SessionClientKeys{
 			SignPubKey: signPubKey,
 			BoxPubKey:  boxPubKey,
 			ShareKey:   shareKey,
-		})
+		}
+		ctx.Set(service.KeyClientKeys, skeys)
+		return skeys
 	} else {
-		ctx.Set(service.KeyClientKeys, &service.ClientKeys{
+		skeys := &service.SessionClientKeys{
 			SignPubKey: signPubKey,
 			BoxPubKey:  boxPubKey,
 			ShareKey:   nil,
-		})
+		}
+		ctx.Set(service.KeyClientKeys, skeys)
+		return skeys
 	}
 }
 
-func getClientKeys(ctx *gin.Context) *service.ClientKeys {
+func getClientKeys(ctx *gin.Context) *service.SessionClientKeys {
 	val, exist := ctx.Get(service.KeyClientKeys)
 	if !exist {
 		return nil
 	}
-	keys, ok := val.(*service.ClientKeys)
+	keys, ok := val.(*service.SessionClientKeys)
 	if !ok {
 		return nil
 	}
 	return keys
-}
-
-func getPlatform(ctx *gin.Context) niu.Platform {
-	extData, ok := ctx.Get(service.KeyExtendData)
-	if ok {
-		extendData, ok := extData.(*service.RequestExtendData)
-		if ok {
-			return extendData.Platform
-		}
-	}
-
-	return niu.Unspecify
 }
