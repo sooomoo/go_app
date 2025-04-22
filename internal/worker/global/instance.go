@@ -2,35 +2,37 @@ package global
 
 import (
 	"context"
+	"goapp/pkg/cache"
+	"goapp/pkg/core"
+	"goapp/pkg/distribute"
 	"time"
 
 	"github.com/panjf2000/ants/v2"
 	"github.com/redis/go-redis/v9"
-	"github.com/sooomo/niu"
 )
 
 var appId string
 
 func GetAppId() string { return appId }
 
-var pool niu.CoroutinePool
+var pool core.CoroutinePool
 
-func GetPool() niu.CoroutinePool { return pool }
+func GetPool() core.CoroutinePool { return pool }
 
-var cache *niu.Cache
+var cacheInst *cache.Cache
 
-func GetCache() *niu.Cache { return cache }
+func GetCache() *cache.Cache { return cacheInst }
 
-var locker *niu.DistributeLocker
+var locker *distribute.DistributeLocker
 
-func GetLocker() *niu.DistributeLocker { return locker }
+func GetLocker() *distribute.DistributeLocker { return locker }
 
-var queue niu.MessageQueue
+var queue distribute.MessageQueue
 
-func GetQueue() niu.MessageQueue { return queue }
+func GetQueue() distribute.MessageQueue { return queue }
 
 func Init(ctx context.Context) error {
-	appId = niu.NewUUIDWithoutDash()
+	appId = core.NewUUIDWithoutDash()
 
 	var err error = nil
 	pool, err = ants.NewPool(100000, ants.WithExpiryDuration(5*time.Minute))
@@ -38,18 +40,18 @@ func Init(ctx context.Context) error {
 		return err
 	}
 
-	cache, err = niu.NewCacheWithAddr(ctx, "", "")
+	cacheInst, err = cache.NewCacheWithAddr(ctx, "", "")
 	if err != nil {
 		return err
 	}
-	locker, err = niu.NewDistributeLocker(ctx, &redis.Options{
+	locker, err = distribute.NewDistributeLocker(ctx, &redis.Options{
 		Addr: "",
-	}, 15*time.Second, niu.LinearRetryStrategy(2*time.Second))
+	}, 15*time.Second, distribute.LinearRetryStrategy(2*time.Second))
 	if err != nil {
 		return err
 	}
 
-	queue, err = niu.NewRedisMessageQueue(ctx, &redis.Options{
+	queue, err = distribute.NewRedisMessageQueue(ctx, &redis.Options{
 		Addr: "",
 	}, pool, 1024, 100)
 	if err != nil {

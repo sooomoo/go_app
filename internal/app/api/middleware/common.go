@@ -7,14 +7,14 @@ import (
 	"goapp/internal/app/global"
 	"goapp/internal/app/service"
 	"goapp/internal/pkg/crypto"
+	"goapp/pkg/core"
 	"net"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sooomo/niu"
 )
 
-var bufferPool *niu.ByteBufferPool = niu.NewByteBufferPool(0, 1024)
+var bufferPool *core.ByteBufferPool = core.NewByteBufferPool(0, 1024)
 
 // 自定义响应写入器
 type bodyWriter struct {

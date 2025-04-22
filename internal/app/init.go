@@ -3,13 +3,15 @@ package app
 // 全局实例，用于全局使用，如缓存，消息队列，分布式锁，分布式ID生成器，分布式认证器，分布式消息总线等
 import (
 	"context"
-	"goapp/internal/app/api/handlers/hubs"
+	"goapp/internal/app/api/hubs"
 	"goapp/internal/app/config"
 	"goapp/internal/app/global"
+	"goapp/pkg/cache"
+	"goapp/pkg/core"
+	"goapp/pkg/distribute"
 	"time"
 
 	"github.com/panjf2000/ants/v2"
-	"github.com/sooomo/niu"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -21,7 +23,7 @@ func Init(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	global.AppConfig.Id = niu.NewUUIDWithoutDash()
+	global.AppConfig.Id = core.NewUUIDWithoutDash()
 
 	appConfig := global.AppConfig
 
@@ -35,12 +37,12 @@ func Init(ctx context.Context) error {
 		return err
 	}
 
-	global.Cache, err = niu.NewCache(ctx, appConfig.Cache.GetRedisOption(), nil)
+	global.Cache, err = cache.NewCache(ctx, appConfig.Cache.GetRedisOption(), nil)
 	if err != nil {
 		return err
 	}
 
-	global.DistributeId, err = niu.NewDistributeId(ctx, appConfig.Cache.GetRedisOption())
+	global.DistributeId, err = distribute.NewDistributeId(ctx, appConfig.Cache.GetRedisOption())
 	if err != nil {
 		return err
 	}
@@ -50,20 +52,20 @@ func Init(ctx context.Context) error {
 		return err
 	}
 
-	global.Locker, err = niu.NewDistributeLocker(
+	global.Locker, err = distribute.NewDistributeLocker(
 		ctx, appConfig.Locker.GetRedisOption(),
 		time.Duration(appConfig.Locker.Ttl)*time.Second,
-		niu.LinearRetryStrategy(time.Duration(appConfig.Locker.Backoff)*time.Second))
+		distribute.LinearRetryStrategy(time.Duration(appConfig.Locker.Backoff)*time.Second))
 	if err != nil {
 		return err
 	}
 
-	global.Queue, err = niu.NewRedisMessageQueue(ctx, appConfig.Queue.GetRedisOption(), global.Pool, appConfig.Queue.XAddMaxLen, appConfig.Queue.BatchSize)
+	global.Queue, err = distribute.NewRedisMessageQueue(ctx, appConfig.Queue.GetRedisOption(), global.Pool, appConfig.Queue.XAddMaxLen, appConfig.Queue.BatchSize)
 	if err != nil {
 		return err
 	}
 
-	global.Snowflake = niu.NewSnowflake(appConfig.WorkerId)
+	global.Snowflake = distribute.NewSnowflake(appConfig.WorkerId)
 
 	global.ChatHub, err = hubs.StartChatHub(global.Pool, &appConfig.Hub)
 	if err != nil {

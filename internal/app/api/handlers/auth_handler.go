@@ -4,7 +4,6 @@ import (
 	"goapp/internal/app/service"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sooomo/niu"
 )
 
 func RegisterAuthHandlers(r *gin.RouterGroup) {
@@ -22,9 +21,7 @@ func RegisterAuthHandlers(r *gin.RouterGroup) {
 func handleLogin(c *gin.Context) {
 	var req service.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(200, &niu.ReplyDto[service.RespCode, any]{
-			Code: service.RespCodeInvalidArgs,
-		})
+		c.JSON(200, service.NewResponseDtoNoData(service.RespCodeInvalidArgs, ""))
 		return
 	}
 

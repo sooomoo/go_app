@@ -6,6 +6,7 @@ import (
 	"goapp/internal/app/global"
 	"goapp/internal/app/repository"
 	"goapp/internal/app/service/headers"
+	"goapp/pkg/core"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -13,13 +14,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/sooomo/niu"
 )
 
 type RequestExtendData struct {
 	Nonce     string
 	Timestamp string
-	Platform  niu.Platform
+	Platform  core.Platform
 	Signature string
 	SessionId string
 }
@@ -31,10 +31,10 @@ type SessionClientKeys struct {
 }
 
 type AuthorizedClaims struct {
-	UserId               int          `json:"u"`
-	Platform             niu.Platform `json:"p"`
-	UserAgent            string       `json:"g"`
-	jwt.RegisteredClaims              // 包含标准字段如 exp（过期时间）、iss（签发者）等
+	UserId               int           `json:"u"`
+	Platform             core.Platform `json:"p"`
+	UserAgent            string        `json:"g"`
+	jwt.RegisteredClaims               // 包含标准字段如 exp（过期时间）、iss（签发者）等
 }
 
 type LoginRequest struct {
@@ -103,7 +103,7 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 		return nil
 	}
 
-	clientId := niu.NewUUIDWithoutDash()
+	clientId := core.NewUUIDWithoutDash()
 	// 将这些Token与该用户绑定
 	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, &repository.RefreshTokenCredentials{
 		UserId:    int(user.ID),
@@ -117,7 +117,7 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 		return nil
 	}
 
-	if platform == niu.Web {
+	if platform == core.Web {
 		a.setupAuthorizedCookie(ctx, accessToken, refreshToken, clientId)
 		return &AuthResponseDto{Code: RespCodeSucceed}
 	}
@@ -159,7 +159,7 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 		ctx.AbortWithStatus(401) // token 已经删除，此时只能重新登录
 		return nil
 	}
-	clientId = niu.NewUUIDWithoutDash()
+	clientId = core.NewUUIDWithoutDash()
 	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, &repository.RefreshTokenCredentials{
 		UserId:    credentials.UserId,
 		Platform:  platform,
@@ -172,7 +172,7 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 		return nil
 	}
 
-	if platform == niu.Web {
+	if platform == core.Web {
 		a.setupAuthorizedCookie(ctx, accessToken, refreshToken, clientId)
 		return &AuthResponseDto{Code: RespCodeSucceed}
 	}
@@ -203,16 +203,16 @@ func (a *AuthService) IsTokenRevoked(ctx context.Context, token string) (bool, e
 	return a.authRepo.IsTokenRevoked(ctx, token) // 调用Repository层的方法
 }
 
-func (a *AuthService) GenerateTokenPair(userID int, userAgent string, platform niu.Platform) (string, string, error) {
+func (a *AuthService) GenerateTokenPair(userID int, userAgent string, platform core.Platform) (string, string, error) {
 	accessToken, err := a.GenerateAccessToken(userID, userAgent, platform)
 	if err != nil {
 		return "", "", err
 	}
-	refreshToken := niu.NewUUIDWithoutDash()
+	refreshToken := core.NewUUIDWithoutDash()
 	return accessToken, refreshToken, nil
 }
 
-func (a *AuthService) GenerateAccessToken(userID int, userAgent string, platform niu.Platform) (string, error) {
+func (a *AuthService) GenerateAccessToken(userID int, userAgent string, platform core.Platform) (string, error) {
 	jwtConfig := global.AppConfig.Authenticator.Jwt
 	if len(jwtConfig.Secret) == 0 {
 		panic("jwtSecret is empty")
@@ -224,7 +224,7 @@ func (a *AuthService) GenerateAccessToken(userID int, userAgent string, platform
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(jwtConfig.AccessTtl) * time.Minute)), // 过期时间
 			Issuer:    jwtConfig.Issuer,                                                                     // 签发者
-			ID:        niu.NewUUIDWithoutDash(),
+			ID:        core.NewUUIDWithoutDash(),
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

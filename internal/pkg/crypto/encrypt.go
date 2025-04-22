@@ -3,14 +3,14 @@ package crypto
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"goapp/pkg/cryptos"
 
-	"github.com/sooomo/niu"
 	"golang.org/x/crypto/curve25519"
 )
 
 // 生成用于协商的密钥对
 func NewNegotiateKeyPair() (pubKey, priKey []byte, err error) {
-	private, err := niu.SecureBytes(32)
+	private, err := cryptos.SecureBytes(32)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -50,7 +50,7 @@ func Encrypt(secret []byte, data []byte) (string, error) {
 		return "", err
 	}
 
-	nonce, err := niu.SecureBytes(aesgcm.NonceSize())
+	nonce, err := cryptos.SecureBytes(aesgcm.NonceSize())
 	if err != nil {
 		return "", err
 	}

@@ -5,9 +5,9 @@ import (
 	"goapp/internal/app/global"
 	"goapp/internal/app/repository/dao/model"
 	"goapp/internal/app/repository/dao/query"
+	"goapp/pkg/cache"
 	"time"
 
-	"github.com/sooomo/niu"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -26,12 +26,12 @@ const (
 )
 
 type UserRepository struct {
-	cache *niu.Cache
+	cache *cache.Cache
 	db    *gorm.DB
 	query *query.Query
 }
 
-func NewUserRepository(cache *niu.Cache, db *gorm.DB) *UserRepository {
+func NewUserRepository(cache *cache.Cache, db *gorm.DB) *UserRepository {
 	return &UserRepository{
 		cache: cache,
 		db:    db,

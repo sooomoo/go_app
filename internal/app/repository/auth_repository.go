@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"goapp/internal/app/repository/dao/query"
+	"goapp/pkg/cache"
+	"goapp/pkg/core"
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/sooomo/niu"
 	"gorm.io/gorm"
 )
 
@@ -24,12 +25,12 @@ const (
 )
 
 type AuthRepository struct {
-	cache *niu.Cache
+	cache *cache.Cache
 	db    *gorm.DB
 	query *query.Query
 }
 
-func NewAuthRepository(cache *niu.Cache, db *gorm.DB) *AuthRepository {
+func NewAuthRepository(cache *cache.Cache, db *gorm.DB) *AuthRepository {
 	return &AuthRepository{
 		cache: cache,
 		db:    db,
@@ -61,11 +62,11 @@ func (a *AuthRepository) SaveHandledRequest(ctx context.Context, requestId strin
 }
 
 type RefreshTokenCredentials struct {
-	UserId    int          `json:"user_id"`
-	Platform  niu.Platform `json:"platform"`
-	ClientId  string       `json:"client_id"`
-	UserAgent string       `json:"user_agent"`
-	Ip        string       `json:"ip"`
+	UserId    int           `json:"user_id"`
+	Platform  core.Platform `json:"platform"`
+	ClientId  string        `json:"client_id"`
+	UserAgent string        `json:"user_agent"`
+	Ip        string        `json:"ip"`
 }
 
 func (a *AuthRepository) SaveRefreshToken(ctx context.Context, token string, credendials *RefreshTokenCredentials, expire time.Duration) error {

@@ -5,12 +5,11 @@ import (
 	"encoding/base64"
 	"fmt"
 	"goapp/internal/app/global"
+	"goapp/pkg/core"
 	"sort"
-
-	"github.com/sooomo/niu"
 )
 
-var bufferPool = niu.NewByteBufferPool(0, 1024)
+var bufferPool = core.NewByteBufferPool(0, 1024)
 var base64Encoding = base64.RawURLEncoding
 
 const (

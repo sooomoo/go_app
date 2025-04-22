@@ -4,9 +4,9 @@ import (
 	"errors"
 	"goapp/internal/app/service"
 	"goapp/internal/app/service/headers"
+	"goapp/pkg/core"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sooomo/niu"
 )
 
 func ReplayMiddleware() gin.HandlerFunc {
@@ -17,7 +17,7 @@ func ReplayMiddleware() gin.HandlerFunc {
 		platform := headers.GetPlatform(c)
 		signature := headers.GetTrimmedHeader(c, headers.HeaderSignature)
 		sessionId := headers.GetSessionId(c)
-		if len(nonce) == 0 || len(timestampStr) == 0 || len(signature) == 0 || len(sessionId) == 0 || !niu.IsPlatformValid(platform) {
+		if len(nonce) == 0 || len(timestampStr) == 0 || len(signature) == 0 || len(sessionId) == 0 || !core.IsPlatformValid(platform) {
 			c.AbortWithStatus(400)
 			return
 		}

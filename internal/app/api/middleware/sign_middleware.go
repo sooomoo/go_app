@@ -6,6 +6,7 @@ import (
 	"goapp/internal/app/service"
 	"goapp/internal/app/service/headers"
 	"goapp/internal/pkg/crypto"
+	"goapp/pkg/core"
 	"io"
 	"net/http"
 	"net/url"
@@ -14,7 +15,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sooomo/niu"
 )
 
 func SignMiddleware() gin.HandlerFunc {
@@ -44,7 +44,7 @@ func SignMiddleware() gin.HandlerFunc {
 			"query":         string(crypto.StringfyMap(convertValuesToMap(c.Request.URL.Query()))),
 			"authorization": authorization,
 		}
-		if headers.GetPlatform(c) == niu.Web {
+		if headers.GetPlatform(c) == core.Web {
 			delete(dataToVerify, "authorization")
 		}
 
@@ -92,7 +92,7 @@ func SignMiddleware() gin.HandlerFunc {
 		// 签名响应体
 		responseBody := bodyWriter.buf.Bytes()
 		respTimestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
-		respNonce := niu.NewUUIDWithoutDash()
+		respNonce := core.NewUUIDWithoutDash()
 		dataToSign := map[string]string{
 			"session":   extendData.SessionId,
 			"nonce":     respNonce,

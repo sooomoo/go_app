@@ -2,8 +2,8 @@ package hubs
 
 import (
 	"fmt"
-
-	"github.com/sooomo/niu"
+	"goapp/pkg/bytes"
+	"goapp/pkg/hub"
 )
 
 type ChatMsgType byte
@@ -20,9 +20,9 @@ const (
 	ChatRespCodeOk ChatRespCode = 1
 )
 
-var chatProtocal = niu.NewMsgPackProtocol(nil, nil)
+var chatProtocal = bytes.NewMsgPackProtocol(nil, nil)
 
-func handleReceivedMsg(msg *niu.LineMessage) {
+func handleReceivedMsg(msg *hub.LineMessage) {
 	meta, err := chatProtocal.GetMeta(msg.Data)
 	if err != nil {
 		// log err
@@ -45,7 +45,7 @@ func pushToUserLine(userId, lineId string, data []byte) {
 	uls.PushMessageToLines(data, lineId)
 }
 
-func handleLineRegistered(r *niu.Line) {
+func handleLineRegistered(r *hub.Line) {
 	fmt.Printf("line registered: userid->%v, platform->%v", r.UserId(), r.Platform())
 	resp, err := chatProtocal.EncodeResp(int32(ChatMsgTypeReady), 0, byte(ChatRespCodeOk), nil)
 	if err != nil {
@@ -53,10 +53,10 @@ func handleLineRegistered(r *niu.Line) {
 	}
 }
 
-func handleLineUnegistered(u *niu.Line) {
+func handleLineUnegistered(u *hub.Line) {
 	fmt.Printf("line unregistered: userid->%v, platform->%v", u.UserId(), u.Platform())
 }
 
-func handleLineError(e *niu.LineError) {
+func handleLineError(e *hub.LineError) {
 	fmt.Printf("line error: userid->%v, platform->%v, err:%v", e.UserId, e.Platform, e.Error)
 }

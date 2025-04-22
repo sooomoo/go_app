@@ -1,10 +1,11 @@
 package headers
 
 import (
+	"goapp/pkg/core"
+	"goapp/pkg/cryptos"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sooomo/niu"
 )
 
 const (
@@ -33,13 +34,13 @@ func GetTrimmedHeader(ctx *gin.Context, name string) string {
 	return strings.TrimSpace(ctx.GetHeader(name))
 }
 
-func GetPlatform(ctx *gin.Context) niu.Platform {
+func GetPlatform(ctx *gin.Context) core.Platform {
 	platform := GetTrimmedHeader(ctx, HeaderPlatform)
-	pla := niu.ParsePlatform(platform)
-	if pla == niu.Unspecify {
+	pla := core.ParsePlatform(platform)
+	if pla == core.Unspecify {
 		str, _ := ctx.Cookie(CookieKeyPlatform)
 		if len(str) > 0 {
-			pla = niu.ParsePlatform(str)
+			pla = core.ParsePlatform(str)
 		}
 	}
 
@@ -49,7 +50,7 @@ func GetPlatform(ctx *gin.Context) niu.Platform {
 func GetAccessToken(ctx *gin.Context) string {
 	pla := GetPlatform(ctx)
 	// web单独处理
-	if pla == niu.Web {
+	if pla == core.Web {
 		token, _ := ctx.Cookie(CookieKeyAccessToken)
 		return token
 	}
@@ -64,7 +65,7 @@ func GetAccessToken(ctx *gin.Context) string {
 
 func GetRefreshToken(ctx *gin.Context) string {
 	// web单独处理
-	if GetPlatform(ctx) == niu.Web {
+	if GetPlatform(ctx) == core.Web {
 		token, _ := ctx.Cookie(CookieKeyRefreshToken)
 		return token
 	}
@@ -75,7 +76,7 @@ func GetRefreshToken(ctx *gin.Context) string {
 
 func GetClientId(ctx *gin.Context) string {
 	// web单独处理
-	if GetPlatform(ctx) == niu.Web {
+	if GetPlatform(ctx) == core.Web {
 		token, _ := ctx.Cookie(CookieKeyClientId)
 		return token
 	}
@@ -97,7 +98,7 @@ func GetUserAgentHashed(ctx *gin.Context) string {
 	ua := ctx.Request.Header.Get(HeaderUserAgent)
 	ua = strings.TrimSpace(ua)
 	if len(ua) > 0 {
-		ua = niu.HashSha256(ua)
+		ua = cryptos.HashSha256(ua)
 	}
 	return ua
 }

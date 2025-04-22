@@ -4,8 +4,7 @@ import (
 	"context"
 	"goapp/internal/worker/global"
 	"goapp/internal/worker/tasks"
-
-	"github.com/sooomo/niu"
+	"goapp/pkg/core"
 )
 
 func main() {
@@ -20,7 +19,7 @@ func main() {
 	tasks.StartLogWriteTask(ctx)
 
 	// Wait system signal, and cleanup resources
-	niu.WaitSysSignal(func() {
+	core.WaitSysSignal(func() {
 		cancel()
 		// Cleanup Resources
 		global.Release()

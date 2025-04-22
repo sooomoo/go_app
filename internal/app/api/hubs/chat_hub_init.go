@@ -6,18 +6,19 @@ import (
 	"goapp/internal/app/config"
 	"goapp/internal/app/service"
 	"goapp/internal/app/service/headers"
+	"goapp/pkg/core"
+	"goapp/pkg/hub"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sooomo/niu"
 )
 
-var chatHub *niu.Hub
+var chatHub *hub.Hub
 
-func StartChatHub(pool niu.CoroutinePool, config *config.HubConfig) (*niu.Hub, error) {
+func StartChatHub(pool core.CoroutinePool, config *config.HubConfig) (*hub.Hub, error) {
 	var err error
-	chatHub, err = niu.NewHub(
+	chatHub, err = hub.NewHub(
 		config.SubProtocols,
 		time.Second*time.Duration(config.LiveCheckDuration),
 		time.Second*time.Duration(config.ConnMaxIdleTime),

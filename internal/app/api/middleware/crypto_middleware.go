@@ -10,8 +10,9 @@ import (
 	"strconv"
 	"strings"
 
+	httpex "goapp/pkg/http"
+
 	"github.com/gin-gonic/gin"
-	"github.com/sooomo/niu"
 )
 
 func CryptoMiddleware() gin.HandlerFunc {
@@ -33,7 +34,7 @@ func CryptoMiddleware() gin.HandlerFunc {
 		if c.Request.Method != http.MethodGet {
 			// 解密
 			contentType := c.GetHeader(headers.HeaderContentType)
-			if !strings.EqualFold(contentType, niu.ContentTypeEncrypted) {
+			if !strings.EqualFold(contentType, httpex.ContentTypeEncrypted) {
 				c.AbortWithStatus(400)
 				return
 			}
@@ -85,7 +86,7 @@ func CryptoMiddleware() gin.HandlerFunc {
 			}
 
 			c.Header(headers.HeaderRawType, contentType)
-			c.Header(headers.HeaderContentType, niu.ContentTypeEncrypted)
+			c.Header(headers.HeaderContentType, httpex.ContentTypeEncrypted)
 			c.Header(headers.HeaderContentLength, strconv.Itoa(len(respBody)))
 			bodyWriter.ResponseWriter.WriteString(respBody)
 		} else {
@@ -115,5 +116,5 @@ func isPathNeedCrypto(path string) bool {
 }
 
 func getDecryptContentType(_ string) string {
-	return niu.ContentTypeJson
+	return httpex.ContentTypeJson
 }

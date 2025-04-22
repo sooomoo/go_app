@@ -4,9 +4,10 @@ import (
 	"context"
 	"goapp/internal/app"
 	"goapp/internal/app/api/handlers"
-	"goapp/internal/app/api/handlers/hubs"
+	"goapp/internal/app/api/hubs"
 	"goapp/internal/app/api/middleware"
 	"goapp/internal/app/global"
+	"goapp/pkg/core"
 	"log"
 	"net/http"
 	"os"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
-	"github.com/sooomo/niu"
 )
 
 func main() {
@@ -72,7 +72,7 @@ func main() {
 		}
 	}()
 
-	niu.WaitSysSignal(func() {
+	core.WaitSysSignal(func() {
 		log.Println("正在关闭服务器...")
 		c, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()

@@ -2,26 +2,29 @@ package global
 
 import (
 	"goapp/internal/app/config"
+	"goapp/pkg/cache"
+	"goapp/pkg/core"
+	"goapp/pkg/distribute"
+	"goapp/pkg/hub"
 
-	"github.com/sooomo/niu"
 	"gorm.io/gorm"
 )
 
-var Pool niu.CoroutinePool
+var Pool core.CoroutinePool
 
-var Cache *niu.Cache
+var Cache *cache.Cache
 
-var DistributeId *niu.DistributeId
+var DistributeId *distribute.DistributeId
 
-var UserIdGenerator *niu.IdGenerator
+var UserIdGenerator *distribute.IdGenerator
 
-var Locker *niu.DistributeLocker
+var Locker *distribute.DistributeLocker
 
-var Queue niu.MessageQueue
+var Queue distribute.MessageQueue
 
-var Snowflake *niu.Snowflake
+var Snowflake *distribute.Snowflake
 
-var ChatHub *niu.Hub
+var ChatHub *hub.Hub
 
 var AppConfig *config.AppConfig
 
