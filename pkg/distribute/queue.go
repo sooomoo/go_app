@@ -72,10 +72,14 @@ func (m *RedisMessageQueue) Subscribe(ctx context.Context, topic, group, consume
 	return m.pool.Submit(func() {
 		for {
 			select {
-			case <-m.closeChan:
-				return
-			case <-ctx.Done():
-				return
+			case _, ok := <-m.closeChan:
+				if ok {
+					return
+				}
+			case _, ok := <-ctx.Done():
+				if ok {
+					return
+				}
 			default:
 				// 拉取新消息
 				if err := m.consume(ctx, topic, group, consumer, ">", m.batchSize, handler); err != nil {
@@ -105,10 +109,14 @@ func (m *RedisMessageQueue) consume(ctx context.Context, topic, group, consumer,
 	// 处理消息
 	for _, msg := range result[0].Messages {
 		select {
-		case <-m.closeChan:
-			return nil
-		case <-ctx.Done():
-			return nil
+		case _, ok := <-m.closeChan:
+			if ok {
+				return nil
+			}
+		case _, ok := <-ctx.Done():
+			if ok {
+				return nil
+			}
 		default:
 			err := h(ctx, msg.ID, msg.Values)
 			if err != nil {

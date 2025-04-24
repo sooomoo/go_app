@@ -95,18 +95,26 @@ func (ln *Line) start() error {
 	err = ln.hub.pool.Submit(func() {
 		for {
 			select {
-			case msg := <-ln.writeChan:
-				err = ln.conn.SetWriteDeadline(time.Now().Add(ln.hub.writeTimeout))
-				if err != nil {
-					ln.close(false, err)
+			case msg, ok := <-ln.writeChan:
+				if ok {
+					err = ln.conn.SetWriteDeadline(time.Now().Add(ln.hub.writeTimeout))
+					if err != nil {
+						ln.close(false, err)
+						return
+					}
+					err = ln.conn.WriteMessage(websocket.BinaryMessage, msg)
+					if err != nil {
+						ln.close(false, err)
+						return
+					}
 				}
-				err = ln.conn.WriteMessage(websocket.BinaryMessage, msg)
-				if err != nil {
-					ln.close(false, err)
+			case _, ok := <-ln.closeChan:
+				if ok {
+					ln.close(true, nil)
+					return
 				}
-			case <-ln.closeChan:
-				ln.close(true, nil)
-				return
+			default:
+				continue
 			}
 		}
 	})
