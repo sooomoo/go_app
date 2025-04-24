@@ -39,7 +39,7 @@ func JwtMiddleware() gin.HandlerFunc {
 				return
 			}
 
-			svc.SaveClaims(c, claims)
+			headers.SaveClaims(c, claims)
 		} else if len(token) > 0 {
 			revoked, _ := svc.IsTokenRevoked(c, token)
 			if !revoked {
@@ -47,13 +47,13 @@ func JwtMiddleware() gin.HandlerFunc {
 				claims, err := svc.ParseAccessToken(token)
 				if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
 					// 忽略错误
-					svc.SaveClaims(c, claims)
+					headers.SaveClaims(c, claims)
 				}
 			}
 		}
 
 		// 解析并存储客户端的Key
-		parseAndStoreClientKeys(c, headers.GetSessionId(c))
+		headers.SaveClientKeys(c)
 		if c.IsAborted() {
 			return
 		}

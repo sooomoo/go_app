@@ -33,9 +33,6 @@ func main() {
 	}
 
 	r := gin.New()
-	r.Use(func(ctx *gin.Context) {
-		ctx.Next()
-	})
 	r.Use(gin.RecoveryWithWriter(os.Stdout))
 	r.Use(middleware.LogMiddleware())
 	r.Use(middleware.CorsMiddleware())

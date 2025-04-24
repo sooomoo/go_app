@@ -5,6 +5,7 @@ import (
 	"goapp/internal/app/global"
 	"goapp/internal/app/repository"
 	"goapp/internal/app/repository/dao/model"
+	"goapp/internal/app/service/headers"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,8 +21,7 @@ func NewUserService() *UserService {
 }
 
 func (u *UserService) GetSelfInfo(c *gin.Context) (*model.User, error) {
-	authSvr := NewAuthService()
-	claims := authSvr.GetClaims(c)
+	claims := headers.GetClaims(c)
 	if claims == nil {
 		return nil, errors.New("not found")
 	}

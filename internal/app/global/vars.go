@@ -14,11 +14,11 @@ var Pool core.CoroutinePool
 
 var Cache *cache.Cache
 
-var DistributeId *distribute.DistributeId
+var DistributeId *distribute.Id
 
 var UserIdGenerator *distribute.IdGenerator
 
-var Locker *distribute.DistributeLocker
+var Locker *distribute.Locker
 
 var Queue distribute.MessageQueue
 

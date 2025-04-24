@@ -13,22 +13,22 @@ var (
 	ErrInvalidDistributeIdParams = errors.New("invalid distribute id params")
 )
 
-type DistributeId struct {
+type Id struct {
 	sync.RWMutex
 	client       *redis.Client
 	idGenerators map[string]*IdGenerator
 }
 
-func NewDistributeId(ctx context.Context, opt *redis.Options) (*DistributeId, error) {
+func NewId(ctx context.Context, opt *redis.Options) (*Id, error) {
 	client := redis.NewClient(opt)
 	_, err := client.Ping(ctx).Result()
 	if err != nil {
 		return nil, err
 	}
-	return &DistributeId{client: client, idGenerators: make(map[string]*IdGenerator)}, nil
+	return &Id{client: client, idGenerators: make(map[string]*IdGenerator)}, nil
 }
 
-func (d *DistributeId) NewGenerator(ctx context.Context, key string, start int) (*IdGenerator, error) {
+func (d *Id) NewGenerator(ctx context.Context, key string, start int) (*IdGenerator, error) {
 	d.Lock()
 	defer d.Unlock()
 	idGen, ok := d.idGenerators[key]
@@ -50,7 +50,7 @@ func (d *DistributeId) NewGenerator(ctx context.Context, key string, start int) 
 	return idGen, nil
 }
 
-func (d *DistributeId) Close() {
+func (d *Id) Close() {
 	d.Lock()
 	defer d.Unlock()
 	d.client.Close()

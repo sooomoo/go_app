@@ -42,7 +42,7 @@ func Init(ctx context.Context) error {
 		return err
 	}
 
-	global.DistributeId, err = distribute.NewDistributeId(ctx, appConfig.Cache.GetRedisOption())
+	global.DistributeId, err = distribute.NewId(ctx, appConfig.Cache.GetRedisOption())
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func Init(ctx context.Context) error {
 		return err
 	}
 
-	global.Locker, err = distribute.NewDistributeLocker(
+	global.Locker, err = distribute.NewLocker(
 		ctx, appConfig.Locker.GetRedisOption(),
 		time.Duration(appConfig.Locker.Ttl)*time.Second,
 		distribute.LinearRetryStrategy(time.Duration(appConfig.Locker.Backoff)*time.Second))

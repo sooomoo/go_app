@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"goapp/internal/app/config"
-	"goapp/internal/app/service"
 	"goapp/internal/app/service/headers"
 	"goapp/pkg/core"
 	"goapp/pkg/hub"
@@ -63,28 +62,29 @@ func upgradeChatWebSocket(c *gin.Context) {
 	if chatHub == nil {
 		panic(errors.New("chat hub is nil"))
 	}
-	svc := service.NewAuthService()
 	// 解析Token
-	claims := svc.GetClaims(c)
+	claims := headers.GetClaims(c)
 	userId := fmt.Sprintf("%d", claims.UserId)
 
-	// SessionId需要在用户层面保持唯一：即一个用户的所有连接的Id是唯一的，但不同用户的SessionId可以相同
-	// 最好是全局唯一
-	sessionId := headers.GetSessionId(c)
-	if len(sessionId) == 0 {
-		c.AbortWithError(401, errors.New("invalid token"))
+	// clientId 全局唯一
+	clientId := headers.GetClientId(c)
+	if len(clientId) == 0 {
+		c.AbortWithError(401, errors.New("invalid cid"))
 		return
 	}
 
 	// 此处可以踢出其它不希望的连接：比如多个平台只允许一个连接
-	// 也可以指定某一平台仅允许一个连接
-	// TODO
-	// userLines := chatHub.GetUserLines(userId)
-	// if userLines != nil {
-	// 	userLines.CloseAll()
-	// }
+	// 此处指定为：同一个 client 仅允许一个连接
+	userLines := chatHub.GetUserLines(userId)
+	if userLines != nil {
+		userLines.CloseLines(clientId)
+	}
 
-	err := chatHub.UpgradeWebSocket(userId, claims.Platform, sessionId, c.Writer, c.Request)
+	clientKeys := headers.GetClientKeys(c)
+	extraData := hub.ExtraData{}
+	extraData.Set(headers.KeyClientKeys, clientKeys)
+
+	err := chatHub.UpgradeWebSocket(userId, claims.Platform, clientId, extraData, c.Writer, c.Request)
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 	}

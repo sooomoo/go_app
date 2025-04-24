@@ -122,16 +122,19 @@ func NewHub(
 		for ln := range h.unregisteredChanInternal {
 			// 连接断开
 			lines, ok := h.connections.Load(ln.userId)
-			if ok {
-				lines.(*UserLines).Close(ln.id)
+			if !ok {
+				continue // 没有找到相关信息
 			}
+
+			userLines := lines.(*UserLines)
+			userLines.Close(ln.id)
 			h.connCount.Add(-1)
 			// 先删后关，防止在关闭之后，出现向通道意外发送的情况
 			close(ln.closeChan)
 			close(ln.writeChan)
 
 			// 如果用户没有连接，则删除用户
-			if ok && lines.(*UserLines).Len() == 0 {
+			if ok && userLines.Len() == 0 {
 				h.connections.Delete(ln.userId)
 			}
 
@@ -194,6 +197,15 @@ func (h *Hub) GetUserLines(userId string) *UserLines {
 	return lines.(*UserLines)
 }
 
+// 获取指定用户的指定连接
+func (h *Hub) GetUserLine(userId, lineId string) *Line {
+	lines, ok := h.connections.Load(userId)
+	if !ok {
+		return nil
+	}
+	return lines.(*UserLines).Get(lineId)
+}
+
 // 关闭指定用户的所有连接
 func (h *Hub) CloseUserLines(userIds ...string) {
 	if len(userIds) == 0 {
@@ -227,12 +239,12 @@ func (h *Hub) PushMessage(userIds []string, data []byte) {
 	})
 }
 
-func (h *Hub) PushToUserLine(userId, lineId string, data []byte) error {
+func (h *Hub) PushToUserLines(userId string, data []byte, lineIds ...string) error {
 	uls := h.GetUserLines(userId)
 	if uls == nil {
 		return errors.New("userlines empty")
 	}
-	uls.PushMessageToLines(data, lineId)
+	uls.PushMessageToLines(data, lineIds...)
 	return nil
 }
 
@@ -248,7 +260,7 @@ func (h *Hub) BroadcastMessage(data []byte) {
 	})
 }
 
-func (h *Hub) UpgradeWebSocket(userId string, platform core.Platform, lineId string, w http.ResponseWriter, r *http.Request) error {
+func (h *Hub) UpgradeWebSocket(userId string, platform core.Platform, lineId string, extraData ExtraData, w http.ResponseWriter, r *http.Request) error {
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return err
@@ -261,6 +273,7 @@ func (h *Hub) UpgradeWebSocket(userId string, platform core.Platform, lineId str
 		userId:     userId,
 		platform:   core.Platform(platform),
 		id:         lineId,
+		extraData:  extraData,
 		lastActive: time.Now().Unix(),
 	}
 

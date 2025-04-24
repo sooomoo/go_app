@@ -24,7 +24,7 @@ func CryptoMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		keys := getClientKeys(c)
+		keys := headers.GetClientKeys(c)
 		if keys == nil {
 			c.AbortWithError(400, errors.New("bad ckeys"))
 			return

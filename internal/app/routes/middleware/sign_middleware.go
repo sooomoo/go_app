@@ -3,7 +3,6 @@ package middleware
 import (
 	"errors"
 	"fmt"
-	"goapp/internal/app/service"
 	"goapp/internal/app/service/headers"
 	"goapp/internal/pkg/crypto"
 	"goapp/pkg/core"
@@ -21,15 +20,10 @@ func SignMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authorization := strings.TrimSpace(c.GetHeader(headers.HeaderAuthorization))
 
-		var extendData *service.RequestExtendData
-		extData, ok := c.Get(service.KeyExtendData)
-		if ok {
-			extendData = extData.(*service.RequestExtendData)
-		}
-
-		keys := getClientKeys(c)
-		if keys == nil {
-			c.AbortWithError(400, errors.New("bad skeys"))
+		extendData := headers.GetExtendData(c)
+		keys := headers.GetClientKeys(c)
+		if keys == nil || extendData == nil {
+			c.AbortWithError(400, errors.New("bad skeys or extend data"))
 			return
 		}
 

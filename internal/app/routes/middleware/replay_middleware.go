@@ -28,14 +28,7 @@ func ReplayMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		extData := &service.RequestExtendData{
-			Nonce:     nonce,
-			Timestamp: timestampStr,
-			Platform:  platform,
-			Signature: signature,
-			SessionId: sessionId,
-		}
-		c.Set(service.KeyExtendData, extData)
+		headers.SaveExtendData(c)
 
 		c.Next()
 	}

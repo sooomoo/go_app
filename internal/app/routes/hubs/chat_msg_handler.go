@@ -31,7 +31,7 @@ func handleReceivedMsg(msg *hub.LineMessage) {
 	if meta.MsgType == byte(ChatMsgTypePing) {
 		resp, err := chatProtocal.EncodeResp(int32(ChatMsgTypePong), meta.RequestId, byte(ChatRespCodeOk), nil)
 		if err == nil {
-			chatHub.PushToUserLine(msg.UserId, msg.LineId, resp)
+			chatHub.PushToUserLines(msg.UserId, resp, msg.LineId)
 		}
 	}
 }
@@ -40,7 +40,7 @@ func handleLineRegistered(r *hub.Line) {
 	fmt.Printf("line registered: userid->%v, platform->%v", r.UserId(), r.Platform())
 	resp, err := chatProtocal.EncodeResp(int32(ChatMsgTypeReady), 0, byte(ChatRespCodeOk), nil)
 	if err == nil {
-		chatHub.PushToUserLine(r.UserId(), r.Id(), resp)
+		chatHub.PushToUserLines(r.UserId(), resp, r.Id())
 	}
 }
 

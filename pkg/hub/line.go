@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"fmt"
 	"goapp/pkg/core"
 	"io"
 	"sync/atomic"
@@ -32,9 +33,12 @@ type Line struct {
 	id         string
 	userId     string
 	platform   core.Platform
+	extraData  ExtraData
 	lastActive int64
 	closeChan  chan core.Empty
 	writeChan  chan []byte
+
+	closed atomic.Bool
 }
 
 func (ln *Line) Id() string { return ln.id }
@@ -54,37 +58,46 @@ func (ln *Line) start() error {
 			return ln.conn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(ln.hub.writeTimeout))
 		})
 		for {
-			err := ln.conn.SetReadDeadline(time.Now().Add(ln.hub.readTimeout))
-			if err != nil {
-				ln.close(false, err)
-				break
-			}
-
-			msgType, r, err := ln.conn.NextReader()
-			if err != nil {
-				ln.close(false, err)
-				break
-			}
-			switch msgType {
-			case websocket.CloseMessage:
-				ln.close(false, nil)
-				return
-			case websocket.TextMessage:
-				ln.close(true, nil) // 不允许文本消息
+			if ln.closed.Load() {
 				return
 			}
-
-			// 池化读缓冲，提高性能
-			buf := ln.hub.readBufferPool.Get()
-			defer ln.hub.readBufferPool.Put(buf)
-			_, err = io.Copy(buf, r)
-			if err != nil {
-				ln.close(false, err)
+			select {
+			case _, ok := <-ln.closeChan:
+				fmt.Printf("line closing, stop reading msgs:[%v], userId: %s, platform: %v, lineId: %s\n", ok, ln.userId, ln.platform, ln.id)
 				return
-			}
+			default:
+				err := ln.conn.SetReadDeadline(time.Now().Add(ln.hub.readTimeout))
+				if err != nil {
+					ln.close(false, err)
+					break
+				}
 
-			atomic.StoreInt64(&ln.lastActive, time.Now().Unix())
-			ln.hub.messageChan <- &LineMessage{ln.userId, ln.platform, ln.id, buf.Bytes()}
+				msgType, r, err := ln.conn.NextReader()
+				if err != nil {
+					ln.close(false, err)
+					break
+				}
+				switch msgType {
+				case websocket.CloseMessage:
+					ln.close(false, nil)
+					return
+				case websocket.TextMessage:
+					ln.close(true, nil) // 不允许文本消息
+					return
+				}
+
+				// 池化读缓冲，提高性能
+				buf := ln.hub.readBufferPool.Get()
+				defer ln.hub.readBufferPool.Put(buf)
+				_, err = io.Copy(buf, r)
+				if err != nil {
+					ln.close(false, err)
+					return
+				}
+
+				atomic.StoreInt64(&ln.lastActive, time.Now().Unix())
+				ln.hub.messageChan <- &LineMessage{ln.userId, ln.platform, ln.id, buf.Bytes()}
+			}
 		}
 	})
 	if err != nil {
@@ -94,6 +107,9 @@ func (ln *Line) start() error {
 
 	err = ln.hub.pool.Submit(func() {
 		for {
+			if ln.closed.Load() {
+				return
+			}
 			select {
 			case msg, ok := <-ln.writeChan:
 				if ok {
@@ -107,12 +123,13 @@ func (ln *Line) start() error {
 						ln.close(false, err)
 						return
 					}
+				} else {
+					fmt.Printf("line writeChan closed, userId: %s, platform: %v, lineId: %s\n", ln.userId, ln.platform, ln.id)
 				}
 			case _, ok := <-ln.closeChan:
-				if ok {
-					ln.close(true, nil)
-					return
-				}
+				fmt.Printf("line closeChan closed:[%v], userId: %s, platform: %v, lineId: %s\n", ok, ln.userId, ln.platform, ln.id)
+				ln.close(true, nil)
+				return
 			default:
 				continue
 			}
@@ -128,6 +145,11 @@ func (ln *Line) start() error {
 }
 
 func (ln *Line) close(sendCloseCtrl bool, err error) {
+	if ln.closed.Load() {
+		return
+	}
+	ln.closed.Store(true)
+
 	if err != nil {
 		ln.hub.errorChan <- &LineError{ln.userId, ln.platform, ln.id, err}
 	}

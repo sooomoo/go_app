@@ -16,27 +16,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type RequestExtendData struct {
-	Nonce     string
-	Timestamp string
-	Platform  core.Platform
-	Signature string
-	SessionId string
-}
-
-type SessionClientKeys struct {
-	SignPubKey []byte // 客户端签名公钥
-	BoxPubKey  []byte // 客户端加密公钥
-	ShareKey   []byte // 与BoxPubKey协商出来的加密密钥
-}
-
-type AuthorizedClaims struct {
-	UserId               int           `json:"u"`
-	Platform             core.Platform `json:"p"`
-	UserAgent            string        `json:"g"`
-	jwt.RegisteredClaims               // 包含标准字段如 exp（过期时间）、iss（签发者）等
-}
-
 type LoginRequest struct {
 	Phone      string `json:"phone" binding:"required"`
 	Code       string `json:"code" binding:"required"`
@@ -47,15 +26,12 @@ type LoginRequest struct {
 type AuthResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
-	ClientId     string `json:"client_id"`
 }
 
 type AuthResponseDto = ResponseDto[*AuthResponse]
 
 const (
-	KeyClaims     = "claims"
-	KeyClientKeys = "client_keys"
-	KeyExtendData = "extend_data"
+	KeyClaims = "claims"
 )
 
 type AuthService struct {
@@ -118,11 +94,11 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 	}
 
 	if platform == core.Web {
-		a.setupAuthorizedCookie(ctx, accessToken, refreshToken, clientId)
+		a.setupAuthorizedCookie(ctx, accessToken, refreshToken)
 		return &AuthResponseDto{Code: RespCodeSucceed}
 	}
 
-	return &AuthResponseDto{Code: RespCodeSucceed, Data: &AuthResponse{accessToken, refreshToken, clientId}}
+	return &AuthResponseDto{Code: RespCodeSucceed, Data: &AuthResponse{accessToken, refreshToken}}
 }
 
 func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
@@ -159,7 +135,7 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 		ctx.AbortWithStatus(401) // token 已经删除，此时只能重新登录
 		return nil
 	}
-	clientId = core.NewUUIDWithoutDash()
+
 	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, &repository.RefreshTokenCredentials{
 		UserId:    credentials.UserId,
 		Platform:  platform,
@@ -173,21 +149,20 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 	}
 
 	if platform == core.Web {
-		a.setupAuthorizedCookie(ctx, accessToken, refreshToken, clientId)
+		a.setupAuthorizedCookie(ctx, accessToken, refreshToken)
 		return &AuthResponseDto{Code: RespCodeSucceed}
 	}
 
-	return &AuthResponseDto{Code: RespCodeSucceed, Data: &AuthResponse{accessToken, refreshToken, clientId}}
+	return &AuthResponseDto{Code: RespCodeSucceed, Data: &AuthResponse{accessToken, refreshToken}}
 }
 
-func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, accessToken, refreshToken, clientId string) {
+func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, accessToken, refreshToken string) {
 	jwtConfig := global.AppConfig.Authenticator.Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
 	atkMaxAge := int((time.Duration(jwtConfig.AccessTtl) * time.Minute).Seconds())
 	rtkMaxAge := int((time.Duration(jwtConfig.RefreshTtl) * time.Minute).Seconds())
 	ctx.SetCookie(headers.CookieKeyAccessToken, accessToken, atkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 	ctx.SetCookie(headers.CookieKeyRefreshToken, refreshToken, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
-	ctx.SetCookie(headers.CookieKeyClientId, clientId, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 }
 
 func (a *AuthService) RevokeToken(ctx context.Context, token string, tokenType repository.TokenType) error {
@@ -217,7 +192,7 @@ func (a *AuthService) GenerateAccessToken(userID int, userAgent string, platform
 	if len(jwtConfig.Secret) == 0 {
 		panic("jwtSecret is empty")
 	}
-	claims := AuthorizedClaims{
+	claims := headers.AuthorizedClaims{
 		UserId:    userID,
 		Platform:  platform,
 		UserAgent: userAgent,
@@ -231,14 +206,14 @@ func (a *AuthService) GenerateAccessToken(userID int, userAgent string, platform
 	return token.SignedString([]byte(jwtConfig.Secret)) // 使用 HMAC-SHA256 算法签名
 }
 
-func (a *AuthService) ParseAccessToken(tokenString string) (*AuthorizedClaims, error) {
+func (a *AuthService) ParseAccessToken(tokenString string) (*headers.AuthorizedClaims, error) {
 	jwtConfig := global.AppConfig.Authenticator.Jwt
 	if len(jwtConfig.Secret) == 0 {
 		panic("jwtSecret is empty")
 	}
 	token, err := jwt.ParseWithClaims(
 		tokenString,
-		&AuthorizedClaims{},
+		&headers.AuthorizedClaims{},
 		func(token *jwt.Token) (any, error) {
 			return []byte(jwtConfig.Secret), nil // 返回用于验证签名的密钥
 		},
@@ -247,7 +222,7 @@ func (a *AuthService) ParseAccessToken(tokenString string) (*AuthorizedClaims, e
 	if err != nil {
 		return nil, err
 	}
-	if claims, ok := token.Claims.(*AuthorizedClaims); ok && token.Valid {
+	if claims, ok := token.Claims.(*headers.AuthorizedClaims); ok && token.Valid {
 		return claims, nil // 验证通过后返回自定义声明数据
 	}
 	return nil, err
@@ -268,22 +243,6 @@ func (d *AuthService) IsReplayRequest(ctx context.Context, requestId, timestamp 
 		return false
 	}
 	return !res
-}
-
-func (d *AuthService) GetClaims(c *gin.Context) *AuthorizedClaims {
-	val, exist := c.Get(KeyClaims)
-	if !exist {
-		return nil
-	}
-	claims, ok := val.(*AuthorizedClaims)
-	if !ok {
-		return nil
-	}
-	return claims
-}
-
-func (a *AuthService) SaveClaims(ctx *gin.Context, claims *AuthorizedClaims) {
-	ctx.Set(KeyClaims, claims)
 }
 
 // 生成随机验证码

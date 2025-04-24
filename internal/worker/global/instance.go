@@ -23,9 +23,9 @@ var cacheInst *cache.Cache
 
 func GetCache() *cache.Cache { return cacheInst }
 
-var locker *distribute.DistributeLocker
+var locker *distribute.Locker
 
-func GetLocker() *distribute.DistributeLocker { return locker }
+func GetLocker() *distribute.Locker { return locker }
 
 var queue distribute.MessageQueue
 
@@ -44,7 +44,7 @@ func Init(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	locker, err = distribute.NewDistributeLocker(ctx, &redis.Options{
+	locker, err = distribute.NewLocker(ctx, &redis.Options{
 		Addr: "",
 	}, 15*time.Second, distribute.LinearRetryStrategy(2*time.Second))
 	if err != nil {

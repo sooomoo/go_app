@@ -21,30 +21,30 @@ var (
 	// luaPTTL    = redis.NewScript(`if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("pttl", KEYS[1]) else return -3 end`)
 )
 
-type DistributeLockOptions struct {
+type LockOptions struct {
 	Resource      string
 	Owner         string
 	Ttl           time.Duration
 	RetryStrategy RetryStrategy
 }
 
-type DistributeLocker struct {
+type Locker struct {
 	mutex                sync.RWMutex
 	redisClient          *redis.Client
 	defaultTtl           time.Duration
 	defaultRetryStrategy RetryStrategy
 }
 
-func NewDistributeLocker(ctx context.Context, opt *redis.Options, ttl time.Duration, retryStrategy RetryStrategy) (*DistributeLocker, error) {
+func NewLocker(ctx context.Context, opt *redis.Options, ttl time.Duration, retryStrategy RetryStrategy) (*Locker, error) {
 	client := redis.NewClient(opt)
 	_, err := client.Ping(ctx).Result()
 	if err != nil {
 		return nil, err
 	}
-	return &DistributeLocker{mutex: sync.RWMutex{}, redisClient: client, defaultTtl: ttl, defaultRetryStrategy: retryStrategy}, nil
+	return &Locker{mutex: sync.RWMutex{}, redisClient: client, defaultTtl: ttl, defaultRetryStrategy: retryStrategy}, nil
 }
 
-func (l *DistributeLocker) Close() {
+func (l *Locker) Close() {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	if l.redisClient == nil {
@@ -54,8 +54,8 @@ func (l *DistributeLocker) Close() {
 	l.redisClient = nil
 }
 
-func (l *DistributeLocker) Lock(ctx context.Context, resource string, owner string) (*DistributeLock, error) {
-	return l.LockWithOptions(ctx, &DistributeLockOptions{
+func (l *Locker) Lock(ctx context.Context, resource string, owner string) (*Lock, error) {
+	return l.LockWithOptions(ctx, &LockOptions{
 		Resource:      resource,
 		Owner:         owner,
 		Ttl:           l.defaultTtl,
@@ -64,7 +64,7 @@ func (l *DistributeLocker) Lock(ctx context.Context, resource string, owner stri
 }
 
 // 在指定资源上加锁，默认5s
-func (l *DistributeLocker) LockWithOptions(ctx context.Context, opt *DistributeLockOptions) (*DistributeLock, error) {
+func (l *Locker) LockWithOptions(ctx context.Context, opt *LockOptions) (*Lock, error) {
 	ttl := l.defaultTtl
 
 	if opt.Ttl > 0 {
@@ -82,13 +82,20 @@ func (l *DistributeLocker) LockWithOptions(ctx context.Context, opt *DistributeL
 	}
 
 	for {
-		ok, err := l.redisClient.SetNX(ctx, opt.Resource, opt.Owner, ttl).Result()
+		l.mutex.RLock()
+		client := l.redisClient
+		l.mutex.RUnlock()
+
+		if client == nil {
+			return nil, ErrLockFailed
+		}
+
+		ok, err := client.SetNX(ctx, opt.Resource, opt.Owner, ttl).Result()
 		if err != nil {
 			return nil, err
 		} else if ok {
-			return &DistributeLock{l.redisClient, opt.Resource, opt.Owner}, nil
+			return &Lock{client, opt.Resource, opt.Owner}, nil
 		}
-		// time.Sleep(1 * time.Second) // mock lock process
 
 		// retry
 		backoff := retryStrategy.Next()
@@ -105,13 +112,13 @@ func (l *DistributeLocker) LockWithOptions(ctx context.Context, opt *DistributeL
 	}
 }
 
-type DistributeLock struct {
+type Lock struct {
 	client   *redis.Client
 	resource string
 	owner    string
 }
 
-func (i *DistributeLock) Refresh(ctx context.Context, ttl time.Duration) error {
+func (i *Lock) Refresh(ctx context.Context, ttl time.Duration) error {
 	if i == nil {
 		return nil
 	}
@@ -126,7 +133,7 @@ func (i *DistributeLock) Refresh(ctx context.Context, ttl time.Duration) error {
 }
 
 // 释放获取的锁
-func (i *DistributeLock) Release(ctx context.Context) error {
+func (i *Lock) Release(ctx context.Context) error {
 	if i == nil {
 		return nil
 	}
