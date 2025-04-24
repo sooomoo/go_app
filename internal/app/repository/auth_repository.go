@@ -86,7 +86,7 @@ func (a *AuthRepository) DeleteRefreshToken(ctx context.Context, token string) e
 	return err
 }
 
-func (a *AuthRepository) GetRefreshTokenByValue(ctx context.Context, token string) *RefreshTokenCredentials {
+func (a *AuthRepository) GetRefreshTokenCredential(ctx context.Context, token string) *RefreshTokenCredentials {
 	key := fmt.Sprintf("refresh_token:%s", token)
 	jsonStr, err := a.cache.Get(ctx, key)
 	if err != nil {

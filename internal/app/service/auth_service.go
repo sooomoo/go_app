@@ -108,7 +108,11 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 		return nil
 	}
 
-	credentials := a.authRepo.GetRefreshTokenByValue(ctx, token)
+	// accessToken如果存在，就吊销
+	accessToken := headers.GetAccessToken(ctx)
+	a.RevokeAccessToken(ctx, accessToken)
+
+	credentials := a.authRepo.GetRefreshTokenCredential(ctx, token)
 	if credentials == nil {
 		ctx.AbortWithStatus(401) // client need re-login
 		return nil
@@ -156,6 +160,23 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 	return &AuthResponseDto{Code: RespCodeSucceed, Data: &AuthResponse{accessToken, refreshToken}}
 }
 
+func (a *AuthService) Logout(ctx *gin.Context) {
+	accessToken := headers.GetAccessToken(ctx)
+	refreshToken := headers.GetRefreshToken(ctx)
+
+	a.RevokeAccessToken(ctx, accessToken)
+	a.authRepo.DeleteRefreshToken(ctx, refreshToken)
+
+	// 关闭所有的 hub
+	// TODO: 可能不需要，客户端主动关闭也行
+
+	// 删除 cookie
+	jwtConfig := global.AppConfig.Authenticator.Jwt
+	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
+	ctx.SetCookie(headers.CookieKeyAccessToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
+	ctx.SetCookie(headers.CookieKeyRefreshToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
+}
+
 func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, accessToken, refreshToken string) {
 	jwtConfig := global.AppConfig.Authenticator.Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
@@ -165,12 +186,11 @@ func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, accessToken, refre
 	ctx.SetCookie(headers.CookieKeyRefreshToken, refreshToken, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 }
 
-func (a *AuthService) RevokeToken(ctx context.Context, token string, tokenType repository.TokenType) error {
-	expire := time.Duration(global.AppConfig.Authenticator.Jwt.AccessTtl) * time.Minute
-	if tokenType == repository.TokenTypeRefresh {
-		expire = time.Duration(global.AppConfig.Authenticator.Jwt.RefreshTtl) * time.Minute
+func (a *AuthService) RevokeAccessToken(ctx context.Context, token string) error {
+	if len(token) == 0 {
+		return nil
 	}
-
+	expire := time.Duration(global.AppConfig.Authenticator.Jwt.AccessTtl) * time.Minute
 	return a.authRepo.SaveRevokedToken(ctx, token, expire) // 调用Repository层的方法
 }
 

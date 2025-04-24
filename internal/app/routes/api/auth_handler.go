@@ -46,5 +46,7 @@ func handleRefresh(c *gin.Context) {
 
 // 退出登录
 func handleLogout(c *gin.Context) {
+	svr := service.NewAuthService()
+	svr.Logout(c)
 	c.Status(200)
 }
