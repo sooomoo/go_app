@@ -127,7 +127,7 @@ func NewHub(
 			}
 
 			userLines := lines.(*UserLines)
-			userLines.Close(ln.id)
+			userLines.remove(ln.id)
 			h.connCount.Add(-1)
 			// 先删后关，防止在关闭之后，出现向通道意外发送的情况
 			close(ln.closeChan)

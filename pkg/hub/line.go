@@ -69,13 +69,13 @@ func (ln *Line) start() error {
 				err := ln.conn.SetReadDeadline(time.Now().Add(ln.hub.readTimeout))
 				if err != nil {
 					ln.close(false, err)
-					break
+					return
 				}
 
 				msgType, r, err := ln.conn.NextReader()
 				if err != nil {
 					ln.close(false, err)
-					break
+					return
 				}
 				switch msgType {
 				case websocket.CloseMessage:
