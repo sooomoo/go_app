@@ -48,7 +48,8 @@ authenticator:
   paths_need_auth: # 需要验证Token的路径
     - "*"
   paths_not_auth: # 不需要验证Token的路径
-    - /v1/auth/login
+    - /v1/auth/login/prepare
+    - /v1/auth/login/do
     - /v1/auth/refresh
   jwt:
     issuer: niu

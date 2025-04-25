@@ -38,6 +38,14 @@ func NewAuthRepository(cache *cache.Cache, db *gorm.DB) *AuthRepository {
 	}
 }
 
+func (a *AuthRepository) SaveCsrfToken(ctx context.Context, token, val string, expire time.Duration) error {
+	_, err := a.cache.Set(ctx, fmt.Sprintf("csrf_token:%s", token), val, expire)
+	return err
+}
+func (a *AuthRepository) GetCsrfToken(ctx context.Context, token string) (string, error) {
+	return a.cache.Get(ctx, fmt.Sprintf("csrf_token:%s", token))
+}
+
 func (a *AuthRepository) SaveRevokedToken(ctx context.Context, token string, expire time.Duration) error {
 	// 将Token添加到Redis中,过期时间为token的最大有效时间（比如两小时）
 	// 因为Token在使用时，会验证其有效期

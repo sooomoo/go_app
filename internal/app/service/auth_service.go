@@ -14,12 +14,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/mojocn/base64Captcha"
 )
 
 type LoginRequest struct {
-	Phone      string `json:"phone" binding:"required"`
-	Code       string `json:"code" binding:"required"`
-	SecureCode string `json:"secure_code" binding:"required"`
+	Phone     string `json:"phone" binding:"required"`
+	ImgCode   string `json:"img_code" binding:"required"`
+	MsgCode   string `json:"msg_code" binding:"required"`
+	CsrfToken string `json:"csrf_token" binding:"required"`
 }
 
 // AuthResponse JWT令牌对
@@ -46,14 +48,61 @@ func NewAuthService() *AuthService {
 	}
 }
 
+type PrepareLoginResponse struct {
+	CsrfToken string `json:"csrf_token"`
+	ImageData string `json:"image_data"`
+}
+type PrepareLoginResponseDto = ResponseDto[*PrepareLoginResponse]
+
+var captchaDriver = base64Captcha.NewDriverDigit(40, 80, 4, 0.5, 60)
+
+func (a *AuthService) PrepareLogin(ctx *gin.Context) *PrepareLoginResponseDto {
+	// 生成随机图形验证码
+	id, content, answer := captchaDriver.GenerateIdQuestionAnswer()
+	fmt.Printf("captchaId: %s, q: %s, answer: %s\n", id, content, answer)
+	// 生成 Base64 编码的验证码图片
+	item, err := captchaDriver.DrawCaptcha(content)
+	if err != nil {
+		ctx.AbortWithError(500, err)
+		return nil
+	}
+	base64Str := item.EncodeB64string()
+	// 生成csrf token
+	csrfToken := core.NewUUIDWithoutDash()
+	// 将验证码存入缓存中
+	err = a.authRepo.SaveCsrfToken(ctx, csrfToken, answer, 10*time.Minute)
+	if err != nil {
+		ctx.AbortWithError(500, err)
+		return nil
+	}
+	jwtConfig := global.AppConfig.Authenticator.Jwt
+	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
+	ctx.SetCookie("csrf-token", csrfToken, int((10 * time.Minute).Seconds()), "/", "", jwtConfig.CookieSecure, true)
+	// 返回验证码和csrf token
+	return &PrepareLoginResponseDto{Code: RespCodeSucceed, Data: &PrepareLoginResponse{CsrfToken: csrfToken, ImageData: base64Str}}
+}
+
 func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthResponseDto {
+	csrfToken, _ := ctx.Cookie("csrf-token")
+	if csrfToken != req.CsrfToken {
+		ctx.AbortWithStatus(400)
+		return nil
+	}
+	// 将验证码存入缓存中
+	imgCode, err := a.authRepo.GetCsrfToken(ctx, csrfToken)
+	if err != nil {
+		ctx.AbortWithError(500, err)
+		return nil
+	}
 	// 验证验证码
-	if req.Code != "1234" {
-		return &AuthResponseDto{Code: RespCodeInvalidMsgCode}
+	if req.ImgCode != imgCode {
+		ctx.AbortWithStatus(400)
+		return nil
 	}
 	// 验证安全码
-	if req.SecureCode != "8888" {
-		return &AuthResponseDto{Code: RespCodeInvalidSecureCode}
+	if req.MsgCode != "8888" {
+		ctx.AbortWithStatus(400)
+		return nil
 	}
 
 	// 通过手机号注册或获取用户信息
@@ -127,7 +176,7 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 		return nil
 	}
 
-	err := a.authRepo.DeleteRefreshToken(ctx, token)
+	err := a.DeleteRefreshToken(ctx, token)
 	if err != nil {
 		ctx.AbortWithError(500, err)
 		return nil
@@ -165,7 +214,7 @@ func (a *AuthService) Logout(ctx *gin.Context) {
 	refreshToken := headers.GetRefreshToken(ctx)
 
 	a.RevokeAccessToken(ctx, accessToken)
-	a.authRepo.DeleteRefreshToken(ctx, refreshToken)
+	a.DeleteRefreshToken(ctx, refreshToken)
 
 	// 关闭所有的 hub
 	// TODO: 可能不需要，客户端主动关闭也行
@@ -192,6 +241,13 @@ func (a *AuthService) RevokeAccessToken(ctx context.Context, token string) error
 	}
 	expire := time.Duration(global.AppConfig.Authenticator.Jwt.AccessTtl) * time.Minute
 	return a.authRepo.SaveRevokedToken(ctx, token, expire) // 调用Repository层的方法
+}
+
+func (a *AuthService) DeleteRefreshToken(ctx context.Context, refreshToken string) error {
+	if len(refreshToken) == 0 {
+		return nil
+	}
+	return a.authRepo.DeleteRefreshToken(ctx, refreshToken) // 调用Repository层的方法
 }
 
 func (a *AuthService) IsTokenRevoked(ctx context.Context, token string) (bool, error) {
@@ -266,7 +322,7 @@ func (d *AuthService) IsReplayRequest(ctx context.Context, requestId, timestamp 
 }
 
 // 生成随机验证码
-func (a *AuthService) GenerateSmsCode() string {
+func (a *AuthService) GenerateImageCode() string {
 	code := rand.Intn(9000) + 1000 // 生成4位数验证码
 	return fmt.Sprintf("%04d", code)
 }

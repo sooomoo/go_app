@@ -12,13 +12,24 @@ func RegisterAuthHandlers(r *gin.RouterGroup) {
 		c.Next()
 	})
 
-	authGroup.POST("/login", handleLogin)
+	authGroup.POST("/login/prepare", handleLoginPrepare)
+	authGroup.POST("/login/do", handleLoginDo)
 	authGroup.POST("/refresh", handleRefresh)
 	authGroup.POST("/logout", handleLogout)
 }
 
+func handleLoginPrepare(c *gin.Context) {
+	svr := service.NewAuthService()
+	reply := svr.PrepareLogin(c)
+	if c.IsAborted() {
+		return
+	}
+
+	c.JSON(200, reply)
+}
+
 // 手机验证码登录
-func handleLogin(c *gin.Context) {
+func handleLoginDo(c *gin.Context) {
 	var req service.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(200, service.NewResponseDtoNoData(service.RespCodeInvalidArgs, ""))
