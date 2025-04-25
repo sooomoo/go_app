@@ -34,6 +34,8 @@ type Hub struct {
 	registeredChan           chan *Line
 	unregisteredChan         chan *Line
 	errorChan                chan *LineError
+
+	isClosed atomic.Bool
 }
 
 func NewHub(
@@ -160,13 +162,25 @@ func (h *Hub) ErrorChan() <-chan *LineError { return h.errorChan }
 func (h *Hub) LiveCount() int { return int(h.connCount.Load()) }
 
 func (h *Hub) Close(wait time.Duration) {
+	if h.isClosed.Load() {
+		return
+	}
+	h.isClosed.Store(true)
+
 	if h.liveTicker != nil {
 		h.liveTicker.Stop()
 		h.liveTicker = nil
 	}
+	uls := make([]*UserLines, 0)
 	h.connections.Range(func(key, value any) bool {
-		value.(*UserLines).CloseAll()
+		uls = append(uls, value.(*UserLines))
 		return true
+	})
+	h.connections.Clear()
+	h.pool.Submit(func() {
+		for _, v := range uls {
+			v.CloseAll()
+		}
 	})
 
 	time.Sleep(wait)
@@ -185,7 +199,6 @@ func (h *Hub) Close(wait time.Duration) {
 	close(h.unregisteredChan)
 
 	h.readBufferPool = nil
-	h.connections.Clear()
 }
 
 // 获取指定用户的所有连接

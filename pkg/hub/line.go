@@ -38,7 +38,7 @@ type Line struct {
 	closeChan  chan core.Empty
 	writeChan  chan []byte
 
-	closed atomic.Bool
+	isClosed atomic.Bool
 }
 
 func (ln *Line) Id() string { return ln.id }
@@ -58,9 +58,15 @@ func (ln *Line) start() error {
 			return ln.conn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(ln.hub.writeTimeout))
 		})
 		for {
-			if ln.closed.Load() {
+			if ln.isClosed.Load() {
 				return
 			}
+
+			if ln.hub.isClosed.Load() {
+				ln.closeInternal(true)
+				return
+			}
+
 			select {
 			case _, ok := <-ln.closeChan:
 				fmt.Printf("line closing, stop reading msgs:[%v], userId: %s, platform: %v, lineId: %s\n", ok, ln.userId, ln.platform, ln.id)
@@ -86,6 +92,11 @@ func (ln *Line) start() error {
 					return
 				}
 
+				if ln.hub.isClosed.Load() {
+					ln.closeInternal(true)
+					return
+				}
+
 				// 池化读缓冲，提高性能
 				buf := ln.hub.readBufferPool.Get()
 				defer ln.hub.readBufferPool.Put(buf)
@@ -96,18 +107,26 @@ func (ln *Line) start() error {
 				}
 
 				atomic.StoreInt64(&ln.lastActive, time.Now().Unix())
+				if ln.hub.isClosed.Load() {
+					ln.closeInternal(true)
+					return
+				}
 				ln.hub.messageChan <- &LineMessage{ln.userId, ln.platform, ln.id, buf.Bytes()}
 			}
 		}
 	})
 	if err != nil {
-		ln.conn.Close()
+		ln.closeInternal(true)
 		return err
 	}
 
 	err = ln.hub.pool.Submit(func() {
 		for {
-			if ln.closed.Load() {
+			if ln.isClosed.Load() {
+				return
+			}
+			if ln.hub.isClosed.Load() {
+				ln.closeInternal(true)
 				return
 			}
 			select {
@@ -136,7 +155,7 @@ func (ln *Line) start() error {
 		}
 	})
 	if err != nil {
-		ln.conn.Close()
+		ln.closeInternal(true)
 		return err
 	}
 
@@ -145,15 +164,23 @@ func (ln *Line) start() error {
 }
 
 func (ln *Line) close(sendCloseCtrl bool, err error) {
-	if ln.closed.Load() {
+	if ln.isClosed.Load() {
 		return
 	}
-	ln.closed.Store(true)
+	ln.isClosed.Store(true)
 
-	if err != nil {
+	if err != nil && !ln.hub.isClosed.Load() {
 		ln.hub.errorChan <- &LineError{ln.userId, ln.platform, ln.id, err}
 	}
 
+	ln.closeInternal(sendCloseCtrl)
+
+	if !ln.hub.isClosed.Load() {
+		ln.hub.unregisteredChanInternal <- ln
+	}
+}
+
+func (ln *Line) closeInternal(sendCloseCtrl bool) {
 	if sendCloseCtrl {
 		// 需要调用以下消息发送关闭消息，这样客户端才能正确识别关闭代码
 		// 否则会导致客户端一直重连
@@ -162,5 +189,4 @@ func (ln *Line) close(sendCloseCtrl bool, err error) {
 		ln.conn.WriteControl(websocket.CloseMessage, message, time.Now().Add(ln.hub.writeTimeout))
 	}
 	ln.conn.Close()
-	ln.hub.unregisteredChanInternal <- ln
 }

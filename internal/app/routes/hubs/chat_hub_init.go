@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"goapp/internal/app/config"
+	"goapp/internal/app/global"
 	"goapp/internal/app/service/headers"
 	"goapp/pkg/core"
 	"goapp/pkg/hub"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -26,7 +28,10 @@ func StartChatHub(pool core.CoroutinePool, config *config.HubConfig) (*hub.Hub, 
 		pool,
 		time.Second*time.Duration(config.HandshakeTimeout),
 		config.EnableCompression,
-		func(r *http.Request) bool { return true },
+		func(r *http.Request) bool {
+			origin := r.Header.Get("Origin")
+			return slices.Contains(global.AppConfig.Cors.AllowOrigins, origin)
+		},
 	)
 	if err != nil {
 		return nil, err
