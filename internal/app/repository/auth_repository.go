@@ -70,10 +70,10 @@ func (a *AuthRepository) SaveHandledRequest(ctx context.Context, requestId strin
 }
 
 type RefreshTokenCredentials struct {
-	UserId    int           `json:"user_id"`
+	UserId    int           `json:"userId"`
 	Platform  core.Platform `json:"platform"`
-	ClientId  string        `json:"client_id"`
-	UserAgent string        `json:"user_agent"`
+	ClientId  string        `json:"clientId"`
+	UserAgent string        `json:"userAgent"`
 	Ip        string        `json:"ip"`
 }
 

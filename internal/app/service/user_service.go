@@ -4,7 +4,6 @@ import (
 	"errors"
 	"goapp/internal/app/global"
 	"goapp/internal/app/repository"
-	"goapp/internal/app/repository/dao/model"
 	"goapp/internal/app/service/headers"
 
 	"github.com/gin-gonic/gin"
@@ -20,10 +19,34 @@ func NewUserService() *UserService {
 	}
 }
 
-func (u *UserService) GetSelfInfo(c *gin.Context) (*model.User, error) {
+type GetUserInfoResponse struct {
+	Id        int64  `json:"id"`
+	Name      string `json:"name"`
+	AvatarUrl string `json:"avatarUrl"`
+	Role      int32  `json:"role"`
+	IpLatest  string `json:"ipLatest"`
+}
+type GetUserInfoResponseDto ResponseDto[*GetUserInfoResponse]
+
+func (u *UserService) GetSelfInfo(c *gin.Context) (*GetUserInfoResponseDto, error) {
 	claims := headers.GetClaims(c)
 	if claims == nil {
 		return nil, errors.New("not found")
 	}
-	return u.userRepo.GetById(c, int64(claims.UserId))
+	user, err := u.userRepo.GetById(c, int64(claims.UserId))
+	if err != nil {
+		return nil, err
+	}
+	// convert
+	return &GetUserInfoResponseDto{
+		Code: RespCodeSucceed,
+		Msg:  "succeed",
+		Data: &GetUserInfoResponse{
+			Id:        user.ID,
+			Name:      user.Name,
+			AvatarUrl: user.AvatarURL,
+			Role:      user.Role,
+			IpLatest:  user.IPLatest,
+		},
+	}, nil
 }

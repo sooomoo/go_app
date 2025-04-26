@@ -20,6 +20,5 @@ func handleGetSelfUserInfo(c *gin.Context) {
 		c.AbortWithError(500, err)
 		return
 	}
-
 	c.JSON(200, user)
 }

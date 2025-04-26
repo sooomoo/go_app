@@ -5,10 +5,10 @@ type RespCode string
 const (
 	RespCodeSucceed RespCode = "succeed"
 	// RespCodeBlocked           RespCode = "blocked"
-	RespCodeInvalidArgs       RespCode = "invalid_args"
-	RespCodeInvalidPhone      RespCode = "invalid_phone"
-	RespCodeInvalidMsgCode    RespCode = "invalid_msg_code"
-	RespCodeInvalidSecureCode RespCode = "invalid_secure_code"
+	RespCodeInvalidArgs       RespCode = "invalidArgs"
+	RespCodeInvalidPhone      RespCode = "invalidPhone"
+	RespCodeInvalidMsgCode    RespCode = "invalidMsgCode"
+	RespCodeInvalidSecureCode RespCode = "invalidSecureCode"
 	RespCodeFailed            RespCode = "fail"
 )
 

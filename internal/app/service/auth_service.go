@@ -19,17 +19,17 @@ import (
 )
 
 type LoginRequest struct {
-	CountryCode string `json:"country_code" binding:"required"`
+	CountryCode string `json:"countryCode" binding:"required"`
 	Phone       string `json:"phone" binding:"required"`
-	ImgCode     string `json:"img_code" binding:"required"`
-	MsgCode     string `json:"msg_code" binding:"required"`
-	CsrfToken   string `json:"csrf_token" binding:"required"`
+	ImgCode     string `json:"imgCode" binding:"required"`
+	MsgCode     string `json:"msgCode" binding:"required"`
+	CsrfToken   string `json:"csrfToken" binding:"required"`
 }
 
 // AuthResponse JWT令牌对
 type AuthResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
 }
 
 type AuthResponseDto = ResponseDto[*AuthResponse]
@@ -51,8 +51,8 @@ func NewAuthService() *AuthService {
 }
 
 type PrepareLoginResponse struct {
-	CsrfToken string `json:"csrf_token"`
-	ImageData string `json:"image_data"`
+	CsrfToken string `json:"csrfToken"`
+	ImageData string `json:"imageData"`
 }
 type PrepareLoginResponseDto = ResponseDto[*PrepareLoginResponse]
 
