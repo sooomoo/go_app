@@ -9,6 +9,7 @@ import (
 	"goapp/pkg/core"
 	"math/rand"
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -18,10 +19,11 @@ import (
 )
 
 type LoginRequest struct {
-	Phone     string `json:"phone" binding:"required"`
-	ImgCode   string `json:"img_code" binding:"required"`
-	MsgCode   string `json:"msg_code" binding:"required"`
-	CsrfToken string `json:"csrf_token" binding:"required"`
+	CountryCode string `json:"country_code" binding:"required"`
+	Phone       string `json:"phone" binding:"required"`
+	ImgCode     string `json:"img_code" binding:"required"`
+	MsgCode     string `json:"msg_code" binding:"required"`
+	CsrfToken   string `json:"csrf_token" binding:"required"`
 }
 
 // AuthResponse JWT令牌对
@@ -82,13 +84,22 @@ func (a *AuthService) PrepareLogin(ctx *gin.Context) *PrepareLoginResponseDto {
 	return &PrepareLoginResponseDto{Code: RespCodeSucceed, Data: &PrepareLoginResponse{CsrfToken: csrfToken, ImageData: base64Str}}
 }
 
+var (
+	countryCodeRegex = regexp.MustCompile(`^\d{3}$`)
+	phoneRegex       = regexp.MustCompile(`^1[3-9]\d{9}$`)
+)
+
 func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthResponseDto {
 	csrfToken, _ := ctx.Cookie("csrf-token")
 	if csrfToken != req.CsrfToken {
 		ctx.AbortWithStatus(400)
 		return nil
 	}
-	// 将验证码存入缓存中
+	if !countryCodeRegex.MatchString(req.CountryCode) || !phoneRegex.MatchString(req.Phone) {
+		ctx.AbortWithStatus(400)
+		return nil
+	}
+	// 从缓存中取图形验证码
 	imgCode, err := a.authRepo.GetCsrfToken(ctx, csrfToken)
 	if err != nil {
 		ctx.AbortWithError(500, err)
@@ -107,7 +118,8 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 
 	// 通过手机号注册或获取用户信息
 	ip := ctx.ClientIP()
-	user, err := a.userRepo.Upsert(ctx, req.Phone, ip)
+	fullphone := req.CountryCode + req.Phone
+	user, err := a.userRepo.Upsert(ctx, fullphone, ip)
 	if err != nil {
 		ctx.AbortWithError(500, err)
 		return nil
