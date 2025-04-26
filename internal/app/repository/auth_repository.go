@@ -42,7 +42,10 @@ func (a *AuthRepository) SaveCsrfToken(ctx context.Context, token, val string, e
 	_, err := a.cache.Set(ctx, fmt.Sprintf("csrf_token:%s", token), val, expire)
 	return err
 }
-func (a *AuthRepository) GetCsrfToken(ctx context.Context, token string) (string, error) {
+func (a *AuthRepository) GetCsrfToken(ctx context.Context, token string, del bool) (string, error) {
+	if del {
+		return a.cache.GetDel(ctx, fmt.Sprintf("csrf_token:%s", token))
+	}
 	return a.cache.Get(ctx, fmt.Sprintf("csrf_token:%s", token))
 }
 

@@ -18,6 +18,7 @@ const (
 	CookieKeyAccessToken  string = "acc"
 	CookieKeyRefreshToken string = "ref"
 	CookieKeyClientId     string = "cli"
+	CookieKeyCsrfToken    string = "csrf"
 )
 
 const (
@@ -105,6 +106,14 @@ func GetUserAgentHashed(ctx *gin.Context) string {
 		ua = cryptos.HashSha256(ua)
 	}
 	return ua
+}
+
+func GetCsrfToken(ctx *gin.Context) string {
+	csrf, err := ctx.Cookie(CookieKeyCsrfToken)
+	if err != nil {
+		return ""
+	}
+	return csrf
 }
 
 const (

@@ -72,14 +72,15 @@ func (a *AuthService) PrepareLogin(ctx *gin.Context) *PrepareLoginResponseDto {
 	// 生成csrf token
 	csrfToken := core.NewUUIDWithoutDash()
 	// 将验证码存入缓存中
-	err = a.authRepo.SaveCsrfToken(ctx, csrfToken, answer, 10*time.Minute)
+	dur := 10 * time.Minute
+	err = a.authRepo.SaveCsrfToken(ctx, csrfToken, answer, dur)
 	if err != nil {
 		ctx.AbortWithError(500, err)
 		return nil
 	}
 	jwtConfig := global.AppConfig.Authenticator.Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
-	ctx.SetCookie("csrf-token", csrfToken, int((10 * time.Minute).Seconds()), "/", "", jwtConfig.CookieSecure, true)
+	ctx.SetCookie(headers.CookieKeyCsrfToken, csrfToken, int(dur.Seconds()), "/", "", jwtConfig.CookieSecure, true)
 	// 返回验证码和csrf token
 	return &PrepareLoginResponseDto{Code: RespCodeSucceed, Data: &PrepareLoginResponse{CsrfToken: csrfToken, ImageData: base64Str}}
 }
@@ -90,7 +91,7 @@ var (
 )
 
 func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthResponseDto {
-	csrfToken, _ := ctx.Cookie("csrf-token")
+	csrfToken := headers.GetCsrfToken(ctx)
 	if csrfToken != req.CsrfToken {
 		ctx.AbortWithStatus(400)
 		return nil
@@ -100,7 +101,7 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 		return nil
 	}
 	// 从缓存中取图形验证码
-	imgCode, err := a.authRepo.GetCsrfToken(ctx, csrfToken)
+	imgCode, err := a.authRepo.GetCsrfToken(ctx, csrfToken, true)
 	if err != nil {
 		ctx.AbortWithError(500, err)
 		return nil
@@ -158,6 +159,10 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 		a.setupAuthorizedCookie(ctx, accessToken, refreshToken)
 		return &AuthResponseDto{Code: RespCodeSucceed}
 	}
+
+	jwtConfig := global.AppConfig.Authenticator.Jwt
+	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
+	ctx.SetCookie(headers.CookieKeyCsrfToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 
 	return &AuthResponseDto{Code: RespCodeSucceed, Data: &AuthResponse{accessToken, refreshToken}}
 }
