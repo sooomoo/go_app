@@ -69,7 +69,7 @@ func (ln *Line) start() error {
 
 			select {
 			case _, ok := <-ln.closeChan:
-				fmt.Printf("line closing, stop reading msgs:[%v], userId: %s, platform: %v, lineId: %s\n", ok, ln.userId, ln.platform, ln.id)
+				fmt.Printf("[HUB] line closing, stop reading msgs:[%v], userId: %s, platform: %v, lineId: %s\n", ok, ln.userId, ln.platform, ln.id)
 				return
 			default:
 				err := ln.conn.SetReadDeadline(time.Now().Add(ln.hub.readTimeout))
@@ -143,10 +143,10 @@ func (ln *Line) start() error {
 						return
 					}
 				} else {
-					fmt.Printf("line writeChan closed, userId: %s, platform: %v, lineId: %s\n", ln.userId, ln.platform, ln.id)
+					fmt.Printf("[HUB] line writeChan closed, userId: %s, platform: %v, lineId: %s\n", ln.userId, ln.platform, ln.id)
 				}
 			case _, ok := <-ln.closeChan:
-				fmt.Printf("line closeChan closed:[%v], userId: %s, platform: %v, lineId: %s\n", ok, ln.userId, ln.platform, ln.id)
+				fmt.Printf("[HUB] line closeChan closed:[%v], userId: %s, platform: %v, lineId: %s\n", ok, ln.userId, ln.platform, ln.id)
 				ln.close(true, nil)
 				return
 			default:

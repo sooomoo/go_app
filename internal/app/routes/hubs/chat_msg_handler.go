@@ -28,6 +28,7 @@ func handleReceivedMsg(msg *hub.LineMessage) {
 		// log err
 		return
 	}
+	fmt.Printf("[HUB] receive msg: userid->%v, platform->%v, line->%v, msg type->%v, requestId->%v, timestamp(relative)->%v\n", msg.UserId, msg.Platform, msg.LineId, meta.MsgType, meta.RequestId, meta.GetConvertedTimestamp())
 	if meta.MsgType == byte(ChatMsgTypePing) {
 		resp, err := chatProtocal.EncodeResp(int32(ChatMsgTypePong), meta.RequestId, byte(ChatRespCodeOk), nil)
 		if err == nil {
@@ -37,7 +38,7 @@ func handleReceivedMsg(msg *hub.LineMessage) {
 }
 
 func handleLineRegistered(r *hub.Line) {
-	fmt.Printf("line registered: userid->%v, platform->%v", r.UserId(), r.Platform())
+	fmt.Printf("[HUB] line registered: userid->%v, platform->%v, line->%v\n", r.UserId(), r.Platform(), r.Id())
 	resp, err := chatProtocal.EncodeResp(int32(ChatMsgTypeReady), 0, byte(ChatRespCodeOk), nil)
 	if err == nil {
 		chatHub.PushToUserLines(r.UserId(), resp, r.Id())
@@ -45,9 +46,9 @@ func handleLineRegistered(r *hub.Line) {
 }
 
 func handleLineUnegistered(u *hub.Line) {
-	fmt.Printf("line unregistered: userid->%v, platform->%v", u.UserId(), u.Platform())
+	fmt.Printf("[HUB] line unregistered: userid->%v, platform->%v, line->%v\n", u.UserId(), u.Platform(), u.Id())
 }
 
 func handleLineError(e *hub.LineError) {
-	fmt.Printf("line error: userid->%v, platform->%v, err:%v", e.UserId, e.Platform, e.Error)
+	fmt.Printf("[HUB] line error: userid->%v, platform->%v, line->%v, err:%v\n", e.UserId, e.Platform, e.LineId, e.Error)
 }
