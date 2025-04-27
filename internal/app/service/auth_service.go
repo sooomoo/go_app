@@ -141,7 +141,7 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 		return nil
 	}
 
-	clientId := core.NewUUIDWithoutDash()
+	clientId := headers.GetClientId(ctx)
 	// 将这些Token与该用户绑定
 	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, &repository.RefreshTokenCredentials{
 		UserId:    int(user.ID),
@@ -155,14 +155,14 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 		return nil
 	}
 
+	jwtConfig := global.AppConfig.Authenticator.Jwt
+	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
+	ctx.SetCookie(headers.CookieKeyCsrfToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
+
 	if platform == core.Web {
 		a.setupAuthorizedCookie(ctx, accessToken, refreshToken)
 		return &AuthResponseDto{Code: RespCodeSucceed}
 	}
-
-	jwtConfig := global.AppConfig.Authenticator.Jwt
-	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
-	ctx.SetCookie(headers.CookieKeyCsrfToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 
 	return &AuthResponseDto{Code: RespCodeSucceed, Data: &AuthResponse{accessToken, refreshToken}}
 }
