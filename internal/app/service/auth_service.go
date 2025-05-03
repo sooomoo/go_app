@@ -188,7 +188,7 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 	clientId := headers.GetClientId(ctx)
 	platform := headers.GetPlatform(ctx)
 	ua := headers.GetUserAgentHashed(ctx)
-	if clientId != credentials.ClientId || platform != credentials.Platform || ua != credentials.UserAgent {
+	if platform != credentials.Platform || ua != credentials.UserAgent {
 		ctx.AbortWithStatus(401) // client need re-login
 		return nil
 	}
