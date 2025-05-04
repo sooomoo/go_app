@@ -103,9 +103,9 @@ func GetUserAgentHashed(ctx *gin.Context) string {
 	ua := ctx.Request.Header.Get(HeaderUserAgent)
 	ua = strings.TrimSpace(ua)
 	if len(ua) > 0 {
-		ua = cryptos.HashSha256(ua)
+		return cryptos.HashSha256(ua)
 	}
-	return ua
+	return ""
 }
 
 func GetCsrfToken(ctx *gin.Context) string {
