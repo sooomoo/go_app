@@ -6,7 +6,6 @@ import (
 	"goapp/internal/app/service"
 	"goapp/internal/app/service/headers"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -34,7 +33,7 @@ func JwtMiddleware() gin.HandlerFunc {
 			// 解析Token
 			claims, err := svc.ParseAccessToken(token)
 			ua := headers.GetUserAgentHashed(c)
-			if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) || claims.UserAgent != ua {
+			if err != nil || claims.UserAgent != ua {
 				c.AbortWithError(401, errors.New("invalid token"))
 				return
 			}
@@ -45,7 +44,7 @@ func JwtMiddleware() gin.HandlerFunc {
 			if !revoked {
 				// 解析Token
 				claims, err := svc.ParseAccessToken(token)
-				if err != nil || claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
+				if err != nil {
 					// 忽略错误
 					headers.SaveClaims(c, claims)
 				}
