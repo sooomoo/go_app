@@ -27,6 +27,7 @@ func SignMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		queryStr := string(crypto.StringfyMap(convertValuesToMap(c.Request.URL.Query())))
 		// 1. 验证请求是否签名是否正确
 		dataToVerify := map[string]string{
 			"session":       extendData.SessionId,
@@ -35,7 +36,7 @@ func SignMiddleware() gin.HandlerFunc {
 			"platform":      fmt.Sprintf("%d", extendData.Platform),
 			"method":        c.Request.Method,
 			"path":          c.Request.URL.Path,
-			"query":         string(crypto.StringfyMap(convertValuesToMap(c.Request.URL.Query()))),
+			"query":         queryStr,
 			"authorization": authorization,
 		}
 		if headers.GetPlatform(c) == core.Web {
@@ -93,8 +94,8 @@ func SignMiddleware() gin.HandlerFunc {
 			"platform":  fmt.Sprintf("%d", extendData.Platform),
 			"timestamp": respTimestamp,
 			"method":    c.Request.Method,
-			"path":      c.Request.RequestURI,
-			"query":     c.Request.URL.RawQuery,
+			"path":      c.Request.URL.Path,
+			"query":     queryStr,
 			"body":      string(responseBody),
 		}
 
@@ -109,7 +110,7 @@ func SignMiddleware() gin.HandlerFunc {
 		c.Header(headers.HeaderTimestamp, respTimestamp)
 		c.Header(headers.HeaderNonce, respNonce)
 		c.Header(headers.HeaderSignature, respSignature)
-		c.Header(headers.HeaderContentLength, strconv.Itoa(len(responseBody)))
+		// c.Header(headers.HeaderContentLength, strconv.Itoa(len(responseBody)))
 
 		bodyWriter.ResponseWriter.Write(responseBody)
 		bodyWriter.ResponseWriter.WriteHeader(c.Writer.Status())
