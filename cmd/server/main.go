@@ -7,6 +7,7 @@ import (
 	"goapp/internal/app/routes/api"
 	"goapp/internal/app/routes/hubs"
 	"goapp/internal/app/routes/middleware"
+	"goapp/internal/app/routes/third"
 	"goapp/pkg/core"
 	"log"
 	"net/http"
@@ -39,6 +40,12 @@ func main() {
 
 	if env == "dev" {
 		pprof.RouteRegister(r, "debug/pprof")
+	}
+
+	// 第三方注册
+	thirdGroup := r.Group("/third")
+	{
+		third.RegisterRoutes(thirdGroup)
 	}
 
 	// Hub 相关配置：hub 不需要与 api 一样的版本管理（v1）
