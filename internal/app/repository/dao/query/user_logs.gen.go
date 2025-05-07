@@ -41,7 +41,7 @@ func newUserLog(db *gorm.DB, opts ...gen.DOOption) userLog {
 }
 
 type userLog struct {
-	userLogDo userLogDo
+	userLogDo
 
 	ALL       field.Asterisk
 	ID        field.Int64
@@ -80,14 +80,6 @@ func (u *userLog) updateTableName(table string) *userLog {
 	return u
 }
 
-func (u *userLog) WithContext(ctx context.Context) *userLogDo { return u.userLogDo.WithContext(ctx) }
-
-func (u userLog) TableName() string { return u.userLogDo.TableName() }
-
-func (u userLog) Alias() string { return u.userLogDo.Alias() }
-
-func (u userLog) Columns(cols ...field.Expr) gen.Columns { return u.userLogDo.Columns(cols...) }
-
 func (u *userLog) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 	_f, ok := u.fieldMap[fieldName]
 	if !ok || _f == nil {
@@ -120,95 +112,156 @@ func (u userLog) replaceDB(db *gorm.DB) userLog {
 
 type userLogDo struct{ gen.DO }
 
-func (u userLogDo) Debug() *userLogDo {
+type IUserLogDo interface {
+	gen.SubQuery
+	Debug() IUserLogDo
+	WithContext(ctx context.Context) IUserLogDo
+	WithResult(fc func(tx gen.Dao)) gen.ResultInfo
+	ReplaceDB(db *gorm.DB)
+	ReadDB() IUserLogDo
+	WriteDB() IUserLogDo
+	As(alias string) gen.Dao
+	Session(config *gorm.Session) IUserLogDo
+	Columns(cols ...field.Expr) gen.Columns
+	Clauses(conds ...clause.Expression) IUserLogDo
+	Not(conds ...gen.Condition) IUserLogDo
+	Or(conds ...gen.Condition) IUserLogDo
+	Select(conds ...field.Expr) IUserLogDo
+	Where(conds ...gen.Condition) IUserLogDo
+	Order(conds ...field.Expr) IUserLogDo
+	Distinct(cols ...field.Expr) IUserLogDo
+	Omit(cols ...field.Expr) IUserLogDo
+	Join(table schema.Tabler, on ...field.Expr) IUserLogDo
+	LeftJoin(table schema.Tabler, on ...field.Expr) IUserLogDo
+	RightJoin(table schema.Tabler, on ...field.Expr) IUserLogDo
+	Group(cols ...field.Expr) IUserLogDo
+	Having(conds ...gen.Condition) IUserLogDo
+	Limit(limit int) IUserLogDo
+	Offset(offset int) IUserLogDo
+	Count() (count int64, err error)
+	Scopes(funcs ...func(gen.Dao) gen.Dao) IUserLogDo
+	Unscoped() IUserLogDo
+	Create(values ...*model.UserLog) error
+	CreateInBatches(values []*model.UserLog, batchSize int) error
+	Save(values ...*model.UserLog) error
+	First() (*model.UserLog, error)
+	Take() (*model.UserLog, error)
+	Last() (*model.UserLog, error)
+	Find() ([]*model.UserLog, error)
+	FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error) (results []*model.UserLog, err error)
+	FindInBatches(result *[]*model.UserLog, batchSize int, fc func(tx gen.Dao, batch int) error) error
+	Pluck(column field.Expr, dest interface{}) error
+	Delete(...*model.UserLog) (info gen.ResultInfo, err error)
+	Update(column field.Expr, value interface{}) (info gen.ResultInfo, err error)
+	UpdateSimple(columns ...field.AssignExpr) (info gen.ResultInfo, err error)
+	Updates(value interface{}) (info gen.ResultInfo, err error)
+	UpdateColumn(column field.Expr, value interface{}) (info gen.ResultInfo, err error)
+	UpdateColumnSimple(columns ...field.AssignExpr) (info gen.ResultInfo, err error)
+	UpdateColumns(value interface{}) (info gen.ResultInfo, err error)
+	UpdateFrom(q gen.SubQuery) gen.Dao
+	Attrs(attrs ...field.AssignExpr) IUserLogDo
+	Assign(attrs ...field.AssignExpr) IUserLogDo
+	Joins(fields ...field.RelationField) IUserLogDo
+	Preload(fields ...field.RelationField) IUserLogDo
+	FirstOrInit() (*model.UserLog, error)
+	FirstOrCreate() (*model.UserLog, error)
+	FindByPage(offset int, limit int) (result []*model.UserLog, count int64, err error)
+	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Scan(result interface{}) (err error)
+	Returning(value interface{}, columns ...string) IUserLogDo
+	UnderlyingDB() *gorm.DB
+	schema.Tabler
+}
+
+func (u userLogDo) Debug() IUserLogDo {
 	return u.withDO(u.DO.Debug())
 }
 
-func (u userLogDo) WithContext(ctx context.Context) *userLogDo {
+func (u userLogDo) WithContext(ctx context.Context) IUserLogDo {
 	return u.withDO(u.DO.WithContext(ctx))
 }
 
-func (u userLogDo) ReadDB() *userLogDo {
+func (u userLogDo) ReadDB() IUserLogDo {
 	return u.Clauses(dbresolver.Read)
 }
 
-func (u userLogDo) WriteDB() *userLogDo {
+func (u userLogDo) WriteDB() IUserLogDo {
 	return u.Clauses(dbresolver.Write)
 }
 
-func (u userLogDo) Session(config *gorm.Session) *userLogDo {
+func (u userLogDo) Session(config *gorm.Session) IUserLogDo {
 	return u.withDO(u.DO.Session(config))
 }
 
-func (u userLogDo) Clauses(conds ...clause.Expression) *userLogDo {
+func (u userLogDo) Clauses(conds ...clause.Expression) IUserLogDo {
 	return u.withDO(u.DO.Clauses(conds...))
 }
 
-func (u userLogDo) Returning(value interface{}, columns ...string) *userLogDo {
+func (u userLogDo) Returning(value interface{}, columns ...string) IUserLogDo {
 	return u.withDO(u.DO.Returning(value, columns...))
 }
 
-func (u userLogDo) Not(conds ...gen.Condition) *userLogDo {
+func (u userLogDo) Not(conds ...gen.Condition) IUserLogDo {
 	return u.withDO(u.DO.Not(conds...))
 }
 
-func (u userLogDo) Or(conds ...gen.Condition) *userLogDo {
+func (u userLogDo) Or(conds ...gen.Condition) IUserLogDo {
 	return u.withDO(u.DO.Or(conds...))
 }
 
-func (u userLogDo) Select(conds ...field.Expr) *userLogDo {
+func (u userLogDo) Select(conds ...field.Expr) IUserLogDo {
 	return u.withDO(u.DO.Select(conds...))
 }
 
-func (u userLogDo) Where(conds ...gen.Condition) *userLogDo {
+func (u userLogDo) Where(conds ...gen.Condition) IUserLogDo {
 	return u.withDO(u.DO.Where(conds...))
 }
 
-func (u userLogDo) Order(conds ...field.Expr) *userLogDo {
+func (u userLogDo) Order(conds ...field.Expr) IUserLogDo {
 	return u.withDO(u.DO.Order(conds...))
 }
 
-func (u userLogDo) Distinct(cols ...field.Expr) *userLogDo {
+func (u userLogDo) Distinct(cols ...field.Expr) IUserLogDo {
 	return u.withDO(u.DO.Distinct(cols...))
 }
 
-func (u userLogDo) Omit(cols ...field.Expr) *userLogDo {
+func (u userLogDo) Omit(cols ...field.Expr) IUserLogDo {
 	return u.withDO(u.DO.Omit(cols...))
 }
 
-func (u userLogDo) Join(table schema.Tabler, on ...field.Expr) *userLogDo {
+func (u userLogDo) Join(table schema.Tabler, on ...field.Expr) IUserLogDo {
 	return u.withDO(u.DO.Join(table, on...))
 }
 
-func (u userLogDo) LeftJoin(table schema.Tabler, on ...field.Expr) *userLogDo {
+func (u userLogDo) LeftJoin(table schema.Tabler, on ...field.Expr) IUserLogDo {
 	return u.withDO(u.DO.LeftJoin(table, on...))
 }
 
-func (u userLogDo) RightJoin(table schema.Tabler, on ...field.Expr) *userLogDo {
+func (u userLogDo) RightJoin(table schema.Tabler, on ...field.Expr) IUserLogDo {
 	return u.withDO(u.DO.RightJoin(table, on...))
 }
 
-func (u userLogDo) Group(cols ...field.Expr) *userLogDo {
+func (u userLogDo) Group(cols ...field.Expr) IUserLogDo {
 	return u.withDO(u.DO.Group(cols...))
 }
 
-func (u userLogDo) Having(conds ...gen.Condition) *userLogDo {
+func (u userLogDo) Having(conds ...gen.Condition) IUserLogDo {
 	return u.withDO(u.DO.Having(conds...))
 }
 
-func (u userLogDo) Limit(limit int) *userLogDo {
+func (u userLogDo) Limit(limit int) IUserLogDo {
 	return u.withDO(u.DO.Limit(limit))
 }
 
-func (u userLogDo) Offset(offset int) *userLogDo {
+func (u userLogDo) Offset(offset int) IUserLogDo {
 	return u.withDO(u.DO.Offset(offset))
 }
 
-func (u userLogDo) Scopes(funcs ...func(gen.Dao) gen.Dao) *userLogDo {
+func (u userLogDo) Scopes(funcs ...func(gen.Dao) gen.Dao) IUserLogDo {
 	return u.withDO(u.DO.Scopes(funcs...))
 }
 
-func (u userLogDo) Unscoped() *userLogDo {
+func (u userLogDo) Unscoped() IUserLogDo {
 	return u.withDO(u.DO.Unscoped())
 }
 
@@ -274,22 +327,22 @@ func (u userLogDo) FindInBatches(result *[]*model.UserLog, batchSize int, fc fun
 	return u.DO.FindInBatches(result, batchSize, fc)
 }
 
-func (u userLogDo) Attrs(attrs ...field.AssignExpr) *userLogDo {
+func (u userLogDo) Attrs(attrs ...field.AssignExpr) IUserLogDo {
 	return u.withDO(u.DO.Attrs(attrs...))
 }
 
-func (u userLogDo) Assign(attrs ...field.AssignExpr) *userLogDo {
+func (u userLogDo) Assign(attrs ...field.AssignExpr) IUserLogDo {
 	return u.withDO(u.DO.Assign(attrs...))
 }
 
-func (u userLogDo) Joins(fields ...field.RelationField) *userLogDo {
+func (u userLogDo) Joins(fields ...field.RelationField) IUserLogDo {
 	for _, _f := range fields {
 		u = *u.withDO(u.DO.Joins(_f))
 	}
 	return &u
 }
 
-func (u userLogDo) Preload(fields ...field.RelationField) *userLogDo {
+func (u userLogDo) Preload(fields ...field.RelationField) IUserLogDo {
 	for _, _f := range fields {
 		u = *u.withDO(u.DO.Preload(_f))
 	}

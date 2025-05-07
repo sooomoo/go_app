@@ -15,6 +15,18 @@ import (
 	"gorm.io/plugin/dbresolver"
 )
 
+var (
+	Q       = new(Query)
+	User    *user
+	UserLog *userLog
+)
+
+func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
+	*Q = *Use(db, opts...)
+	User = &Q.User
+	UserLog = &Q.UserLog
+}
+
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:      db,
@@ -57,8 +69,8 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 }
 
 type queryCtx struct {
-	User    *userDo
-	UserLog *userLogDo
+	User    IUserDo
+	UserLog IUserLogDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {

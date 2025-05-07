@@ -12,16 +12,16 @@ type User struct {
 	Phone      string `gorm:"column:phone;not null;comment:如08615900001111" json:"phone"` // 如08615900001111
 	Name       string `gorm:"column:name;not null" json:"name"`
 	Password   string `gorm:"column:password;not null;comment:hash之后的密码" json:"password"` // hash之后的密码
-	AvatarURL  string `gorm:"column:avatar_url;not null" json:"avatar_url"`
+	AvatarURL  string `gorm:"column:avatar_url;not null" json:"avatarUrl"`
 	Email      string `gorm:"column:email;not null" json:"email"`
 	Role       int32  `gorm:"column:role;not null" json:"role"`
-	IPInit     string `gorm:"column:ip_init;not null" json:"ip_init"`
-	IPLatest   string `gorm:"column:ip_latest;not null" json:"ip_latest"`
+	IPInit     string `gorm:"column:ip_init;not null" json:"ipInit"`
+	IPLatest   string `gorm:"column:ip_latest;not null" json:"ipLatest"`
 	Status     int32  `gorm:"column:status;not null" json:"status"`
-	InviteCode string `gorm:"column:invite_code;not null" json:"invite_code"`
-	InviteBy   int64  `gorm:"column:invite_by;not null" json:"invite_by"`
-	CreatedAt  int64  `gorm:"column:created_at;not null" json:"created_at"`
-	UpdatedAt  int64  `gorm:"column:updated_at;not null" json:"updated_at"`
+	InviteCode string `gorm:"column:invite_code;not null" json:"inviteCode"`
+	InviteBy   int64  `gorm:"column:invite_by;not null" json:"inviteBy"`
+	CreatedAt  int64  `gorm:"column:created_at;not null" json:"createdAt"`
+	UpdatedAt  int64  `gorm:"column:updated_at;not null" json:"updatedAt"`
 }
 
 // TableName User's table name
