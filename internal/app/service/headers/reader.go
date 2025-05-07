@@ -233,6 +233,7 @@ type AuthorizedClaims struct {
 	UserId               int           `json:"u"`
 	Platform             core.Platform `json:"p"`
 	UserAgent            string        `json:"g"`
+	ClientId             string        `json:"c"`
 	jwt.RegisteredClaims               // 包含标准字段如 exp（过期时间）、iss（签发者）等
 }
 

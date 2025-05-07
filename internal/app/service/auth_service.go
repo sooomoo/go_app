@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"goapp/internal/app/global"
 	"goapp/internal/app/repository"
@@ -131,17 +132,17 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 		return nil
 	}
 
+	clientId := headers.GetClientId(ctx)
 	platform := headers.GetPlatform(ctx)
 	ua := headers.GetUserAgentHashed(ctx)
 
 	// 生成token
-	accessToken, refreshToken, err := a.GenerateTokenPair(int(user.ID), ua, platform)
+	accessToken, refreshToken, err := a.GenerateTokenPair(int(user.ID), clientId, ua, platform)
 	if err != nil {
 		ctx.AbortWithError(500, err)
 		return nil
 	}
 
-	clientId := headers.GetClientId(ctx)
 	// 将这些Token与该用户绑定
 	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, &repository.RefreshTokenCredentials{
 		UserId:    int(user.ID),
@@ -160,7 +161,7 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 	ctx.SetCookie(headers.CookieKeyCsrfToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 
 	if platform == core.Web {
-		a.setupAuthorizedCookie(ctx, accessToken, refreshToken)
+		a.setupAuthorizedCookie(ctx, clientId, accessToken, refreshToken)
 		return &AuthResponseDto{Code: RespCodeSucceed}
 	}
 
@@ -188,7 +189,7 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 	clientId := headers.GetClientId(ctx)
 	platform := headers.GetPlatform(ctx)
 	ua := headers.GetUserAgentHashed(ctx)
-	if platform != credentials.Platform || ua != credentials.UserAgent {
+	if clientId != credentials.ClientId || platform != credentials.Platform || ua != credentials.UserAgent {
 		ctx.AbortWithStatus(401) // client need re-login
 		return nil
 	}
@@ -200,7 +201,7 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 	}
 
 	// 轮换 clientid 与 refresh token
-	accessToken, refreshToken, err := a.GenerateTokenPair(int(credentials.UserId), ua, platform)
+	accessToken, refreshToken, err := a.GenerateTokenPair(int(credentials.UserId), clientId, ua, platform)
 	if err != nil {
 		ctx.AbortWithStatus(401) // token 已经删除，此时只能重新登录
 		return nil
@@ -219,7 +220,7 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 	}
 
 	if platform == core.Web {
-		a.setupAuthorizedCookie(ctx, accessToken, refreshToken)
+		a.setupAuthorizedCookie(ctx, clientId, accessToken, refreshToken)
 		return &AuthResponseDto{Code: RespCodeSucceed}
 	}
 
@@ -243,13 +244,22 @@ func (a *AuthService) Logout(ctx *gin.Context) {
 	ctx.SetCookie(headers.CookieKeyRefreshToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 }
 
-func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, accessToken, refreshToken string) {
+func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, clientId, accessToken, refreshToken string) {
 	jwtConfig := global.AppConfig.Authenticator.Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
 	atkMaxAge := int((time.Duration(jwtConfig.AccessTtl) * time.Minute).Seconds())
 	rtkMaxAge := int((time.Duration(jwtConfig.RefreshTtl) * time.Minute).Seconds())
+	cliMaxAge := rtkMaxAge + int((time.Hour * 24 * 30).Seconds())
 	ctx.SetCookie(headers.CookieKeyAccessToken, accessToken, atkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 	ctx.SetCookie(headers.CookieKeyRefreshToken, refreshToken, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
+	ctx.SetCookie(headers.CookieKeyClientId, clientId, cliMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
+}
+
+func (a *AuthService) IsClaimsValid(ctx *gin.Context, claims *headers.AuthorizedClaims) bool {
+	clientId := headers.GetClientId(ctx)
+	platform := headers.GetPlatform(ctx)
+	ua := headers.GetUserAgentHashed(ctx)
+	return clientId == claims.ClientId && platform == claims.Platform && ua == claims.UserAgent
 }
 
 func (a *AuthService) RevokeAccessToken(ctx context.Context, token string) error {
@@ -271,8 +281,8 @@ func (a *AuthService) IsTokenRevoked(ctx context.Context, token string) (bool, e
 	return a.authRepo.IsTokenRevoked(ctx, token) // 调用Repository层的方法
 }
 
-func (a *AuthService) GenerateTokenPair(userID int, userAgent string, platform core.Platform) (string, string, error) {
-	accessToken, err := a.GenerateAccessToken(userID, userAgent, platform)
+func (a *AuthService) GenerateTokenPair(userID int, clientId, userAgent string, platform core.Platform) (string, string, error) {
+	accessToken, err := a.GenerateAccessToken(userID, clientId, userAgent, platform)
 	if err != nil {
 		return "", "", err
 	}
@@ -280,15 +290,19 @@ func (a *AuthService) GenerateTokenPair(userID int, userAgent string, platform c
 	return accessToken, refreshToken, nil
 }
 
-func (a *AuthService) GenerateAccessToken(userID int, userAgent string, platform core.Platform) (string, error) {
+func (a *AuthService) GenerateAccessToken(userID int, clientId, userAgent string, platform core.Platform) (string, error) {
 	jwtConfig := global.AppConfig.Authenticator.Jwt
 	if len(jwtConfig.Secret) == 0 {
 		panic("jwtSecret is empty")
+	}
+	if len(clientId) == 0 || len(userAgent) == 0 || platform == core.Unspecify {
+		return "", errors.New("invalid args")
 	}
 	claims := headers.AuthorizedClaims{
 		UserId:    userID,
 		Platform:  platform,
 		UserAgent: userAgent,
+		ClientId:  clientId,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(jwtConfig.AccessTtl) * time.Minute)), // 过期时间
 			Issuer:    jwtConfig.Issuer,                                                                     // 签发者

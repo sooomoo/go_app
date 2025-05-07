@@ -32,8 +32,7 @@ func JwtMiddleware() gin.HandlerFunc {
 			}
 			// 解析Token
 			claims, err := svc.ParseAccessToken(token)
-			ua := headers.GetUserAgentHashed(c)
-			if err != nil || claims.UserAgent != ua {
+			if err != nil || !svc.IsClaimsValid(c, claims) {
 				c.AbortWithError(401, errors.New("invalid token"))
 				return
 			}
@@ -44,7 +43,7 @@ func JwtMiddleware() gin.HandlerFunc {
 			if !revoked {
 				// 解析Token
 				claims, err := svc.ParseAccessToken(token)
-				if err != nil {
+				if err == nil && svc.IsClaimsValid(c, claims) {
 					// 忽略错误
 					headers.SaveClaims(c, claims)
 				}

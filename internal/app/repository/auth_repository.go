@@ -44,9 +44,18 @@ func (a *AuthRepository) SaveCsrfToken(ctx context.Context, token, val string, e
 }
 func (a *AuthRepository) GetCsrfToken(ctx context.Context, token string, del bool) (string, error) {
 	if del {
-		return a.cache.GetDel(ctx, fmt.Sprintf("csrf_token:%s", token))
+		val, err := a.cache.GetDel(ctx, fmt.Sprintf("csrf_token:%s", token))
+		if err == redis.Nil {
+			return "", nil
+		}
+		return val, err
+	} else {
+		val, err := a.cache.Get(ctx, fmt.Sprintf("csrf_token:%s", token))
+		if err == redis.Nil {
+			return "", nil
+		}
+		return val, err
 	}
-	return a.cache.Get(ctx, fmt.Sprintf("csrf_token:%s", token))
 }
 
 func (a *AuthRepository) SaveRevokedToken(ctx context.Context, token string, expire time.Duration) error {
