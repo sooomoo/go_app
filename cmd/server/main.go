@@ -9,28 +9,39 @@ import (
 	"goapp/internal/app/routes/middleware"
 	"goapp/internal/app/routes/third"
 	"goapp/pkg/core"
-	"log"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog/pkgerrors"
 )
 
 func main() {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
+
+	env := os.Getenv("env")
+	log.Info().Msgf("server starting... runnint in [ %s ] mode", env)
 	ctx := context.Background()
 	err := app.Init(ctx)
+	log.Info().Msgf("init result: %v", err)
 	if err != nil {
 		panic(err)
 	}
 
 	// 设置Gin模式
-	env := os.Getenv("env")
 	if env == "release" {
 		gin.SetMode(gin.ReleaseMode)
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	} else if env == "test" {
 		gin.SetMode(gin.TestMode)
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
 	r := gin.New()
@@ -72,21 +83,21 @@ func main() {
 	// 优雅关闭
 	go func() {
 		if err := svr.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("启动服务器失败: %v", err)
+			log.Fatal().Stack().Err(err).Msg("启动服务器失败")
 		}
 	}()
 
 	core.WaitSysSignal(func() {
-		log.Println("正在关闭服务器...")
+		log.Info().Msg("正在关闭服务器...")
 		c, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
 		if err := svr.Shutdown(c); err != nil {
-			log.Fatalf("服务器强制关闭: %v", err)
+			log.Fatal().Stack().Err(err).Msg("服务器关闭失败")
 		}
 
 		// 释放资源
 		app.Release()
-		log.Println("服务器已优雅地关闭")
+		log.Info().Msg("服务器已优雅地关闭")
 	})
 }

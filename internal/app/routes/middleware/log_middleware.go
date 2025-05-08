@@ -1,10 +1,10 @@
 package middleware
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 )
 
 // LogMiddleware 请求日志中间件
@@ -35,7 +35,7 @@ func LogMiddleware() gin.HandlerFunc {
 		clientIP := c.ClientIP()
 
 		// 日志格式
-		fmt.Printf("[API] %v | %3d | %8vms | %15s | %s | %s\n",
+		log.Debug().Msgf("[API] %v | %3d | %8vms | %15s | %s | %s\n",
 			endTime.Format("2006/01/02 15:04:05"),
 			statusCode,
 			latency.Milliseconds(),

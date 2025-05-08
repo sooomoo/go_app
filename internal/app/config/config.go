@@ -2,10 +2,10 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -126,9 +126,9 @@ func Load() (*AppConfig, error) {
 	// 读取配置文件
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			log.Fatalf("配置文件未找到: %v", err)
+			log.Fatal().Msgf("配置文件未找到: %v", err)
 		} else {
-			log.Fatalf("读取配置文件出错: %v", err)
+			log.Fatal().Msgf("读取配置文件出错: %v", err)
 		}
 	}
 
@@ -136,11 +136,11 @@ func Load() (*AppConfig, error) {
 	var config AppConfig
 	err := viper.Unmarshal(&config)
 	if err != nil {
-		log.Fatalf("无法解析配置文件: %v", err)
+		log.Fatal().Msgf("无法解析配置文件: %v", err)
 	}
 
 	// 打印初始配置
-	fmt.Println("初始配置如下:", config)
+	log.Info().Any("配置如下", config).Msg("配置加载完成。。。")
 
 	return &config, nil
 }
