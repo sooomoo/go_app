@@ -8,6 +8,7 @@ require (
 	github.com/gin-contrib/pprof v1.5.2
 	github.com/mojocn/base64Captcha v1.3.8
 	github.com/panjf2000/ants/v2 v2.11.2
+	github.com/rs/zerolog v1.34.0
 	github.com/spf13/viper v1.20.1
 	gorm.io/driver/mysql v1.5.7
 	gorm.io/gen v0.3.26
@@ -25,7 +26,6 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-sqlite3 v1.14.16 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/sagikazarmark/locafero v0.9.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
