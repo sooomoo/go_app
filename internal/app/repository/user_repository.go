@@ -8,7 +8,6 @@ import (
 	"goapp/pkg/cache"
 	"time"
 
-	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -27,15 +26,11 @@ const (
 
 type UserRepository struct {
 	cache *cache.Cache
-	db    *gorm.DB
-	query *query.Query
 }
 
-func NewUserRepository(cache *cache.Cache, db *gorm.DB) *UserRepository {
+func NewUserRepository(cache *cache.Cache) *UserRepository {
 	return &UserRepository{
 		cache: cache,
-		db:    db,
-		query: query.Use(db),
 	}
 }
 
@@ -45,7 +40,7 @@ func (r *UserRepository) Upsert(ctx context.Context, phone, ip string) (*model.U
 		return nil, err
 	}
 
-	u := r.query.User
+	u := query.User
 	err = u.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: u.Phone.ColumnName().String()}},
 		DoUpdates: clause.Assignments(map[string]any{
@@ -71,5 +66,5 @@ func (r *UserRepository) Upsert(ctx context.Context, phone, ip string) (*model.U
 }
 
 func (r *UserRepository) GetById(ctx context.Context, userId int64) (*model.User, error) {
-	return r.query.User.WithContext(ctx).Where(r.query.User.ID.Eq(userId)).First()
+	return query.User.WithContext(ctx).Where(query.User.ID.Eq(userId)).First()
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"goapp/internal/app/config"
 	"goapp/internal/app/global"
+	"goapp/internal/app/repository/dao/query"
 	"goapp/internal/app/routes/hubs"
 	"goapp/pkg/cache"
 	"goapp/pkg/core"
@@ -36,6 +37,8 @@ func Init(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// 设置默认的 Db 连接
+	query.SetDefault(global.Db)
 
 	global.Cache, err = cache.NewCache(ctx, appConfig.Cache.GetRedisOption(), nil)
 	if err != nil {

@@ -15,7 +15,7 @@ type UserService struct {
 
 func NewUserService() *UserService {
 	return &UserService{
-		userRepo: repository.NewUserRepository(global.Cache, global.Db),
+		userRepo: repository.NewUserRepository(global.Cache),
 	}
 }
 

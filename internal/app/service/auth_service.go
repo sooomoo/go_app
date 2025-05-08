@@ -46,8 +46,8 @@ type AuthService struct {
 
 func NewAuthService() *AuthService {
 	return &AuthService{
-		authRepo: repository.NewAuthRepository(global.Cache, global.Db),
-		userRepo: repository.NewUserRepository(global.Cache, global.Db),
+		authRepo: repository.NewAuthRepository(global.Cache),
+		userRepo: repository.NewUserRepository(global.Cache),
 	}
 }
 

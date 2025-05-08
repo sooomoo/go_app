@@ -4,13 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"goapp/internal/app/repository/dao/query"
 	"goapp/pkg/cache"
 	"goapp/pkg/core"
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 )
 
 const (
@@ -26,15 +24,11 @@ const (
 
 type AuthRepository struct {
 	cache *cache.Cache
-	db    *gorm.DB
-	query *query.Query
 }
 
-func NewAuthRepository(cache *cache.Cache, db *gorm.DB) *AuthRepository {
+func NewAuthRepository(cache *cache.Cache) *AuthRepository {
 	return &AuthRepository{
 		cache: cache,
-		db:    db,
-		query: query.Use(db),
 	}
 }
 
