@@ -1,6 +1,8 @@
 package errs
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type ReplyError struct {
 	code    string

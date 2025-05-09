@@ -10,7 +10,7 @@ import (
 )
 
 var bufferPool = core.NewByteBufferPool(0, 1024)
-var base64Encoding = base64.RawURLEncoding
+var base64Encoding = base64.RawURLEncoding // 不需要 padding，即不包含=字符
 
 const (
 	SignatureLength = 64 // Ed25519签名长度
