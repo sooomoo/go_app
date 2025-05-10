@@ -6,6 +6,7 @@ require (
 	github.com/gin-contrib/cors v1.7.4
 	github.com/gin-contrib/gzip v1.2.2
 	github.com/gin-contrib/pprof v1.5.2
+	github.com/lionsoul2014/ip2region/binding/golang v0.0.0-20250508043914-ed57fa5c5274
 	github.com/mojocn/base64Captcha v1.3.8
 	github.com/panjf2000/ants/v2 v2.11.2
 	github.com/rs/zerolog v1.34.0
@@ -23,10 +24,8 @@ require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/lionsoul2014/ip2region/binding/golang v0.0.0-20250508043914-ed57fa5c5274 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-sqlite3 v1.14.16 // indirect
-	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sagikazarmark/locafero v0.9.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
