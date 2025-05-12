@@ -1,6 +1,7 @@
 package collection
 
 import (
+	"goapp/pkg/core"
 	"math/rand"
 	"strings"
 	"time"
@@ -145,9 +146,9 @@ func SplitIntoBatches[T any](arr []T, itemsPerBatch int) [][]T {
 
 // 去除数组中重复的元素
 func Deduplication[T comparable](arr []T) []T {
-	tmp := map[T]Empty{}
+	tmp := map[T]core.Empty{}
 	for _, v := range arr {
-		tmp[v] = Empty{}
+		tmp[v] = core.Empty{}
 	}
 	newSlice := []T{}
 	for k := range tmp {
@@ -156,7 +157,7 @@ func Deduplication[T comparable](arr []T) []T {
 	return newSlice
 }
 
-// 打乱数组
+// 打乱数组：这会改变原数组
 func Shuffle[T any](arr []T) {
 	if len(arr) <= 0 {
 		return
@@ -168,6 +169,8 @@ func Shuffle[T any](arr []T) {
 }
 
 // 打乱数组：Slower, use `copy` function
+//
+// 这不会改变原数组，而是返回打乱后的新数组
 func ShuffleCopy[T any](arr []T) []T {
 	if len(arr) <= 0 {
 		return []T{}

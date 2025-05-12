@@ -1,17 +1,18 @@
 package collection
 
-import "sync"
-
-type Empty struct{}
+import (
+	"goapp/pkg/core"
+	"sync"
+)
 
 type Set[T comparable] struct {
-	underlying map[T]Empty
+	underlying map[T]core.Empty
 	lock       sync.RWMutex
 }
 
 func (s *Set[T]) ensureInit() {
 	if s.underlying == nil {
-		s.underlying = map[T]Empty{}
+		s.underlying = map[T]core.Empty{}
 	}
 }
 
@@ -21,7 +22,7 @@ func (s *Set[T]) Add(item T) {
 	defer s.lock.Unlock()
 
 	s.ensureInit()
-	s.underlying[item] = Empty{}
+	s.underlying[item] = core.Empty{}
 }
 
 // O(n)
@@ -31,7 +32,7 @@ func (s *Set[T]) AddRange(items ...T) {
 
 	s.ensureInit()
 	for _, v := range items {
-		s.underlying[v] = Empty{}
+		s.underlying[v] = core.Empty{}
 	}
 }
 
