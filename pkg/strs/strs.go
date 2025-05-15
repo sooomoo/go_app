@@ -60,13 +60,9 @@ func MaskPhone(phone string) string {
 	return builder.String()
 }
 
-// 将以逗号分隔的字符串拆分成数组
-func SplitCommaString(str string) []string {
-	return SplitJoinedItems(str, ",")
-}
-
-func SplitJoinedItems(joinedStr string, sep ...string) []string {
-	if len(joinedStr) <= 0 {
+// 根据指定的分隔符分离字符串
+func SplitWithoutEmptyEntries(str string, sep ...string) []string {
+	if len(str) <= 0 {
 		return []string{}
 	}
 
@@ -76,9 +72,9 @@ func SplitJoinedItems(joinedStr string, sep ...string) []string {
 	}
 
 	items := []string{}
-	spl := strings.SplitSeq(joinedStr, sepStr)
+	spl := strings.SplitSeq(str, sepStr)
 	for v := range spl {
-		val := strings.Trim(v, " ")
+		val := strings.TrimSpace(v)
 		if len(val) > 0 {
 			items = append(items, val)
 		}
