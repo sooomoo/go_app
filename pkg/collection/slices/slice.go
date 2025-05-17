@@ -122,24 +122,11 @@ func Count[T any](arr []T, condition func(*T) bool) int {
 }
 
 // 将一个长数组拆分为多个小的批次数组
-func SplitIntoBatches[T any](arr []T, itemsPerBatch int) [][]T {
+func SplitIntoBatches[T any](arr []T, batchSize int) [][]T {
 	batches := [][]T{}
-	if len(arr) == 0 {
-		return batches
-	}
-
-	curBatch := []T{}
-	for i := range arr {
-		curBatch = append(curBatch, arr[i])
-		if len(curBatch) < itemsPerBatch {
-			continue
-		}
-
-		batches = append(batches, curBatch)
-		curBatch = []T{} // 清空上一次批次的项目
-	}
-	if len(curBatch) > 0 {
-		batches = append(batches, curBatch) // 不足一次批次时，会走到这来
+	for i := 0; i < len(arr); i += batchSize {
+		end := min(i+batchSize, len(arr))
+		batches = append(batches, arr[i:end])
 	}
 	return batches
 }
