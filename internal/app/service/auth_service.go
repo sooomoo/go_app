@@ -81,7 +81,7 @@ func (a *AuthService) PrepareLogin(ctx *gin.Context) *PrepareLoginResponseDto {
 	}
 	jwtConfig := global.AppConfig.Authenticator.Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
-	ctx.SetCookie(headers.CookieKeyCsrfToken, csrfToken, int(dur.Seconds()), "/", "", jwtConfig.CookieSecure, true)
+	ctx.SetCookie(headers.CookieKeyCsrfToken, csrfToken, int(dur.Seconds()), "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 	// 返回验证码和csrf token
 	return &PrepareLoginResponseDto{Code: RespCodeSucceed, Data: &PrepareLoginResponse{CsrfToken: csrfToken, ImageData: base64Str}}
 }
