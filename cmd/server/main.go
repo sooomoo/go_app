@@ -82,14 +82,17 @@ func main() {
 	svr := &http.Server{Addr: global.AppConfig.Addr, Handler: r}
 	// 优雅关闭
 	go func() {
-		if env == "dev" {
-			if err := svr.ListenAndServeTLS("./devcerts/server.crt", "./devcerts/server.key"); err != nil && err != http.ErrServerClosed {
-				log.Fatal().Stack().Err(err).Msg("启动服务器失败")
-			}
-		} else {
-			if err := svr.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				log.Fatal().Stack().Err(err).Msg("启动服务器失败")
-			}
+		// if env == "dev" {
+		// 	if err := svr.ListenAndServeTLS("./devcerts/server.crt", "./devcerts/server.key"); err != nil && err != http.ErrServerClosed {
+		// 		log.Fatal().Stack().Err(err).Msg("启动服务器失败")
+		// 	}
+		// } else {
+		// 	if err := svr.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		// 		log.Fatal().Stack().Err(err).Msg("启动服务器失败")
+		// 	}
+		// }
+		if err := svr.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal().Stack().Err(err).Msg("启动服务器失败")
 		}
 	}()
 
