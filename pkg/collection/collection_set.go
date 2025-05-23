@@ -8,29 +8,30 @@ import (
 type Set[T comparable] struct {
 	underlying map[T]core.Empty
 	lock       sync.RWMutex
+	once       sync.Once
 }
 
 func (s *Set[T]) ensureInit() {
-	if s.underlying == nil {
+	s.once.Do(func() {
 		s.underlying = map[T]core.Empty{}
-	}
+	})
 }
 
 // O(1)~O(n)
 func (s *Set[T]) Add(item T) {
+	s.ensureInit()
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	s.ensureInit()
 	s.underlying[item] = core.Empty{}
 }
 
 // O(n)
 func (s *Set[T]) AddRange(items ...T) {
+	s.ensureInit()
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	s.ensureInit()
 	for _, v := range items {
 		s.underlying[v] = core.Empty{}
 	}
@@ -38,6 +39,7 @@ func (s *Set[T]) AddRange(items ...T) {
 
 // O(1)~O(n)
 func (s *Set[T]) Remove(item T) {
+	s.ensureInit()
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -46,6 +48,7 @@ func (s *Set[T]) Remove(item T) {
 
 // O(1)
 func (s *Set[T]) Clear() {
+	s.ensureInit()
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -54,6 +57,7 @@ func (s *Set[T]) Clear() {
 
 // O(n)
 func (s *Set[T]) Size() int {
+	s.ensureInit()
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -62,6 +66,7 @@ func (s *Set[T]) Size() int {
 
 // O(n)
 func (s *Set[T]) IsEmpty() bool {
+	s.ensureInit()
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -70,6 +75,7 @@ func (s *Set[T]) IsEmpty() bool {
 
 // O(n)
 func (s *Set[T]) ToSlice() []T {
+	s.ensureInit()
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -82,6 +88,7 @@ func (s *Set[T]) ToSlice() []T {
 
 // O(1)~O(n)
 func (s *Set[T]) Contains(item T) bool {
+	s.ensureInit()
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
