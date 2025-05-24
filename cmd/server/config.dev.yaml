@@ -1,16 +1,16 @@
 name: niu-dev
 worker_id: 1
-addr: 0.0.0.0:8001
+addr: 127.0.0.1:8001
 
 database:
-  connect_string: root:abc12345@tcp(127.0.0.1:3306)/niu?charset=utf8mb4&parseTime=True&loc=Local
+  connect_string: root:abc12345@tcp(192.168.3.95:3306)/niu?charset=utf8mb4&parseTime=True&loc=Local
 
 cache:
-  addr: 127.0.0.1:6379
+  addr: 192.168.3.95:6379
   db: 1
 
 locker:
-  addr: 127.0.0.1:6379
+  addr: 192.168.3.95:6379
   db: 2
   ttl: 15 # 15秒
   retry_strategy: linear # linear or exponential
@@ -18,7 +18,7 @@ locker:
   max_retry: 3
 
 queue:
-  addr: 127.0.0.1:6379
+  addr: 192.168.3.95:6379
   db: 3
   xadd_maxlen: 1024 
   batch_size: 100
@@ -66,15 +66,21 @@ cors:
   allow_origins:
     - http://localhost:3000
     - http://127.0.0.1:3000
+    - http://localhost:5173
+    - http://127.0.0.1:5173
+    - http://wails.localhost:34115
+    - http://wails.127.0.0.1:34115
+    - https://localhost:3000
+    - https://127.0.0.1:3000
   allow_methods:
     - GET
     - POST
     - OPTIONS
   allow_headers:
     - Content-Type
+    - Content-Length
     - Authorization
     - Origin
-    - Content-Length
     - Cookie
     - X-Nonce
     - X-Timestamp
@@ -82,12 +88,14 @@ cors:
     - X-Platform
     - X-Session
     - X-Client
+    - X-CSRF
   expose_headers: 
     - X-Nonce
     - X-Timestamp
     - X-Signature
     - X-RawType
     - Set-Cookie
+    - X-CSRF
   allow_credentials: true
   max_age: 120 # 120分钟
   allow_web_sockets: true 

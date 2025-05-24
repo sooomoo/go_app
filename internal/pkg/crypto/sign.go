@@ -110,6 +110,7 @@ func SignMap(mp map[string]string) (string, error) {
 	}
 
 	data := StringfyMap(mp)
+	fmt.Printf("data to sign: %s\n", string(data))
 	priKey = append(priKey, pubKey...)
 	signature := ed25519.Sign(priKey, data)
 	return base64Encoding.EncodeToString(signature), nil
@@ -126,5 +127,6 @@ func VerifySignMap(pubKey []byte, mp map[string]string, signature string) (bool,
 	}
 
 	data := StringfyMap(mp)
+	fmt.Printf("data to verify: %s\n", string(data))
 	return ed25519.Verify(pubKey, data, sig), nil
 }

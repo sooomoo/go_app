@@ -31,10 +31,10 @@ func CryptoMiddleware() gin.HandlerFunc {
 		}
 
 		// Get 请求不需要解密
-		if c.Request.Method != http.MethodGet {
+		if c.Request.Method != http.MethodGet && c.Request.ContentLength > 0 {
 			// 解密
 			contentType := c.GetHeader(headers.HeaderContentType)
-			if !strings.EqualFold(contentType, httpex.ContentTypeEncrypted) {
+			if !strings.HasPrefix(contentType, httpex.ContentTypeEncrypted) {
 				c.AbortWithStatus(400)
 				return
 			}

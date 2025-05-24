@@ -27,6 +27,8 @@ func SignMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		method := strings.ToUpper(c.Request.Method)
+
 		queryStr := string(crypto.StringfyMap(convertValuesToMap(c.Request.URL.Query())))
 		// 1. 验证请求是否签名是否正确
 		dataToVerify := map[string]string{
@@ -34,7 +36,7 @@ func SignMiddleware() gin.HandlerFunc {
 			"nonce":         extendData.Nonce,
 			"timestamp":     extendData.Timestamp,
 			"platform":      fmt.Sprintf("%d", extendData.Platform),
-			"method":        c.Request.Method,
+			"method":        method,
 			"path":          c.Request.URL.Path,
 			"query":         queryStr,
 			"authorization": authorization,
@@ -43,7 +45,7 @@ func SignMiddleware() gin.HandlerFunc {
 			delete(dataToVerify, "authorization")
 		}
 
-		if c.Request.Method != http.MethodGet {
+		if c.Request.Method != http.MethodGet && c.Request.ContentLength > 0 {
 			reqBody, err := io.ReadAll(c.Request.Body)
 			if err != nil {
 				c.AbortWithStatus(500)
@@ -93,7 +95,7 @@ func SignMiddleware() gin.HandlerFunc {
 			"nonce":     respNonce,
 			"platform":  fmt.Sprintf("%d", extendData.Platform),
 			"timestamp": respTimestamp,
-			"method":    c.Request.Method,
+			"method":    method,
 			"path":      c.Request.URL.Path,
 			"query":     queryStr,
 			"body":      string(responseBody),

@@ -33,6 +33,7 @@ const (
 	HeaderSession       string = "X-Session"
 	HeaderRawType       string = "X-RawType"
 	HeaderClientId      string = "X-Client"
+	HeaderCsrfToken     string = "X-CSRF"
 )
 
 func GetTrimmedHeader(ctx *gin.Context, name string) string {
@@ -57,7 +58,9 @@ func GetAccessToken(ctx *gin.Context) string {
 	// web单独处理
 	if pla == core.Web {
 		token, _ := ctx.Cookie(CookieKeyAccessToken)
-		return token
+		if len(token) > 0 {
+			return token
+		}
 	}
 
 	// 从请求头中获取令牌
@@ -72,7 +75,9 @@ func GetRefreshToken(ctx *gin.Context) string {
 	// web单独处理
 	if GetPlatform(ctx) == core.Web {
 		token, _ := ctx.Cookie(CookieKeyRefreshToken)
-		return token
+		if len(token) > 0 {
+			return token
+		}
 	}
 
 	// 非 web 请求的 refresh-token 应该在请求体中加密传输
@@ -83,7 +88,9 @@ func GetClientId(ctx *gin.Context) string {
 	// web单独处理
 	if GetPlatform(ctx) == core.Web {
 		token, _ := ctx.Cookie(CookieKeyClientId)
-		return token
+		if len(token) > 0 {
+			return token
+		}
 	}
 
 	// 从请求头中获取ClientId
@@ -109,11 +116,11 @@ func GetUserAgentHashed(ctx *gin.Context) string {
 }
 
 func GetCsrfToken(ctx *gin.Context) string {
-	csrf, err := ctx.Cookie(CookieKeyCsrfToken)
-	if err != nil {
-		return ""
+	csrf, _ := ctx.Cookie(CookieKeyCsrfToken)
+	if len(csrf) > 0 {
+		return csrf
 	}
-	return csrf
+	return ctx.GetHeader(HeaderCsrfToken)
 }
 
 const (
