@@ -168,8 +168,20 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 	return &AuthResponseDto{Code: RespCodeSucceed, Data: &AuthResponse{accessToken, refreshToken}}
 }
 
+type RefreshTokenRequest struct {
+	Token string `json:"token"`
+}
+
 func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 	token := headers.GetRefreshToken(ctx)
+	if len(token) == 0 {
+		var req RefreshTokenRequest
+		reqErr := ctx.ShouldBindJSON(&req)
+		if reqErr == nil {
+			token = req.Token
+		}
+	}
+
 	if len(token) == 0 {
 		ctx.AbortWithStatus(401)
 		return nil
