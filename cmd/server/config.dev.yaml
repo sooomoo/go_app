@@ -54,7 +54,7 @@ authenticator:
   jwt:
     issuer: niu
     secret: 1234567890
-    access_ttl: 60 # 120分钟
+    access_ttl: 60 # 60分钟
     refresh_ttl: 43200 # 30天
     cookie_domain: 
     cookie_secure: true

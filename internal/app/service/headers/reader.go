@@ -3,13 +3,13 @@ package headers
 import (
 	"errors"
 	"goapp/internal/app/global"
+	"goapp/internal/app/repository"
 	"goapp/internal/pkg/crypto"
 	"goapp/pkg/core"
 	"goapp/pkg/cryptos"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 const (
@@ -106,9 +106,13 @@ func GetSessionId(ctx *gin.Context) string {
 	return sid
 }
 
-func GetUserAgentHashed(ctx *gin.Context) string {
+func GetUserAgent(ctx *gin.Context) string {
 	ua := ctx.Request.Header.Get(HeaderUserAgent)
-	ua = strings.TrimSpace(ua)
+	return strings.TrimSpace(ua)
+}
+
+func GetUserAgentHashed(ctx *gin.Context) string {
+	ua := GetUserAgent(ctx)
 	if len(ua) > 0 {
 		return cryptos.HashSha256(ua)
 	}
@@ -236,26 +240,18 @@ func GetClientKeys(ctx *gin.Context) *SessionClientKeys {
 	return keys
 }
 
-type AuthorizedClaims struct {
-	UserId               int           `json:"u"`
-	Platform             core.Platform `json:"p"`
-	UserAgent            string        `json:"g"`
-	ClientId             string        `json:"c"`
-	jwt.RegisteredClaims               // 包含标准字段如 exp（过期时间）、iss（签发者）等
-}
-
-func GetClaims(c *gin.Context) *AuthorizedClaims {
+func GetClaims(c *gin.Context) *repository.AuthorizedClaims {
 	val, exist := c.Get(KeyClaims)
 	if !exist {
 		return nil
 	}
-	claims, ok := val.(*AuthorizedClaims)
+	claims, ok := val.(*repository.AuthorizedClaims)
 	if !ok {
 		return nil
 	}
 	return claims
 }
 
-func SaveClaims(ctx *gin.Context, claims *AuthorizedClaims) {
+func SaveClaims(ctx *gin.Context, claims *repository.AuthorizedClaims) {
 	ctx.Set(KeyClaims, claims)
 }

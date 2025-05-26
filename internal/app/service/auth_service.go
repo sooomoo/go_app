@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/mojocn/base64Captcha"
 )
 
@@ -132,25 +131,8 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 		return nil
 	}
 
-	clientId := headers.GetClientId(ctx)
-	platform := headers.GetPlatform(ctx)
-	ua := headers.GetUserAgentHashed(ctx)
-
-	// 生成token
-	accessToken, refreshToken, err := a.GenerateTokenPair(int(user.ID), clientId, ua, platform)
-	if err != nil {
-		ctx.AbortWithError(500, err)
-		return nil
-	}
-
-	// 将这些Token与该用户绑定
-	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, &repository.RefreshTokenCredentials{
-		UserId:    int(user.ID),
-		Platform:  platform,
-		Ip:        ip,
-		UserAgent: ua,
-		ClientId:  clientId,
-	}, time.Duration(global.AppConfig.Authenticator.Jwt.RefreshTtl)*time.Minute)
+	// 生成token, 将这些Token与该用户绑定
+	accessToken, refreshToken, err := a.GenerateTokenPair(ctx, int(user.ID))
 	if err != nil {
 		ctx.AbortWithError(500, err)
 		return nil
@@ -160,7 +142,8 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
 	ctx.SetCookie(headers.CookieKeyCsrfToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 
-	if platform == core.Web {
+	if headers.GetPlatform(ctx) == core.Web {
+		clientId := headers.GetClientId(ctx)
 		a.setupAuthorizedCookie(ctx, clientId, accessToken, refreshToken)
 		return &AuthResponseDto{Code: RespCodeSucceed}
 	}
@@ -197,41 +180,26 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 		return nil
 	}
 
-	ip := ctx.ClientIP()
-	clientId := headers.GetClientId(ctx)
-	platform := headers.GetPlatform(ctx)
-	ua := headers.GetUserAgentHashed(ctx)
-	if clientId != credentials.ClientId || platform != credentials.Platform || ua != credentials.UserAgent {
+	if !a.IsClaimsValid(ctx, credentials) {
 		ctx.AbortWithStatus(401) // client need re-login
 		return nil
 	}
 
-	err := a.DeleteRefreshToken(ctx, token)
+	err := a.RevokeRefreshToken(ctx, token)
 	if err != nil {
 		ctx.AbortWithError(500, err)
 		return nil
 	}
 
 	// 轮换 clientid 与 refresh token
-	accessToken, refreshToken, err := a.GenerateTokenPair(int(credentials.UserId), clientId, ua, platform)
+	accessToken, refreshToken, err := a.GenerateTokenPair(ctx, int(credentials.UserId))
 	if err != nil {
 		ctx.AbortWithStatus(401) // token 已经删除，此时只能重新登录
 		return nil
 	}
 
-	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, &repository.RefreshTokenCredentials{
-		UserId:    credentials.UserId,
-		Platform:  platform,
-		Ip:        ip,
-		UserAgent: ua,
-		ClientId:  clientId,
-	}, time.Duration(global.AppConfig.Authenticator.Jwt.RefreshTtl)*time.Minute)
-	if err != nil {
-		ctx.AbortWithStatus(401) // token 已经删除，此时只能重新登录
-		return nil
-	}
-
-	if platform == core.Web {
+	if headers.GetPlatform(ctx) == core.Web {
+		clientId := headers.GetClientId(ctx)
 		a.setupAuthorizedCookie(ctx, clientId, accessToken, refreshToken)
 		return &AuthResponseDto{Code: RespCodeSucceed}
 	}
@@ -244,7 +212,7 @@ func (a *AuthService) Logout(ctx *gin.Context) {
 	refreshToken := headers.GetRefreshToken(ctx)
 
 	a.RevokeAccessToken(ctx, accessToken)
-	a.DeleteRefreshToken(ctx, refreshToken)
+	a.RevokeRefreshToken(ctx, refreshToken)
 
 	// 关闭所有的 hub
 	// TODO: 可能不需要，客户端主动关闭也行
@@ -267,84 +235,64 @@ func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, clientId, accessTo
 	ctx.SetCookie(headers.CookieKeyClientId, clientId, cliMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 }
 
-func (a *AuthService) IsClaimsValid(ctx *gin.Context, claims *headers.AuthorizedClaims) bool {
+func (a *AuthService) IsClaimsValid(ctx *gin.Context, claims *repository.AuthorizedClaims) bool {
 	clientId := headers.GetClientId(ctx)
 	platform := headers.GetPlatform(ctx)
 	ua := headers.GetUserAgentHashed(ctx)
-	return clientId == claims.ClientId && platform == claims.Platform && ua == claims.UserAgent
+	return clientId == claims.ClientId && platform == claims.Platform && ua == claims.UserAgentHashed
 }
 
 func (a *AuthService) RevokeAccessToken(ctx context.Context, token string) error {
 	if len(token) == 0 {
 		return nil
 	}
-	expire := time.Duration(global.AppConfig.Authenticator.Jwt.AccessTtl) * time.Minute
-	return a.authRepo.SaveRevokedToken(ctx, token, expire) // 调用Repository层的方法
+	return a.authRepo.DeleteAccessToken(ctx, token) // 调用Repository层的方法
 }
 
-func (a *AuthService) DeleteRefreshToken(ctx context.Context, refreshToken string) error {
+func (a *AuthService) RevokeRefreshToken(ctx context.Context, refreshToken string) error {
 	if len(refreshToken) == 0 {
 		return nil
 	}
 	return a.authRepo.DeleteRefreshToken(ctx, refreshToken) // 调用Repository层的方法
 }
 
-func (a *AuthService) IsTokenRevoked(ctx context.Context, token string) (bool, error) {
-	return a.authRepo.IsTokenRevoked(ctx, token) // 调用Repository层的方法
-}
-
-func (a *AuthService) GenerateTokenPair(userID int, clientId, userAgent string, platform core.Platform) (string, string, error) {
-	accessToken, err := a.GenerateAccessToken(userID, clientId, userAgent, platform)
+func (a *AuthService) GenerateTokenPair(ctx *gin.Context, userID int) (string, string, error) {
+	clientId := headers.GetClientId(ctx)
+	platform := headers.GetPlatform(ctx)
+	accessToken, claims, err := a.GenerateAccessToken(ctx, userID, clientId, platform)
 	if err != nil {
 		return "", "", err
 	}
 	refreshToken := core.NewUUIDWithoutDash()
+	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, claims, time.Duration(global.AppConfig.Authenticator.Jwt.RefreshTtl)*time.Minute)
+	if err != nil {
+		return "", "", err
+	}
 	return accessToken, refreshToken, nil
 }
 
-func (a *AuthService) GenerateAccessToken(userID int, clientId, userAgent string, platform core.Platform) (string, error) {
-	jwtConfig := global.AppConfig.Authenticator.Jwt
-	if len(jwtConfig.Secret) == 0 {
-		panic("jwtSecret is empty")
+func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID int, clientId string, platform core.Platform) (string, *repository.AuthorizedClaims, error) {
+	if len(clientId) == 0 || platform == core.Unspecify {
+		return "", nil, errors.New("invalid args")
 	}
-	if len(clientId) == 0 || len(userAgent) == 0 || platform == core.Unspecify {
-		return "", errors.New("invalid args")
+	token := core.NewUUIDWithoutDash()
+	claims := repository.AuthorizedClaims{
+		UserId:          userID,
+		Platform:        platform,
+		UserAgent:       headers.GetUserAgent(ctx),
+		ClientId:        clientId,
+		UserAgentHashed: headers.GetUserAgentHashed(ctx),
+		Ip:              ctx.ClientIP(),
 	}
-	claims := headers.AuthorizedClaims{
-		UserId:    userID,
-		Platform:  platform,
-		UserAgent: userAgent,
-		ClientId:  clientId,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(jwtConfig.AccessTtl) * time.Minute)), // 过期时间
-			Issuer:    jwtConfig.Issuer,                                                                     // 签发者
-			ID:        core.NewUUIDWithoutDash(),
-		},
+	err := a.authRepo.SaveAccessToken(ctx, token, time.Duration(global.AppConfig.Authenticator.Jwt.AccessTtl)*time.Minute, &claims)
+	if err != nil {
+		return "", nil, err
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(jwtConfig.Secret)) // 使用 HMAC-SHA256 算法签名
+	return token, &claims, nil
 }
 
-func (a *AuthService) ParseAccessToken(tokenString string) (*headers.AuthorizedClaims, error) {
-	jwtConfig := global.AppConfig.Authenticator.Jwt
-	if len(jwtConfig.Secret) == 0 {
-		panic("jwtSecret is empty")
-	}
-	token, err := jwt.ParseWithClaims(
-		tokenString,
-		&headers.AuthorizedClaims{},
-		func(token *jwt.Token) (any, error) {
-			return []byte(jwtConfig.Secret), nil // 返回用于验证签名的密钥
-		},
-		jwt.WithExpirationRequired(),
-	)
-	if err != nil {
-		return nil, err
-	}
-	if claims, ok := token.Claims.(*headers.AuthorizedClaims); ok && token.Valid {
-		return claims, nil // 验证通过后返回自定义声明数据
-	}
-	return nil, err
+func (a *AuthService) ParseAccessToken(ctx context.Context, tokenString string) (*repository.AuthorizedClaims, error) {
+	return a.authRepo.GetAccessTokenClaims(ctx, tokenString)
 }
 
 func (d *AuthService) IsReplayRequest(ctx context.Context, requestId, timestamp string) bool {

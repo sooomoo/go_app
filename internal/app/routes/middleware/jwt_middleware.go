@@ -21,17 +21,8 @@ func JwtMiddleware() gin.HandlerFunc {
 				return
 			}
 
-			revoked, err := svc.IsTokenRevoked(c, token)
-			if err != nil {
-				c.AbortWithError(500, errors.New("check token revoke fail"))
-				return
-			}
-			if revoked {
-				c.AbortWithStatus(401)
-				return
-			}
 			// 解析Token
-			claims, err := svc.ParseAccessToken(token)
+			claims, err := svc.ParseAccessToken(c, token)
 			if err != nil || !svc.IsClaimsValid(c, claims) {
 				c.AbortWithError(401, errors.New("invalid token"))
 				return
@@ -39,14 +30,11 @@ func JwtMiddleware() gin.HandlerFunc {
 
 			headers.SaveClaims(c, claims)
 		} else if len(token) > 0 {
-			revoked, _ := svc.IsTokenRevoked(c, token)
-			if !revoked {
-				// 解析Token
-				claims, err := svc.ParseAccessToken(token)
-				if err == nil && svc.IsClaimsValid(c, claims) {
-					// 忽略错误
-					headers.SaveClaims(c, claims)
-				}
+			// 解析Token
+			claims, err := svc.ParseAccessToken(c, token)
+			if err == nil && svc.IsClaimsValid(c, claims) {
+				// 忽略错误
+				headers.SaveClaims(c, claims)
 			}
 		}
 

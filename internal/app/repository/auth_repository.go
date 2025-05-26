@@ -27,9 +27,7 @@ type AuthRepository struct {
 }
 
 func NewAuthRepository(cache *cache.Cache) *AuthRepository {
-	return &AuthRepository{
-		cache: cache,
-	}
+	return &AuthRepository{cache: cache}
 }
 
 func (a *AuthRepository) SaveCsrfToken(ctx context.Context, token, val string, expire time.Duration) error {
@@ -52,21 +50,6 @@ func (a *AuthRepository) GetCsrfToken(ctx context.Context, token string, del boo
 	}
 }
 
-func (a *AuthRepository) SaveRevokedToken(ctx context.Context, token string, expire time.Duration) error {
-	// 将Token添加到Redis中,过期时间为token的最大有效时间（比如两小时）
-	// 因为Token在使用时，会验证其有效期
-	_, err := a.cache.Set(ctx, fmt.Sprintf("revoked_token:%s", token), "1", expire)
-	return err
-}
-
-func (a *AuthRepository) IsTokenRevoked(ctx context.Context, token string) (bool, error) {
-	val, err := a.cache.Get(ctx, fmt.Sprintf("revoked_token:%s", token))
-	if err == redis.Nil {
-		return false, nil
-	}
-	return val == "1", err
-}
-
 func (a *AuthRepository) SaveHandledRequest(ctx context.Context, requestId string, expireAfter time.Duration) (bool, error) {
 	exists, err := a.cache.SetNX(ctx, "handled_requests:"+requestId, "1", expireAfter)
 	if err != nil {
@@ -75,15 +58,49 @@ func (a *AuthRepository) SaveHandledRequest(ctx context.Context, requestId strin
 	return exists, nil
 }
 
-type RefreshTokenCredentials struct {
-	UserId    int           `json:"userId"`
-	Platform  core.Platform `json:"platform"`
-	ClientId  string        `json:"clientId"`
-	UserAgent string        `json:"userAgent"`
-	Ip        string        `json:"ip"`
+type AuthorizedClaims struct {
+	UserId          int           `json:"userId"`
+	Platform        core.Platform `json:"platform"`
+	UserAgent       string        `json:"userAgent"`
+	UserAgentHashed string        `json:"userAgentHashed"`
+	ClientId        string        `json:"clientId"`
+	Ip              string        `json:"ip"`
 }
 
-func (a *AuthRepository) SaveRefreshToken(ctx context.Context, token string, credendials *RefreshTokenCredentials, expire time.Duration) error {
+func (a *AuthRepository) SaveAccessToken(ctx context.Context, token string, ttl time.Duration, claims *AuthorizedClaims) error {
+	key := fmt.Sprintf("access_token:%s", token)
+	val, err := json.Marshal(claims)
+	if err != nil {
+		return err
+	}
+
+	_, err = a.cache.Set(ctx, key, val, ttl)
+	return err
+}
+
+func (a *AuthRepository) DeleteAccessToken(ctx context.Context, token string) error {
+	key := fmt.Sprintf("access_token:%s", token)
+	_, err := a.cache.KeyDel(ctx, key)
+	return err
+}
+
+func (a *AuthRepository) GetAccessTokenClaims(ctx context.Context, token string) (*AuthorizedClaims, error) {
+	key := fmt.Sprintf("access_token:%s", token)
+	val, err := a.cache.Get(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+
+	var dto AuthorizedClaims
+	err = json.Unmarshal([]byte(val), &dto)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto, nil
+}
+
+func (a *AuthRepository) SaveRefreshToken(ctx context.Context, token string, credendials *AuthorizedClaims, expire time.Duration) error {
 	key := fmt.Sprintf("refresh_token:%s", token)
 	val, err := json.Marshal(credendials)
 	if err != nil {
@@ -100,14 +117,14 @@ func (a *AuthRepository) DeleteRefreshToken(ctx context.Context, token string) e
 	return err
 }
 
-func (a *AuthRepository) GetRefreshTokenCredential(ctx context.Context, token string) *RefreshTokenCredentials {
+func (a *AuthRepository) GetRefreshTokenCredential(ctx context.Context, token string) *AuthorizedClaims {
 	key := fmt.Sprintf("refresh_token:%s", token)
 	jsonStr, err := a.cache.Get(ctx, key)
 	if err != nil {
 		return nil
 	}
 
-	var dto RefreshTokenCredentials
+	var dto AuthorizedClaims
 	err = json.Unmarshal([]byte(jsonStr), &dto)
 	if err != nil {
 		return nil
