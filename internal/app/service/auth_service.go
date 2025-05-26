@@ -236,6 +236,9 @@ func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, clientId, accessTo
 }
 
 func (a *AuthService) IsClaimsValid(ctx *gin.Context, claims *repository.AuthorizedClaims) bool {
+	if claims == nil {
+		return false
+	}
 	clientId := headers.GetClientId(ctx)
 	platform := headers.GetPlatform(ctx)
 	ua := headers.GetUserAgentHashed(ctx)

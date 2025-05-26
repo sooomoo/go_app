@@ -253,5 +253,8 @@ func GetClaims(c *gin.Context) *repository.AuthorizedClaims {
 }
 
 func SaveClaims(ctx *gin.Context, claims *repository.AuthorizedClaims) {
+	if claims == nil {
+		return
+	}
 	ctx.Set(KeyClaims, claims)
 }

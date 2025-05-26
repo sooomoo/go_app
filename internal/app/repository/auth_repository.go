@@ -85,6 +85,9 @@ func (a *AuthRepository) DeleteAccessToken(ctx context.Context, token string) er
 }
 
 func (a *AuthRepository) GetAccessTokenClaims(ctx context.Context, token string) (*AuthorizedClaims, error) {
+	if len(token) == 0 {
+		return nil, redis.Nil
+	}
 	key := fmt.Sprintf("access_token:%s", token)
 	val, err := a.cache.Get(ctx, key)
 	if err != nil {

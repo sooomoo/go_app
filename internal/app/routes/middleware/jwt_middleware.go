@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 func JwtMiddleware() gin.HandlerFunc {
@@ -15,27 +16,19 @@ func JwtMiddleware() gin.HandlerFunc {
 		svc := service.NewAuthService()
 		// 解析客户端的Token（如果有）
 		token := headers.GetAccessToken(c)
-		if isPathNeedAuth(c.Request.URL.Path) {
-			if len(token) == 0 {
-				c.AbortWithStatus(401)
-				return
-			}
-
-			// 解析Token
-			claims, err := svc.ParseAccessToken(c, token)
-			if err != nil || !svc.IsClaimsValid(c, claims) {
-				c.AbortWithError(401, errors.New("invalid token"))
-				return
-			}
-
+		// 解析Token
+		claims, err := svc.ParseAccessToken(c, token)
+		claimsValid := svc.IsClaimsValid(c, claims)
+		if claimsValid {
 			headers.SaveClaims(c, claims)
-		} else if len(token) > 0 {
-			// 解析Token
-			claims, err := svc.ParseAccessToken(c, token)
-			if err == nil && svc.IsClaimsValid(c, claims) {
-				// 忽略错误
-				headers.SaveClaims(c, claims)
+		}
+		if isPathNeedAuth(c.Request.URL.Path) && !claimsValid {
+			if err != nil && err != redis.Nil {
+				c.AbortWithError(500, errors.New("parse token fail"))
+				return
 			}
+			c.AbortWithError(401, errors.New("invalid token"))
+			return
 		}
 
 		// 解析并存储客户端的Key
