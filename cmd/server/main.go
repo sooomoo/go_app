@@ -63,7 +63,7 @@ func main() {
 	// 它可以通过 subprotocols 来管理版本
 	hubGroup := r.Group("/hub")
 	{
-		hubGroup.Use(middleware.JwtMiddleware())
+		hubGroup.Use(middleware.AuthMiddleware())
 		hubs.RegisterHubs(hubGroup)
 	}
 
@@ -72,7 +72,7 @@ func main() {
 	{
 		v1.Use(middleware.GzipMiddleware())
 		v1.Use(middleware.ReplayMiddleware())
-		v1.Use(middleware.JwtMiddleware())
+		v1.Use(middleware.AuthMiddleware())
 		v1.Use(middleware.SignMiddleware())
 		v1.Use(middleware.CryptoMiddleware())
 		api.RegisterRoutes(v1)
