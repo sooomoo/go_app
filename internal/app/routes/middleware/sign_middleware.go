@@ -6,6 +6,7 @@ import (
 	"goapp/internal/app/service/headers"
 	"goapp/internal/pkg/crypto"
 	"goapp/pkg/core"
+	"goapp/pkg/httpex"
 	"io"
 	"net/http"
 	"net/url"
@@ -74,7 +75,7 @@ func SignMiddleware() gin.HandlerFunc {
 		// 代理响应写入器
 		respBuf := bufferPool.Get()
 		defer bufferPool.Put(respBuf)
-		bodyWriter := &bodyWriter{ResponseWriter: c.Writer, buf: respBuf}
+		bodyWriter := httpex.NewBodyWriter(c.Writer, respBuf)
 		c.Writer = bodyWriter
 
 		c.Next()
@@ -87,7 +88,7 @@ func SignMiddleware() gin.HandlerFunc {
 		}
 
 		// 签名响应体
-		responseBody := bodyWriter.buf.Bytes()
+		responseBody := bodyWriter.GetBytes()
 		respTimestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
 		respNonce := core.NewUUIDWithoutDash()
 		dataToSign := map[string]string{

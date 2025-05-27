@@ -8,34 +8,14 @@ import (
 	"goapp/internal/app/repository"
 	"goapp/internal/app/service/headers"
 	"goapp/pkg/core"
+	"goapp/pkg/strs"
 	"math/rand"
 	"net/http"
-	"regexp"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mojocn/base64Captcha"
-)
-
-type LoginRequest struct {
-	CountryCode string `json:"countryCode" binding:"required"`
-	Phone       string `json:"phone" binding:"required"`
-	ImgCode     string `json:"imgCode" binding:"required"`
-	MsgCode     string `json:"msgCode" binding:"required"`
-	CsrfToken   string `json:"csrfToken" binding:"required"`
-}
-
-// AuthResponse JWT令牌对
-type AuthResponse struct {
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-}
-
-type AuthResponseDto = ResponseDto[*AuthResponse]
-
-const (
-	KeyClaims = "claims"
 )
 
 type AuthService struct {
@@ -54,6 +34,7 @@ type PrepareLoginResponse struct {
 	CsrfToken string `json:"csrfToken"`
 	ImageData string `json:"imageData"`
 }
+
 type PrepareLoginResponseDto = ResponseDto[*PrepareLoginResponse]
 
 var captchaDriver = base64Captcha.NewDriverDigit(40, 80, 4, 0.5, 60)
@@ -85,10 +66,21 @@ func (a *AuthService) PrepareLogin(ctx *gin.Context) *PrepareLoginResponseDto {
 	return &PrepareLoginResponseDto{Code: RespCodeSucceed, Data: &PrepareLoginResponse{CsrfToken: csrfToken, ImageData: base64Str}}
 }
 
-var (
-	countryCodeRegex = regexp.MustCompile(`^\d{3}$`)
-	phoneRegex       = regexp.MustCompile(`^1[3-9]\d{9}$`)
-)
+type LoginRequest struct {
+	CountryCode string `json:"countryCode" binding:"required"`
+	Phone       string `json:"phone" binding:"required"`
+	ImgCode     string `json:"imgCode" binding:"required"`
+	MsgCode     string `json:"msgCode" binding:"required"`
+	CsrfToken   string `json:"csrfToken" binding:"required"`
+}
+
+// AuthResponse JWT令牌对
+type AuthResponse struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+}
+
+type AuthResponseDto = ResponseDto[*AuthResponse]
 
 func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthResponseDto {
 	csrfToken := headers.GetCsrfToken(ctx)
@@ -96,7 +88,7 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 		ctx.AbortWithStatus(400)
 		return nil
 	}
-	if !countryCodeRegex.MatchString(req.CountryCode) || !phoneRegex.MatchString(req.Phone) {
+	if !strs.IsCountryCode(req.CountryCode) || !strs.IsCellPhone(req.Phone) {
 		ctx.AbortWithStatus(400)
 		return nil
 	}

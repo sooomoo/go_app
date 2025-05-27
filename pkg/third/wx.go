@@ -2,7 +2,7 @@ package third
 
 import (
 	"fmt"
-	"goapp/pkg/http"
+	"goapp/pkg/httpex"
 )
 
 type wxAuthResp struct {
@@ -21,7 +21,7 @@ func GetWxOpenId(code, appId, appSecret string) (string, error) {
 	link := fmt.Sprintf("https://api.weixin.qq.com/sns/oauth2/access_token?appid=%v&secret=%v&code=%v&grant_type=authorization_code", appId, appSecret, code)
 
 	headers := make(map[string]string)
-	err := http.HttpGetJson(link, http.NewHttpOptions(headers), &resp)
+	err := httpex.HttpGetJson(link, httpex.NewHttpOptions(headers), &resp)
 	if err != nil {
 		return "", err
 	}

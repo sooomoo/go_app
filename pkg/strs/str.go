@@ -3,7 +3,6 @@ package strs
 import (
 	"regexp"
 	"strconv"
-	"strings"
 	"unicode/utf8"
 )
 
@@ -34,28 +33,23 @@ const (
 )
 
 var (
-	cellphoneRegex = regexp.MustCompile(`^1[345789]{1}\d{9}$`)  // 手机号正则表达式
-	telephoneRegex = regexp.MustCompile(`^(\d{3,4}-)?\d{6,8}$`) // 座机号码
-	urlRegex       = regexp.MustCompile(urlRegexStr)            // URL
-	emailRegex     = regexp.MustCompile(emailRegexStr)          // Email Address
-	colorRegex     = regexp.MustCompile(`^#[a-fA-F0-9]{8}$`)    // 颜色值
-	numberRegex    = regexp.MustCompile(`^[0-9]*$`)             // 数字
+	countryCodeRegex = regexp.MustCompile(`^\d{3}$`)              // 国家代码正则表达式
+	phoneRegex       = regexp.MustCompile(`^1[3-9]\d{9}$`)        // 手机号正则表达式
+	telephoneRegex   = regexp.MustCompile(`^(\d{3,4}-)?\d{6,8}$`) // 座机号码
+	urlRegex         = regexp.MustCompile(urlRegexStr)            // URL
+	emailRegex       = regexp.MustCompile(emailRegexStr)          // Email Address
+	colorRegex       = regexp.MustCompile(`^#[a-fA-F0-9]{8}$`)    // 颜色值
+	numberRegex      = regexp.MustCompile(`^[0-9]*$`)             // 数字
 )
 
 // 是否是有效的手机号
 func IsCellPhone(value string) bool {
-	return cellphoneRegex.MatchString(value)
+	return phoneRegex.MatchString(value)
 }
 
 // 是否是有效的国家代码，如中国为 86
 func IsCountryCode(value string) bool {
-	if len(value) <= 0 || len(value) > 4 || strings.Contains(value, "+") || strings.HasPrefix(value, "0") {
-		return false
-	}
-
-	// 国家代码都是数字
-	_, err := strconv.Atoi(value)
-	return err == nil
+	return countryCodeRegex.MatchString(value)
 }
 
 // 是否是有效的座机号

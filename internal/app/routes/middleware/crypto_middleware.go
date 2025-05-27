@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	httpex "goapp/pkg/http"
+	"goapp/pkg/httpex"
 
 	"github.com/gin-gonic/gin"
 )
@@ -62,7 +62,7 @@ func CryptoMiddleware() gin.HandlerFunc {
 		// 代理响应写入器
 		respBuf := bufferPool.Get()
 		defer bufferPool.Put(respBuf)
-		bodyWriter := &bodyWriter{ResponseWriter: c.Writer, buf: respBuf}
+		bodyWriter := httpex.NewBodyWriter(c.Writer, respBuf)
 		c.Writer = bodyWriter
 
 		c.Next()
@@ -75,7 +75,7 @@ func CryptoMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		responseBody := bodyWriter.buf.Bytes()
+		responseBody := bodyWriter.GetBytes()
 		contentType := c.Writer.Header().Get(headers.HeaderContentType)
 		// 仅加密 json 和文本响应
 		if strings.Contains(contentType, "application/json") || strings.Contains(contentType, "text/plain") {
