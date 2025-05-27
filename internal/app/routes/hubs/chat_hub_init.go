@@ -56,7 +56,8 @@ func StartChatHub(pool core.CoroutinePool, config *config.HubConfig) (*hub.Hub, 
 					handleLineError(e)
 				}
 			default:
-				continue
+				// 如果没有待处理的消息，休眠 10ms
+				time.Sleep(time.Millisecond * 10)
 			}
 		}
 	})
