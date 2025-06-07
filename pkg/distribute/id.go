@@ -36,10 +36,9 @@ func (d *Id) NewGenerator(ctx context.Context, key string, start int) (*IdGenera
 		return idGen, nil
 	}
 	idGen = &IdGenerator{
-		onceInitIdFac: sync.Once{},
-		client:        d.client,
-		key:           key,
-		start:         start,
+		client: d.client,
+		key:    key,
+		start:  start,
 	}
 	err := idGen.init(ctx)
 	if err != nil {
@@ -58,17 +57,13 @@ func (d *Id) Close() {
 }
 
 type IdGenerator struct {
-	client        *redis.Client
-	onceInitIdFac sync.Once
-	key           string
-	start         int
+	client *redis.Client
+	key    string
+	start  int
 }
 
 func (d *IdGenerator) init(ctx context.Context) error {
-	var err error
-	d.onceInitIdFac.Do(func() {
-		_, err = d.client.SetNX(ctx, d.key, d.start, time.Duration(0)).Result()
-	})
+	_, err := d.client.SetNX(ctx, d.key, d.start, time.Duration(0)).Result()
 
 	return err
 }

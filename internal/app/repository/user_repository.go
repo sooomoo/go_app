@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"goapp/internal/app/global"
+	"goapp/internal/app"
 	"goapp/internal/app/repository/dao/model"
 	"goapp/internal/app/repository/dao/query"
 	"goapp/pkg/cache"
@@ -35,7 +35,7 @@ func NewUserRepository(cache *cache.Cache) *UserRepository {
 }
 
 func (r *UserRepository) Upsert(ctx context.Context, phone, ip string) (*model.User, error) {
-	userId, err := global.UserIdGenerator.Next(ctx)
+	userId, err := app.GetGlobal().GetIdGenerator().NextUserId(ctx)
 	if err != nil {
 		return nil, err
 	}

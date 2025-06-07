@@ -5,7 +5,7 @@ import (
 )
 
 func RegisterRoutes(r *gin.RouterGroup) {
-	RegisterAuthHandlers(r)
-	RegisterUserRoutes(r)
-	RegisterAdminRoutes(r)
+	authHandler.RegisterRoutes(r)
+	adminHandler.RegisterRoutes(r)
+	userHandler.RegisterRoutes(r)
 }

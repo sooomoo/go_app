@@ -3,8 +3,8 @@ package middleware
 import (
 	"errors"
 	"fmt"
+	"goapp/internal/app/service/crypto"
 	"goapp/internal/app/service/headers"
-	"goapp/internal/pkg/crypto"
 	"goapp/pkg/core"
 	"goapp/pkg/httpex"
 	"io"

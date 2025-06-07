@@ -1,12 +1,7 @@
-package config
+package app
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/redis/go-redis/v9"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 type AppConfig struct {
@@ -115,32 +110,4 @@ type CorsConfig struct {
 	AllowCredentials bool     `mapstructure:"allow_credentials"`
 	MaxAge           int64    `mapstructure:"max_age"` // in minute
 	AllowWebSockets  bool     `mapstructure:"allow_web_sockets"`
-}
-
-func Load() (*AppConfig, error) {
-	env := os.Getenv("env")
-	// 设置配置文件名称和类型
-	viper.SetConfigName(fmt.Sprintf("config.%s", env))
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
-	// 读取配置文件
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			log.Fatal().Msgf("配置文件未找到: %v", err)
-		} else {
-			log.Fatal().Msgf("读取配置文件出错: %v", err)
-		}
-	}
-
-	// 解析配置到结构体
-	var config AppConfig
-	err := viper.Unmarshal(&config)
-	if err != nil {
-		log.Fatal().Msgf("无法解析配置文件: %v", err)
-	}
-
-	// 打印初始配置
-	log.Info().Any("配置如下", config).Msg("配置加载完成。。。")
-
-	return &config, nil
 }

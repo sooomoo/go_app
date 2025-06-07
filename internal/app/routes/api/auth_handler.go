@@ -6,19 +6,26 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterAuthHandlers(r *gin.RouterGroup) {
-	authGroup := r.Group("/auth", func(c *gin.Context) {
+type AuthHandler struct {
+}
+
+var (
+	authHandler *AuthHandler = &AuthHandler{}
+)
+
+func (h *AuthHandler) RegisterRoutes(router *gin.RouterGroup) {
+	authGroup := router.Group("/auth", func(c *gin.Context) {
 		// TODO: 此处还需要验证该用户的角色
 		c.Next()
 	})
 
-	authGroup.POST("/login/prepare", handleLoginPrepare)
-	authGroup.POST("/login/do", handleLoginDo)
-	authGroup.POST("/refresh", handleRefresh)
-	authGroup.POST("/logout", handleLogout)
+	authGroup.POST("/login/prepare", h.handleLoginPrepare)
+	authGroup.POST("/login/do", h.handleLoginDo)
+	authGroup.POST("/refresh", h.handleRefresh)
+	authGroup.POST("/logout", h.handleLogout)
 }
 
-func handleLoginPrepare(c *gin.Context) {
+func (h *AuthHandler) handleLoginPrepare(c *gin.Context) {
 	svr := service.NewAuthService()
 	reply := svr.PrepareLogin(c)
 	if c.IsAborted() {
@@ -29,7 +36,7 @@ func handleLoginPrepare(c *gin.Context) {
 }
 
 // 手机验证码登录
-func handleLoginDo(c *gin.Context) {
+func (h *AuthHandler) handleLoginDo(c *gin.Context) {
 	var req service.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(200, service.NewResponseDtoNoData(service.RespCodeInvalidArgs, ""))
@@ -46,7 +53,7 @@ func handleLoginDo(c *gin.Context) {
 }
 
 // 刷新Token
-func handleRefresh(c *gin.Context) {
+func (h *AuthHandler) handleRefresh(c *gin.Context) {
 	svr := service.NewAuthService()
 	reply := svr.RefreshToken(c)
 	if c.IsAborted() {
@@ -56,7 +63,7 @@ func handleRefresh(c *gin.Context) {
 }
 
 // 退出登录
-func handleLogout(c *gin.Context) {
+func (h *AuthHandler) handleLogout(c *gin.Context) {
 	svr := service.NewAuthService()
 	svr.Logout(c)
 	c.Status(200)

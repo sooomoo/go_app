@@ -6,8 +6,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterAdminRoutes(r *gin.RouterGroup) {
-	adminGroup := r.Group("/admin", func(c *gin.Context) {
+type AdminHandler struct {
+}
+
+var (
+	adminHandler *AdminHandler = &AdminHandler{}
+)
+
+func (h *AdminHandler) RegisterRoutes(router *gin.RouterGroup) {
+	adminGroup := router.Group("/admin", func(c *gin.Context) {
 		if c.Request.Header.Get("Authorization") != "foobar" {
 			c.AbortWithStatus(http.StatusForbidden)
 			return

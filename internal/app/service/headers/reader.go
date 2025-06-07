@@ -2,9 +2,9 @@ package headers
 
 import (
 	"errors"
-	"goapp/internal/app/global"
+	"goapp/internal/app"
 	"goapp/internal/app/repository"
-	"goapp/internal/pkg/crypto"
+	"goapp/internal/app/service/crypto"
 	"goapp/pkg/core"
 	"goapp/pkg/cryptos"
 	"strings"
@@ -203,8 +203,8 @@ func SaveClientKeys(ctx *gin.Context) *SessionClientKeys {
 
 	signPubKey := raw[24:56]
 	boxPubKey := raw[56:]
-	if global.AppConfig.Authenticator.EnableCrypto {
-		shareKey, err := crypto.NegotiateShareKey(boxPubKey, global.AppConfig.Authenticator.BoxKeyPair.PrivateKey)
+	if app.GetGlobal().GetAuthConfig().EnableCrypto {
+		shareKey, err := crypto.NegotiateShareKey(boxPubKey, app.GetGlobal().GetAuthConfig().BoxKeyPair.PrivateKey)
 		if err != nil {
 			ctx.AbortWithError(400, errors.New("negotiate fail"))
 			return nil

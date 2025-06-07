@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"errors"
-	"goapp/internal/app/global"
+	"goapp/internal/app"
 	"goapp/internal/app/service"
 	"goapp/internal/app/service/headers"
 	"strings"
@@ -42,12 +42,12 @@ func AuthMiddleware() gin.HandlerFunc {
 }
 
 func isPathNeedAuth(path string) bool {
-	for _, p := range global.AppConfig.Authenticator.PathsNotAuth {
+	for _, p := range app.GetGlobal().GetAuthConfig().PathsNotAuth {
 		if strings.EqualFold(p, path) {
 			return false
 		}
 	}
-	for _, p := range global.AppConfig.Authenticator.PathsNeedAuth {
+	for _, p := range app.GetGlobal().GetAuthConfig().PathsNeedAuth {
 		if strings.Contains(p, "*") {
 			return true
 		}

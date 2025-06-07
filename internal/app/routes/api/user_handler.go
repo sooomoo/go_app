@@ -6,15 +6,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterUserRoutes(r *gin.RouterGroup) {
-	g := r.Group("/user")
-	g.GET("/info", handleGetSelfUserInfo)
+type UserHandler struct {
+}
+
+var (
+	userHandler *UserHandler = &UserHandler{}
+)
+
+func (u *UserHandler) RegisterRoutes(router *gin.RouterGroup) {
+	g := router.Group("/user")
+	g.GET("/info", u.handleGetSelfUserInfo)
 	g.POST("/:id", func(ctx *gin.Context) {
 		// update user info
 	})
 }
 
-func handleGetSelfUserInfo(c *gin.Context) {
+func (u *UserHandler) handleGetSelfUserInfo(c *gin.Context) {
 	user, err := service.NewUserService().GetSelfInfo(c)
 	if err != nil {
 		c.AbortWithError(500, err)

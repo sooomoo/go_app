@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"goapp/internal/app/global"
+	"goapp/internal/app"
 	"goapp/internal/app/repository"
 	"goapp/internal/app/service/headers"
 	"goapp/pkg/core"
@@ -25,8 +25,8 @@ type AuthService struct {
 
 func NewAuthService() *AuthService {
 	return &AuthService{
-		authRepo: repository.NewAuthRepository(global.Cache),
-		userRepo: repository.NewUserRepository(global.Cache),
+		authRepo: repository.NewAuthRepository(app.GetGlobal().GetCache()),
+		userRepo: repository.NewUserRepository(app.GetGlobal().GetCache()),
 	}
 }
 
@@ -59,7 +59,7 @@ func (a *AuthService) PrepareLogin(ctx *gin.Context) *PrepareLoginResponseDto {
 		ctx.AbortWithError(500, err)
 		return nil
 	}
-	jwtConfig := global.AppConfig.Authenticator.Jwt
+	jwtConfig := app.GetGlobal().GetAuthConfig().Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
 	ctx.SetCookie(headers.CookieKeyCsrfToken, csrfToken, int(dur.Seconds()), "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 	// 返回验证码和csrf token
@@ -130,7 +130,7 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 		return nil
 	}
 
-	jwtConfig := global.AppConfig.Authenticator.Jwt
+	jwtConfig := app.GetGlobal().GetAuthConfig().Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
 	ctx.SetCookie(headers.CookieKeyCsrfToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 
@@ -210,14 +210,14 @@ func (a *AuthService) Logout(ctx *gin.Context) {
 	// TODO: 可能不需要，客户端主动关闭也行
 
 	// 删除 cookie
-	jwtConfig := global.AppConfig.Authenticator.Jwt
+	jwtConfig := app.GetGlobal().GetAuthConfig().Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
 	ctx.SetCookie(headers.CookieKeyAccessToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 	ctx.SetCookie(headers.CookieKeyRefreshToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 }
 
 func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, clientId, accessToken, refreshToken string) {
-	jwtConfig := global.AppConfig.Authenticator.Jwt
+	jwtConfig := app.GetGlobal().GetAuthConfig().Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
 	atkMaxAge := int((time.Duration(jwtConfig.AccessTtl) * time.Minute).Seconds())
 	rtkMaxAge := int((time.Duration(jwtConfig.RefreshTtl) * time.Minute).Seconds())
@@ -259,7 +259,7 @@ func (a *AuthService) GenerateTokenPair(ctx *gin.Context, userID int) (string, s
 		return "", "", err
 	}
 	refreshToken := core.NewUUIDWithoutDash()
-	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, claims, time.Duration(global.AppConfig.Authenticator.Jwt.RefreshTtl)*time.Minute)
+	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, claims, time.Duration(app.GetGlobal().GetAuthConfig().Jwt.RefreshTtl)*time.Minute)
 	if err != nil {
 		return "", "", err
 	}
@@ -279,7 +279,7 @@ func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID int, clientId
 		UserAgentHashed: headers.GetUserAgentHashed(ctx),
 		Ip:              ctx.ClientIP(),
 	}
-	err := a.authRepo.SaveAccessToken(ctx, token, time.Duration(global.AppConfig.Authenticator.Jwt.AccessTtl)*time.Minute, &claims)
+	err := a.authRepo.SaveAccessToken(ctx, token, time.Duration(app.GetGlobal().GetAuthConfig().Jwt.AccessTtl)*time.Minute, &claims)
 	if err != nil {
 		return "", nil, err
 	}
@@ -296,7 +296,7 @@ func (d *AuthService) IsReplayRequest(ctx context.Context, requestId, timestamp 
 		return true
 	}
 
-	maxInterval := global.AppConfig.Authenticator.ReplayMaxInterval
+	maxInterval := app.GetGlobal().GetAuthConfig().ReplayMaxInterval
 	if time.Now().Unix()-timestampVal > maxInterval {
 		return true // 超过5分钟的请求视为无效
 	}

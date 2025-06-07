@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"goapp/internal/app"
-	"goapp/internal/app/global"
 	"goapp/internal/app/routes/api"
 	"goapp/internal/app/routes/hubs"
 	"goapp/internal/app/routes/middleware"
@@ -27,11 +26,7 @@ func main() {
 	env := os.Getenv("env")
 	log.Info().Msgf("server starting... runnint in [ %s ] mode", env)
 	ctx := context.Background()
-	err := app.Init(ctx)
-	log.Info().Msgf("init result: %v", err)
-	if err != nil {
-		panic(err)
-	}
+	app.GetGlobal().Init(ctx) // 初始化全局变量, 失败时会 panic
 
 	// 设置Gin模式
 	if env == "release" {
@@ -79,7 +74,7 @@ func main() {
 	}
 
 	// 创建HTTP服务器
-	svr := &http.Server{Addr: global.AppConfig.Addr, Handler: r}
+	svr := &http.Server{Addr: app.GetGlobal().GetAppConfig().Addr, Handler: r}
 	// 优雅关闭
 	go func() {
 		if env == "dev" {
@@ -91,9 +86,6 @@ func main() {
 				log.Fatal().Stack().Err(err).Msg("启动服务器失败")
 			}
 		}
-		// if err := svr.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		// 	log.Fatal().Stack().Err(err).Msg("启动服务器失败")
-		// }
 	}()
 
 	core.WaitSysSignal(func() {
@@ -106,7 +98,9 @@ func main() {
 		}
 
 		// 释放资源
-		app.Release()
+		app.GetGlobal().Release()
+
+		<-c.Done()
 		log.Info().Msg("服务器已优雅地关闭")
 	})
 }
