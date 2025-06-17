@@ -3,14 +3,14 @@ worker_id: 1
 addr: 127.0.0.1:8001
 
 database:
-  connect_string: root:abc12345@tcp(192.168.3.95:3306)/niu?charset=utf8mb4&parseTime=True&loc=Local
+  connect_string: root:abc12345@tcp(192.168.3.97:3306)/niu?charset=utf8mb4&parseTime=True&loc=Local
 
 cache:
-  addr: 192.168.3.95:6379
+  addr: 192.168.3.97:6379
   db: 1
 
 locker:
-  addr: 192.168.3.95:6379
+  addr: 192.168.3.97:6379
   db: 2
   ttl: 15 # 15秒
   retry_strategy: linear # linear or exponential
@@ -18,7 +18,7 @@ locker:
   max_retry: 3
 
 queue:
-  addr: 192.168.3.95:6379
+  addr: 192.168.3.97:6379
   db: 3
   xadd_maxlen: 1024 
   batch_size: 100

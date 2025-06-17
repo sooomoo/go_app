@@ -1,1 +1,0 @@
-可以集成OpenTelemetry，实现链路追踪与指标采集
