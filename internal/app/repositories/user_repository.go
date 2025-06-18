@@ -54,6 +54,12 @@ func (r *UserRepository) Upsert(ctx context.Context, phone, ip string) (*model.U
 				CreatedAt: time.Now().Unix(),
 				UpdatedAt: time.Now().Unix(),
 			})
+		} else {
+			// 更新
+			_, err = tx.User.Where(tx.User.Phone.Eq(phone)).Updates(map[string]any{
+				u.UpdatedAt.ColumnName().String(): time.Now().Unix(),
+				u.IPLatest.ColumnName().String():  ip,
+			})
 		}
 
 		return err
