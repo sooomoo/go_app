@@ -39,14 +39,11 @@ func (r *UserRepository) Upsert(ctx context.Context, phone, ip string) (*model.U
 
 	// 使用事务进行 upsert
 	err := query.Q.Transaction(func(tx *query.Query) error {
-		_, err := tx.User.WithContext(ctx).Where(tx.User.Phone.Eq(phone)).First()
-		if err != nil && err != gorm.ErrRecordNotFound {
-			return err
-		}
+		_, err := tx.User.WithContext(ctx).Where(tx.User.Phone.Eq(phone)).Take()
 		if err == gorm.ErrRecordNotFound {
 			// 添加
 			userId := app.GetGlobal().GetIDService().GenUserID()
-			tx.User.Create(&model.User{
+			err = tx.User.Create(&model.User{
 				ID:        int64(userId),
 				Phone:     phone,
 				Name:      phone[3:6] + "****" + phone[10:],
@@ -59,7 +56,7 @@ func (r *UserRepository) Upsert(ctx context.Context, phone, ip string) (*model.U
 			})
 		}
 
-		return nil
+		return err
 	})
 
 	// err := u.WithContext(ctx).Clauses(clause.OnConflict{
@@ -83,9 +80,9 @@ func (r *UserRepository) Upsert(ctx context.Context, phone, ip string) (*model.U
 		return nil, err
 	}
 
-	return u.WithContext(ctx).Where(u.Phone.Eq(phone)).First()
+	return u.WithContext(ctx).Where(u.Phone.Eq(phone)).Take()
 }
 
 func (r *UserRepository) GetById(ctx context.Context, userId int64) (*model.User, error) {
-	return query.User.WithContext(ctx).Where(query.User.ID.Eq(userId)).First()
+	return query.User.WithContext(ctx).Where(query.User.ID.Eq(userId)).Take()
 }
