@@ -3,8 +3,8 @@ package middleware
 import (
 	"errors"
 	"goapp/internal/app"
-	"goapp/internal/app/service"
-	"goapp/internal/app/service/headers"
+	"goapp/internal/app/services"
+	"goapp/internal/app/services/headers"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -13,7 +13,7 @@ import (
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		svc := service.NewAuthService()
+		svc := services.NewAuthService()
 		// 解析客户端的Token（如果有）
 		token := headers.GetAccessToken(c)
 		// 解析Token

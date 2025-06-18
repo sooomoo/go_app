@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"goapp/internal/app"
-	"goapp/internal/app/service/headers"
+	"goapp/internal/app/services/headers"
 	"goapp/pkg/bytes"
 	"goapp/pkg/core"
 	"goapp/pkg/hub"

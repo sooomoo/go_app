@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"errors"
-	"goapp/internal/app/service"
-	"goapp/internal/app/service/headers"
+	"goapp/internal/app/services"
+	"goapp/internal/app/services/headers"
 	"goapp/pkg/core"
 
 	"github.com/gin-gonic/gin"
@@ -11,7 +11,7 @@ import (
 
 func ReplayMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		svc := service.NewAuthService()
+		svc := services.NewAuthService()
 		nonce := headers.GetTrimmedHeader(c, headers.HeaderNonce)
 		timestampStr := headers.GetTrimmedHeader(c, headers.HeaderTimestamp)
 		platform := headers.GetPlatform(c)

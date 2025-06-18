@@ -3,7 +3,8 @@ package app
 import (
 	"context"
 	"fmt"
-	"goapp/internal/app/repository/dao/query"
+	"goapp/internal/app/repositories/dao/query"
+	"goapp/internal/pkg/services"
 	"goapp/pkg/cache"
 	"goapp/pkg/core"
 	"goapp/pkg/distribute"
@@ -19,16 +20,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type IdGenerators struct {
-	did    *distribute.Id
-	userId *distribute.IdGenerator
-}
-
-// 生成一个新的用户ID
-func (i *IdGenerators) NextUserId(ctx context.Context) (int, error) {
-	return i.userId.Next(ctx)
-}
-
 type GlobalInstance struct {
 	mut      sync.RWMutex
 	inited   atomic.Bool
@@ -36,7 +27,7 @@ type GlobalInstance struct {
 
 	pool      core.CoroutinePool
 	cache     *cache.Cache
-	idGen     *IdGenerators
+	idService services.IDService
 	locker    *distribute.Locker
 	queue     distribute.MessageQueue
 	appConfig *AppConfig
@@ -85,21 +76,6 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 		panic(err)
 	}
 
-	did, err := distribute.NewId(ctx, g.appConfig.Cache.GetRedisOption())
-	if err != nil {
-		panic(err)
-	}
-
-	userIdGenerator, err := did.NewGenerator(ctx, "id_gen:user", 100000)
-	if err != nil {
-		panic(err)
-	}
-
-	g.idGen = &IdGenerators{
-		did:    did,
-		userId: userIdGenerator,
-	}
-
 	g.locker, err = distribute.NewLocker(
 		ctx, g.appConfig.Locker.GetRedisOption(),
 		time.Duration(g.appConfig.Locker.Ttl)*time.Second,
@@ -112,6 +88,8 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 	if err != nil {
 		panic(err)
 	}
+
+	g.idService = services.NewDefaultIDService(1)
 }
 
 func (g *GlobalInstance) loadConfig() error {
@@ -160,10 +138,8 @@ func (g *GlobalInstance) Release() {
 
 	g.pool.Release()
 	g.cache.Close()
-	g.idGen.did.Close()
 	g.locker.Close()
 	g.queue.Close()
-
 }
 
 func (g *GlobalInstance) GetDB() *gorm.DB {
@@ -175,8 +151,8 @@ func (g *GlobalInstance) GetCoroutinePool() core.CoroutinePool {
 func (g *GlobalInstance) GetCache() *cache.Cache {
 	return g.cache
 }
-func (g *GlobalInstance) GetIdGenerator() *IdGenerators {
-	return g.idGen
+func (g *GlobalInstance) GetIDService() services.IDService {
+	return g.idService
 }
 func (g *GlobalInstance) GetLocker() *distribute.Locker {
 	return g.locker

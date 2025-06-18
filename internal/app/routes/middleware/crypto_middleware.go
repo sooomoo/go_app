@@ -3,8 +3,8 @@ package middleware
 import (
 	"errors"
 	"goapp/internal/app"
-	"goapp/internal/app/service/crypto"
-	"goapp/internal/app/service/headers"
+	"goapp/internal/app/services/crypto"
+	"goapp/internal/app/services/headers"
 	"io"
 	"net/http"
 	"strconv"

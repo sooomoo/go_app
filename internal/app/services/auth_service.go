@@ -1,12 +1,12 @@
-package service
+package services
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"goapp/internal/app"
-	"goapp/internal/app/repository"
-	"goapp/internal/app/service/headers"
+	"goapp/internal/app/repositories"
+	"goapp/internal/app/services/headers"
 	"goapp/pkg/core"
 	"goapp/pkg/strs"
 	"math/rand"
@@ -19,14 +19,14 @@ import (
 )
 
 type AuthService struct {
-	authRepo *repository.AuthRepository
-	userRepo *repository.UserRepository
+	authRepo *repositories.AuthRepository
+	userRepo *repositories.UserRepository
 }
 
 func NewAuthService() *AuthService {
 	return &AuthService{
-		authRepo: repository.NewAuthRepository(app.GetGlobal().GetCache()),
-		userRepo: repository.NewUserRepository(app.GetGlobal().GetCache()),
+		authRepo: repositories.NewAuthRepository(app.GetGlobal().GetCache()),
+		userRepo: repositories.NewUserRepository(app.GetGlobal().GetCache()),
 	}
 }
 
@@ -118,7 +118,7 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 		return nil
 	}
 	// 该用户已被禁用
-	if user.Status == repository.UserStatusBlock {
+	if user.Status == repositories.UserStatusBlock {
 		ctx.AbortWithStatus(403)
 		return nil
 	}
@@ -227,7 +227,7 @@ func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, clientId, accessTo
 	ctx.SetCookie(headers.CookieKeyClientId, clientId, cliMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
 }
 
-func (a *AuthService) IsClaimsValid(ctx *gin.Context, claims *repository.AuthorizedClaims) bool {
+func (a *AuthService) IsClaimsValid(ctx *gin.Context, claims *repositories.AuthorizedClaims) bool {
 	if claims == nil {
 		return false
 	}
@@ -266,12 +266,12 @@ func (a *AuthService) GenerateTokenPair(ctx *gin.Context, userID int) (string, s
 	return accessToken, refreshToken, nil
 }
 
-func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID int, clientId string, platform core.Platform) (string, *repository.AuthorizedClaims, error) {
+func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID int, clientId string, platform core.Platform) (string, *repositories.AuthorizedClaims, error) {
 	if len(clientId) == 0 || platform == core.Unspecify {
 		return "", nil, errors.New("invalid args")
 	}
 	token := core.NewUUIDWithoutDash()
-	claims := repository.AuthorizedClaims{
+	claims := repositories.AuthorizedClaims{
 		UserId:          userID,
 		Platform:        platform,
 		UserAgent:       headers.GetUserAgent(ctx),
@@ -286,7 +286,7 @@ func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID int, clientId
 	return token, &claims, nil
 }
 
-func (a *AuthService) ParseAccessToken(ctx context.Context, tokenString string) (*repository.AuthorizedClaims, error) {
+func (a *AuthService) ParseAccessToken(ctx context.Context, tokenString string) (*repositories.AuthorizedClaims, error) {
 	return a.authRepo.GetAccessTokenClaims(ctx, tokenString)
 }
 

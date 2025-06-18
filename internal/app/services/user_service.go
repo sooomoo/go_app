@@ -1,21 +1,21 @@
-package service
+package services
 
 import (
 	"errors"
 	"goapp/internal/app"
-	"goapp/internal/app/repository"
-	"goapp/internal/app/service/headers"
+	"goapp/internal/app/repositories"
+	"goapp/internal/app/services/headers"
 
 	"github.com/gin-gonic/gin"
 )
 
 type UserService struct {
-	userRepo *repository.UserRepository
+	userRepo *repositories.UserRepository
 }
 
 func NewUserService() *UserService {
 	return &UserService{
-		userRepo: repository.NewUserRepository(app.GetGlobal().GetCache()),
+		userRepo: repositories.NewUserRepository(app.GetGlobal().GetCache()),
 	}
 }
 

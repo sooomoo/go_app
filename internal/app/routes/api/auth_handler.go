@@ -1,7 +1,7 @@
 package api
 
 import (
-	"goapp/internal/app/service"
+	"goapp/internal/app/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,7 +26,7 @@ func (h *AuthHandler) RegisterRoutes(router *gin.RouterGroup) {
 }
 
 func (h *AuthHandler) handleLoginPrepare(c *gin.Context) {
-	svr := service.NewAuthService()
+	svr := services.NewAuthService()
 	reply := svr.PrepareLogin(c)
 	if c.IsAborted() {
 		return
@@ -37,13 +37,13 @@ func (h *AuthHandler) handleLoginPrepare(c *gin.Context) {
 
 // 手机验证码登录
 func (h *AuthHandler) handleLoginDo(c *gin.Context) {
-	var req service.LoginRequest
+	var req services.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(200, service.NewResponseDtoNoData(service.RespCodeInvalidArgs, ""))
+		c.JSON(200, services.NewResponseInvalidArgs(""))
 		return
 	}
 
-	svr := service.NewAuthService()
+	svr := services.NewAuthService()
 	reply := svr.Authorize(c, &req)
 	if c.IsAborted() {
 		return
@@ -54,7 +54,7 @@ func (h *AuthHandler) handleLoginDo(c *gin.Context) {
 
 // 刷新Token
 func (h *AuthHandler) handleRefresh(c *gin.Context) {
-	svr := service.NewAuthService()
+	svr := services.NewAuthService()
 	reply := svr.RefreshToken(c)
 	if c.IsAborted() {
 		return
@@ -64,7 +64,7 @@ func (h *AuthHandler) handleRefresh(c *gin.Context) {
 
 // 退出登录
 func (h *AuthHandler) handleLogout(c *gin.Context) {
-	svr := service.NewAuthService()
+	svr := services.NewAuthService()
 	svr.Logout(c)
 	c.Status(200)
 }

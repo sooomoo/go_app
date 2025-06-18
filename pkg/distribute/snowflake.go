@@ -27,7 +27,7 @@ type Snowflake struct {
 
 func NewSnowflake(workerid int64) *Snowflake {
 	if workerid < 0 || workerid > workeridMax {
-		panic(fmt.Sprintf("workerid must be between 0 and %d", workeridMax-1))
+		panic(fmt.Sprintf("workerid must be between 0 and %d", workeridMax))
 	}
 	return &Snowflake{
 		timestamp: 0,

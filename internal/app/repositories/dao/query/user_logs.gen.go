@@ -16,7 +16,7 @@ import (
 
 	"gorm.io/plugin/dbresolver"
 
-	"goapp/internal/app/repository/dao/model"
+	"goapp/internal/app/repositories/dao/model"
 )
 
 func newUserLog(db *gorm.DB, opts ...gen.DOOption) userLog {
