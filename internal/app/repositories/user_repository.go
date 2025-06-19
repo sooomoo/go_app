@@ -43,7 +43,7 @@ func (r *UserRepository) Upsert(ctx context.Context, phone, ip string) (*model.U
 		if err == gorm.ErrRecordNotFound {
 			// 添加
 			userId := app.GetGlobal().GetIDService().GenUserID()
-			err = tx.User.Create(&model.User{
+			err = tx.User.WithContext(ctx).Create(&model.User{
 				ID:        int64(userId),
 				Phone:     phone,
 				Name:      phone[3:6] + "****" + phone[10:],
@@ -56,7 +56,7 @@ func (r *UserRepository) Upsert(ctx context.Context, phone, ip string) (*model.U
 			})
 		} else {
 			// 更新
-			_, err = tx.User.Where(tx.User.Phone.Eq(phone)).Updates(map[string]any{
+			_, err = tx.User.WithContext(ctx).Where(tx.User.Phone.Eq(phone)).Updates(map[string]any{
 				u.UpdatedAt.ColumnName().String(): time.Now().Unix(),
 				u.IPLatest.ColumnName().String():  ip,
 			})
