@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/plugin/dbresolver"
 )
 
 type GlobalInstance struct {
@@ -68,6 +69,21 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 	if err != nil {
 		panic(err)
 	}
+	// 连接池
+	g.db.Use(
+		dbresolver.Register(dbresolver.Config{
+			Sources:  []gorm.Dialector{mysql.Open(g.appConfig.Database.ConnectString)},
+			Replicas: []gorm.Dialector{mysql.Open(g.appConfig.Database.ConnectString), mysql.Open(g.appConfig.Database.ConnectString)},
+			// sources/replicas load balancing policy
+			Policy: dbresolver.RandomPolicy{},
+			// print sources/replicas mode in logger
+			TraceResolverMode: true,
+		}).
+			SetConnMaxIdleTime(time.Hour).
+			SetConnMaxLifetime(24 * time.Hour).
+			SetMaxIdleConns(100).
+			SetMaxOpenConns(200),
+	)
 	// 设置默认的 Db 连接
 	query.SetDefault(g.db)
 
