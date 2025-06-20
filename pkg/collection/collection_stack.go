@@ -6,7 +6,7 @@ import (
 )
 
 type fastStackNode[T any] struct {
-	value *T
+	value T
 	next  *fastStackNode[T]
 }
 
@@ -17,16 +17,8 @@ type FastStack[T any] struct {
 	lock sync.RWMutex
 }
 
-// O(1)
-func (stack *FastStack[T]) Push(val *T) {
-	stack.lock.Lock()
-	defer stack.lock.Unlock()
-	stack.top = &fastStackNode[T]{value: val, next: stack.top}
-	stack.size++
-}
-
 // O(n)
-func (stack *FastStack[T]) PushAll(vals ...T) {
+func (stack *FastStack[T]) Push(vals ...T) {
 	l := len(vals)
 	if l == 0 {
 		return
@@ -34,17 +26,18 @@ func (stack *FastStack[T]) PushAll(vals ...T) {
 	stack.lock.Lock()
 	defer stack.lock.Unlock()
 	for _, v := range vals {
-		stack.top = &fastStackNode[T]{value: &v, next: stack.top}
+		stack.top = &fastStackNode[T]{value: v, next: stack.top}
 	}
 	stack.size += l
 }
 
 // O(1)
-func (stack *FastStack[T]) Pop() *T {
+func (stack *FastStack[T]) Pop() T {
 	stack.lock.Lock()
 	defer stack.lock.Unlock()
 	if stack.top == nil {
-		return nil
+		var tmp T
+		return tmp
 	}
 	out := stack.top
 	stack.top = out.next
@@ -61,11 +54,12 @@ func (stack *FastStack[T]) Clear() {
 }
 
 // O(1)
-func (stack *FastStack[T]) Peek() *T {
+func (stack *FastStack[T]) Peek() T {
 	stack.lock.RLock()
 	defer stack.lock.RUnlock()
 	if stack.top == nil {
-		return nil
+		var tmp T
+		return tmp
 	}
 	return stack.top.value
 }
@@ -93,7 +87,7 @@ func (stack *FastStack[T]) Print() {
 		if node == nil {
 			break
 		}
-		fmt.Printf("item %d, value=%v", idx, *node.value)
+		fmt.Printf("item %d, value=%v", idx, node.value)
 		node = node.next
 		idx++
 	}

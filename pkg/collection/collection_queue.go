@@ -18,25 +18,8 @@ type FastQueue[T any] struct {
 	lock  sync.RWMutex
 }
 
-// O(1)
-func (queue *FastQueue[T]) In(val *T) {
-	queue.lock.Lock()
-	defer queue.lock.Unlock()
-
-	node := &fastQueueNode[T]{value: val, next: nil}
-	if queue.last != nil {
-		queue.last.next = node
-	}
-	queue.last = node
-
-	if queue.first == nil {
-		queue.first = node
-	}
-	queue.size++
-}
-
 // O(n)
-func (queue *FastQueue[T]) InAll(vals ...T) {
+func (queue *FastQueue[T]) In(vals ...T) {
 	l := len(vals)
 	if l == 0 {
 		return
