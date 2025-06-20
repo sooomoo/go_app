@@ -10,6 +10,7 @@ type fastQueueNode[T any] struct {
 	next  *fastQueueNode[T]
 }
 
+// 并发安全的 Queue
 type FastQueue[T any] struct {
 	first *fastQueueNode[T]
 	last  *fastQueueNode[T]

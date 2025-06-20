@@ -5,50 +5,40 @@ import (
 	"sync"
 )
 
+// 并发安全的 Set
 type Set[T comparable] struct {
 	underlying map[T]core.Empty
 	lock       sync.RWMutex
-	once       sync.Once
-}
-
-func (s *Set[T]) ensureInit() {
-	s.once.Do(func() {
-		s.underlying = map[T]core.Empty{}
-	})
-}
-
-// O(1)~O(n)
-func (s *Set[T]) Add(item T) {
-	s.ensureInit()
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	s.underlying[item] = core.Empty{}
 }
 
 // O(n)
-func (s *Set[T]) AddRange(items ...T) {
-	s.ensureInit()
+func (s *Set[T]) Add(items ...T) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	if s.underlying == nil {
+		s.underlying = map[T]core.Empty{}
+	}
 	for _, v := range items {
 		s.underlying[v] = core.Empty{}
 	}
 }
 
-// O(1)~O(n)
-func (s *Set[T]) Remove(item T) {
-	s.ensureInit()
+// O(n)
+func (s *Set[T]) Remove(items ...T) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	if len(s.underlying) == 0 {
+		return
+	}
 
-	delete(s.underlying, item)
+	for _, v := range items {
+		delete(s.underlying, v)
+	}
 }
 
 // O(1)
 func (s *Set[T]) Clear() {
-	s.ensureInit()
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -57,7 +47,6 @@ func (s *Set[T]) Clear() {
 
 // O(n)
 func (s *Set[T]) Size() int {
-	s.ensureInit()
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -66,7 +55,6 @@ func (s *Set[T]) Size() int {
 
 // O(n)
 func (s *Set[T]) IsEmpty() bool {
-	s.ensureInit()
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -75,7 +63,6 @@ func (s *Set[T]) IsEmpty() bool {
 
 // O(n)
 func (s *Set[T]) ToSlice() []T {
-	s.ensureInit()
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -88,9 +75,12 @@ func (s *Set[T]) ToSlice() []T {
 
 // O(1)~O(n)
 func (s *Set[T]) Contains(item T) bool {
-	s.ensureInit()
 	s.lock.RLock()
 	defer s.lock.RUnlock()
+
+	if len(s.underlying) == 0 {
+		return false
+	}
 
 	_, ok := s.underlying[item]
 	return ok

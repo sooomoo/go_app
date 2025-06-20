@@ -10,6 +10,7 @@ type fastStackNode[T any] struct {
 	next  *fastStackNode[T]
 }
 
+// 并发安全的 Stack
 type FastStack[T any] struct {
 	top  *fastStackNode[T]
 	size int
