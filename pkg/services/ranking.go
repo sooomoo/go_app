@@ -2,51 +2,203 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"goapp/pkg/cache"
-	"strconv"
+	"math"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
 var (
-	luaRelease = redis.NewScript(`
-	local res = redis.call('SET', KEYS[1] .. '_' .. ARGV[1], '0', 'EX', '50', 'NX')
+	luaIncr = redis.NewScript(`
+	local res = redis.call('SET', KEYS[1], '0', 'EX', ARGV[4], 'NX')
 	if res ~= false then
-		redis.call('ZINCRBY', KEYS[1], ARGV[2], KEYS[2])
+		local current_score = redis.call('ZSCORE', KEYS[2], ARGV[1]) -- 获取用户当前积分
+		local integer = 0 -- 整数部分
+		-- 安全转换当前积分为整数
+		if current_score ~= false then
+			integer = math.floor(tonumber(current_score) or 0)
+		end
+		-- 安全转换增量为整数
+		local increment = tonumber(ARGV[2]) or 0
+		integer = integer + increment		-- 更新积分 
+		local timestamp = '0.' .. ARGV[3] 	-- 将更新时间戳转换为小数
+		local score = integer + timestamp   -- 组合位浮点数
+		return redis.call('ZADD', KEYS[2], score, ARGV[1])
 	end
 	return 0
 	`)
+	luaTruncate = redis.NewScript(`
+	local elements = redis.call('ZRANGE', KEYS[1], '+inf', '-inf','BYSCORE', 'REV', 'LIMIT', ARGV[1], ARGV[2]); 
+	if #elements > 0 then 
+		return redis.call('ZREM', KEYS[1], unpack(elements)); 
+	else 
+		return 0; 
+	end
+	`)
+)
+
+var (
+	rankingTimeFuture = time.Date(2050, 0, 0, 0, 0, 0, 0, time.UTC)
 )
 
 // 排名服务
 type RankingService struct {
-	db   *cache.Cache // redis 客户端，用于存储排名信息
-	name string       // 排名的名称
+	db  *cache.Cache // redis 客户端，用于存储排名信息
+	key string       // 排名的名称
 }
 
-func NewRankingService(db *cache.Cache, name string) *RankingService {
-	return &RankingService{db: db}
+func NewRankingService(db *cache.Cache, key string) *RankingService {
+	return &RankingService{db: db, key: key}
 }
 
-// 裁剪排名数据：仅仅只保留不超过指定数量的名次
+// 裁剪排名数据：仅仅只保留不超过指定数量的名次（当需要精确排名时，则不需要裁剪）
 //
-// 当需要精确排名时，则不需要裁剪
-func (r *RankingService) Truncate(size int) {
+// 【默认】分批次删除，当数据量很大时，分批删除，可以防止 redis 响应延迟
+//
+// 如果正确删除，则返回被删除的条目的数量
+//
+// size：删除多少名之后的数据
+//
+// batchSize: 每批次删除多少的数据
+//
+// delayEachBatch：删除一个批次后，休息多长时间再删除下一个批次；不能设置为 0，要给 redis 休息时间
+func (r *RankingService) Truncate(ctx context.Context, size int64, batchSize int64, delayEachBatch time.Duration) (int64, error) {
+	fn := func() (int64, error) {
+		val, err := luaTruncate.Eval(ctx, r.db.Master(), []string{r.key}, size, batchSize).Result()
+		if err != nil {
+			return -1, err
+		}
+		if v, ok := val.(int64); ok {
+			return v, nil
+		}
+		return 0, nil
+	}
+	if batchSize <= 0 {
+		return fn()
+	}
+	count := int64(0)
+	for {
+		cnt, err := fn()
+		if err != nil {
+			return cnt, err
+		}
+		if cnt == 0 {
+			break
+		}
+		count += cnt
+		time.Sleep(delayEachBatch)
+	}
+	return count, nil
+}
 
+// 一次性删除所有（当需要精确排名时，不需要裁剪）
+//
+// 当删除数量很大时，可能导致 redis 长时间阻塞
+func (r *RankingService) TruncateAll(ctx context.Context, size int64) (int64, error) {
+	val, err := luaTruncate.Eval(ctx, r.db.Master(), []string{r.key}, size, -1).Result()
+	if err != nil {
+		return -1, err
+	}
+	if v, ok := val.(int64); ok {
+		return v, nil
+	}
+	return 0, nil
+}
+
+type RankingItem struct {
+	Member string
+	Score  int64
+	Frac   float64
+}
+
+// 分批获取排名
+//
+// offset：开始位置，结果会包含此位置的值
+//
+// limit：此批次获取多少条记录
+func (r *RankingService) Paginate(ctx context.Context, offset, limit int64) ([]RankingItem, error) {
+	vals, err := r.db.Master().ZRangeArgsWithScores(ctx, redis.ZRangeArgs{
+		Key:     r.key,
+		Start:   0,
+		Stop:    math.MaxInt64,
+		Offset:  offset,
+		Count:   limit,
+		ByScore: true,
+		Rev:     true,
+	}).Result()
+	if err != nil {
+		return nil, err
+	}
+	arr := make([]RankingItem, len(vals))
+	for i, v := range vals {
+		mem, ok := v.Member.(string)
+		if !ok {
+			continue
+		}
+		// 分离整数和小数部分
+		fscore, frac := math.Modf(v.Score)
+		arr[i] = RankingItem{Member: mem, Score: int64(fscore), Frac: frac}
+	}
+	return arr, nil
+}
+
+// 获取指定成员的精确排名
+func (r *RankingService) Rank(ctx context.Context, member string) int64 {
+	val, err := r.db.Slave().ZRevRank(ctx, r.key, member).Result()
+	if err != nil {
+		return -1
+	}
+	return val
 }
 
 // 增加计数
 //
-// requestId: 用于幂等更新，防止多次更新
+// requestId: 用于幂等更新，防止多次更新；idempotentExpSecs：用于设置幂等 key 的过期时间
 //
-// id: 需要被排名的主体的 id：可以是用户 ID->积分排名、步数排名; 可以是作品 Id-> 热度排名(播放量，点赞，收藏等)
+// member: 需要被排名的主体的 id：可以是用户 ID->积分排名、步数排名; 可以是作品 Id-> 热度排名(播放量，点赞，收藏等)
 //
 // score: 权重，增加此权重之后，会导致排名变化
-func (r *RankingService) Increment(ctx context.Context, requestId string, id int64, score int64) error {
-	_, err := luaRelease.Eval(ctx, r.db.Master(), []string{r.name, strconv.FormatInt(id, 10)}, requestId, strconv.FormatInt(score, 10)).Result()
+func (r *RankingService) Increment(ctx context.Context, requestId string, member string, score int64, idempotentExpSecs int64) error {
+	idempotentKey := fmt.Sprintf("%s:idempotent:%s", r.key, requestId)
+	timestamp := int64(time.Until(rankingTimeFuture).Seconds())
+	_, err := luaIncr.Eval(ctx, r.db.Master(), []string{idempotentKey, r.key}, member, score, timestamp, idempotentExpSecs).Result()
 	if err != nil {
 		return err
 	}
-	// r.db.Master().ZAdd(ctx, r.name, redis.Z{Member: id, Score: float64(score)})
 	return nil
+}
+
+type RankingFuzzyCount struct {
+	RangeStart int64
+	RangeEnd   int64
+	Count      int64
+}
+
+// 当更新了积分之后，如果需要模糊排名，则需要通过此方法更新每一个积分范围内的（用户、作品等）数量
+//
+// 这可以在 Increment 之后，发布更新命令到消息队列，由专门的服务来统计数量。
+// 为了高并发，该服务可以合并多个请求（如收到请求后开启一个 timer，2s 后才更新数量）
+func (r *RankingService) FuzzySet(ctx context.Context, rangesCount []RankingFuzzyCount) error {
+	key := fmt.Sprintf("%s:fuzzy", r.key)
+	vals := make(map[string]any)
+	for _, v := range rangesCount {
+		field := fmt.Sprintf("%d-%d", v.RangeStart, v.RangeEnd)
+		vals[field] = v.Count
+	}
+	_, err := r.db.HMSet(ctx, key, vals)
+	return err
+}
+
+// 获取用户的大致排名
+func (r *RankingService) FuzzyRank(ctx context.Context, member string, concretRankSize int64) int64 {
+	// 首先获取精确排名
+	concretRank := r.Rank(ctx, member)
+	if concretRank >= 0 && concretRank < concretRankSize {
+		return concretRank
+	}
+	// 需要计算模糊排名
+	// TODO
+	return -1
 }
