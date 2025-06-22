@@ -7,6 +7,7 @@ import (
 	"goapp/internal/app/services/headers"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type UserService struct {
@@ -34,6 +35,10 @@ func (u *UserService) GetSelfInfo(c *gin.Context) (*GetUserInfoResponseDto, erro
 		return nil, errors.New("not found")
 	}
 	user, err := u.userRepo.GetById(c, int64(claims.UserId))
+	if err == gorm.ErrRecordNotFound {
+		c.AbortWithStatus(401)
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}

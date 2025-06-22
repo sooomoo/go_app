@@ -23,6 +23,9 @@ func (u *UserHandler) RegisterRoutes(router *gin.RouterGroup) {
 
 func (u *UserHandler) handleGetSelfUserInfo(c *gin.Context) {
 	user, err := services.NewUserService().GetSelfInfo(c)
+	if c.IsAborted() {
+		return
+	}
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
