@@ -183,6 +183,8 @@ type RankingFuzzyCount struct {
 
 // 当更新了积分之后，如果需要模糊排名，则需要通过此方法更新每一个积分范围内的（用户、作品等）数量
 //
+// 各个范围不能重叠
+//
 // 这可以在 Increment 之后，发布更新命令到消息队列，由专门的服务来统计数量。
 // 为了高并发，该服务可以合并多个请求（如收到请求后开启一个 timer，2s 后才更新数量）
 func (r *RankingService) FuzzySet(ctx context.Context, rangesCount []RankingFuzzyCount) error {
