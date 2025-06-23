@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"goapp/pkg/cache"
 	"math"
+	"slices"
+	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -170,6 +172,9 @@ func (r *RankingService) Increment(ctx context.Context, requestId string, member
 	return nil
 }
 
+// 模糊排名统计数据: rangeStart 和 rangeEnd 表示积分范围，Count 表示此范围内的成员数量
+//
+// rangeStart <= memberScore < rangeEnd
 type RankingFuzzyCount struct {
 	RangeStart int64
 	RangeEnd   int64
@@ -191,14 +196,73 @@ func (r *RankingService) FuzzySet(ctx context.Context, rangesCount []RankingFuzz
 	return err
 }
 
-// 获取用户的大致排名
-func (r *RankingService) FuzzyRank(ctx context.Context, member string, concretRankSize int64) int64 {
+// 获取模糊排名的统计数据
+//
+// 返回的结果是一个数组，每个元素表示一个积分范围内的数量
+func (r *RankingService) FuzzyGet(ctx context.Context) ([]RankingFuzzyCount, error) {
+	key := fmt.Sprintf("%s:fuzzy", r.key)
+	vals, err := r.db.HGetAll(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	if len(vals) == 0 {
+		return nil, nil
+	}
+	arr := make([]RankingFuzzyCount, 0, len(vals))
+	for field, count := range vals {
+		var start, end int64
+		_, err := fmt.Sscanf(field, "%d-%d", &start, &end)
+		if err != nil {
+			return nil, err
+		}
+		c, err := strconv.ParseInt(count, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		arr = append(arr, RankingFuzzyCount{
+			RangeStart: start,
+			RangeEnd:   end,
+			Count:      c,
+		})
+	}
+	return arr, nil
+}
+
+// 获取成员的大致排名
+//
+// member：需要获取模糊排名的成员 ID
+//
+// memberScore：成员的积分
+//
+// accurateRankSize：需要获取的精确排名的数量
+func (r *RankingService) FuzzyRank(ctx context.Context, member string, memberScore int64, accurateRankSize int64) int64 {
 	// 首先获取精确排名
 	concretRank := r.Rank(ctx, member)
-	if concretRank >= 0 && concretRank < concretRankSize {
+	if concretRank >= 0 && concretRank < accurateRankSize {
 		return concretRank
 	}
 	// 需要计算模糊排名
-	// TODO
-	return -1
+	ranges, err := r.FuzzyGet(ctx)
+	if err != nil {
+		return -1
+	}
+	if len(ranges) == 0 {
+		return -1
+	}
+	// 按照积分范围进行排序：由高到低
+	slices.SortFunc(ranges, func(a, b RankingFuzzyCount) int {
+		return int(b.RangeStart - a.RangeStart)
+	})
+	// 遍历积分范围，找到成员所在的范围
+	rank := int64(0)
+	for _, v := range ranges {
+		if memberScore >= v.RangeStart && memberScore < v.RangeEnd {
+			// 找到范围后，计算大致排名
+			rangeRank := math.Floor(float64(v.RangeEnd-memberScore) / float64(v.RangeEnd-v.RangeStart))
+			return rank + int64(rangeRank)
+		} else {
+			rank += v.Count
+		}
+	}
+	return rank
 }

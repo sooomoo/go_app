@@ -34,7 +34,7 @@ func TestRankingSvcTruncate(t *testing.T) {
 
 	arr, err := svc.Paginate(ctx, 4, 4)
 	fmt.Println(arr)
-	r := svc.FuzzyRank(ctx, "item_19", 10)
+	r := svc.FuzzyRank(ctx, "item_19", 44, 10)
 	fmt.Println(r)
 	return
 	svc.Increment(ctx, "00de75693780008b2c2c77", fmt.Sprintf("item_%v", 6), 234, 600)
