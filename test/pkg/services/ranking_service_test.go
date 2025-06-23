@@ -33,10 +33,15 @@ func TestRankingSvcTruncate(t *testing.T) {
 	svc := services.NewRankingService(cache, "ranking_test")
 
 	arr, err := svc.Paginate(ctx, 4, 4)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
 	fmt.Println(arr)
 	r := svc.FuzzyRank(ctx, "item_19", 44, 10)
 	fmt.Println(r)
-	return
+
 	svc.Increment(ctx, "00de75693780008b2c2c77", fmt.Sprintf("item_%v", 6), 234, 600)
 	wg := sync.WaitGroup{}
 	count := 20
