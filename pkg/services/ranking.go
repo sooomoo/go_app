@@ -14,20 +14,9 @@ import (
 
 var (
 	luaIncr = redis.NewScript(`
-	local res = redis.call('SET', KEYS[1], '0', 'EX', ARGV[4], 'NX')
+	local res = redis.call('SET', KEYS[1], '0', 'EX', ARGV[3], 'NX')
 	if res ~= false then
-		local current_score = redis.call('ZSCORE', KEYS[2], ARGV[1]) -- 获取用户当前积分
-		local integer = 0 -- 整数部分
-		-- 安全转换当前积分为整数
-		if current_score ~= false then
-			integer = math.floor(tonumber(current_score) or 0)
-		end
-		-- 安全转换增量为整数
-		local increment = tonumber(ARGV[2]) or 0
-		integer = integer + increment		-- 更新积分 
-		local timestamp = '0.' .. ARGV[3] 	-- 将更新时间戳转换为小数
-		local score = integer + timestamp   -- 组合位浮点数
-		return redis.call('ZADD', KEYS[2], score, ARGV[1])
+		return redis.call('ZADD', KEYS[2], ARGV[2], ARGV[1])
 	end
 	return 0
 	`)
@@ -35,9 +24,8 @@ var (
 	local elements = redis.call('ZRANGE', KEYS[1], '+inf', '-inf','BYSCORE', 'REV', 'LIMIT', ARGV[1], ARGV[2]); 
 	if #elements > 0 then 
 		return redis.call('ZREM', KEYS[1], unpack(elements)); 
-	else 
-		return 0; 
 	end
+	return 0; 
 	`)
 )
 
@@ -155,17 +143,23 @@ func (r *RankingService) Rank(ctx context.Context, member string) int64 {
 	return val
 }
 
-// 增加计数
+// 更新计数
 //
 // requestId: 用于幂等更新，防止多次更新；idempotentExpSecs：用于设置幂等 key 的过期时间
 //
 // member: 需要被排名的主体的 id：可以是用户 ID->积分排名、步数排名; 可以是作品 Id-> 热度排名(播放量，点赞，收藏等)
 //
-// score: 权重，增加此权重之后，会导致排名变化
-func (r *RankingService) Increment(ctx context.Context, requestId string, member string, score int64, idempotentExpSecs int64) error {
+// score: 权重，更新此权重之后，会导致排名变化
+func (r *RankingService) UpdateScore(ctx context.Context, requestId string, member string, score int64, idempotentExpSecs int64) error {
 	idempotentKey := fmt.Sprintf("%s:idempotent:%s", r.key, requestId)
 	timestamp := int64(time.Until(rankingTimeFuture).Seconds())
-	_, err := luaIncr.Eval(ctx, r.db.Master(), []string{idempotentKey, r.key}, member, score, timestamp, idempotentExpSecs).Result()
+	frac, err := strconv.ParseFloat(fmt.Sprintf("0.%d", timestamp), 64)
+	if err != nil {
+		return err
+	}
+	finalScore := float64(score) + frac
+	// 使用 Lua 脚本来保证原子性
+	_, err = luaIncr.Eval(ctx, r.db.Master(), []string{idempotentKey, r.key}, member, finalScore, idempotentExpSecs).Result()
 	if err != nil {
 		return err
 	}

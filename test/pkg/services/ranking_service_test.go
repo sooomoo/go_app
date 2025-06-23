@@ -42,7 +42,7 @@ func TestRankingSvcTruncate(t *testing.T) {
 	r := svc.FuzzyRank(ctx, "item_19", 44, 10)
 	fmt.Println(r)
 
-	svc.Increment(ctx, "00de75693780008b2c2c77", fmt.Sprintf("item_%v", 6), 234, 600)
+	svc.UpdateScore(ctx, "00de75693780008b2c2c77", fmt.Sprintf("item_%v", 6), 2345, 600)
 	wg := sync.WaitGroup{}
 	count := 20
 	wg.Add(count)
@@ -50,7 +50,7 @@ func TestRankingSvcTruncate(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			time.Sleep(time.Duration(rand.Float32()) * 5 * time.Second)
-			svc.Increment(ctx, core.NewUUIDv8().String(), fmt.Sprintf("item_%v", i), int64(rand.Intn(10000000)), 60)
+			svc.UpdateScore(ctx, core.NewUUIDv8().String(), fmt.Sprintf("item_%v", i), int64(rand.Intn(10000000)), 60)
 		}(i)
 	}
 	wg.Wait()
