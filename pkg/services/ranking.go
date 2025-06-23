@@ -14,6 +14,23 @@ import (
 
 var (
 	luaIncr = redis.NewScript(`
+	local res = redis.call('SET', KEYS[1], '0', 'EX', ARGV[4], 'NX')
+	if res ~= false then
+		local current_score = redis.call('ZSCORE', KEYS[2], ARGV[1]) -- 获取用户当前积分
+		local integer = 0 -- 整数部分
+		-- 安全转换当前积分为整数
+		if current_score ~= false then
+			integer = math.floor(tonumber(current_score) or 0)
+		end
+		-- 安全转换增量为整数
+		local increment = tonumber(ARGV[2]) or 0
+		integer = integer + increment		-- 更新积分  
+		local score = integer + ARGV[3]   -- 组合位浮点数
+		return redis.call('ZADD', KEYS[2], score, ARGV[1])
+	end
+	return 0
+	`)
+	luaAdd = redis.NewScript(`
 	local res = redis.call('SET', KEYS[1], '0', 'EX', ARGV[3], 'NX')
 	if res ~= false then
 		return redis.call('ZADD', KEYS[2], ARGV[2], ARGV[1])
@@ -143,7 +160,27 @@ func (r *RankingService) Rank(ctx context.Context, member string) int64 {
 	return val
 }
 
-// 更新计数
+// 增加积分: 当全部使用精确排名时，可以使用此方法来增加积分
+//
+// 模糊排名时，使用此方法会有问题，因为在 lua 脚本中，可能无法获取到 member 的当前积分（比如在 1000 名后，被裁剪了）
+// 从而导致计算错误
+func (r *RankingService) Increment(ctx context.Context, requestId string, member string, delta int64, idempotentExpSecs int64) error {
+	idempotentKey := fmt.Sprintf("%s:idempotent:%s", r.key, requestId)
+	timestamp := int64(time.Until(rankingTimeFuture).Seconds())
+	frac, err := strconv.ParseFloat(fmt.Sprintf("0.%d", timestamp), 64)
+	if err != nil {
+		return err
+	}
+	// 使用 Lua 脚本来保证原子性
+	_, err = luaIncr.Eval(ctx, r.db.Master(), []string{idempotentKey, r.key}, member, delta, frac, idempotentExpSecs).Result()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// 更新计数：特别是当使用模糊排名时，应该使用此方法来更新积分，而不应该使用 Increment 方法；精确计数也可以使用此方法更新积分
+// 不过没有必要，因为此方法需要新的积分值，而 Increment 方法只需要增量
 //
 // requestId: 用于幂等更新，防止多次更新；idempotentExpSecs：用于设置幂等 key 的过期时间
 //
@@ -159,7 +196,7 @@ func (r *RankingService) UpdateScore(ctx context.Context, requestId string, memb
 	}
 	finalScore := float64(score) + frac
 	// 使用 Lua 脚本来保证原子性
-	_, err = luaIncr.Eval(ctx, r.db.Master(), []string{idempotentKey, r.key}, member, finalScore, idempotentExpSecs).Result()
+	_, err = luaAdd.Eval(ctx, r.db.Master(), []string{idempotentKey, r.key}, member, finalScore, idempotentExpSecs).Result()
 	if err != nil {
 		return err
 	}
