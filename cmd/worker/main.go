@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"goapp/internal/worker/global"
-	"goapp/internal/worker/tasks"
+	"goapp/internal/workers/worker/global"
+	"goapp/internal/workers/worker/tasks"
 	"goapp/pkg/core"
 )
 
