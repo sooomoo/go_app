@@ -3,7 +3,7 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"goapp/internal/worker/global"
+	"goapp/internal/workers/worker/global"
 )
 
 func StartLogWriteTask(ctx context.Context) {
