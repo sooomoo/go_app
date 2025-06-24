@@ -16,7 +16,7 @@ import (
 
 	"gorm.io/plugin/dbresolver"
 
-	"goapp/internal/app/repositories/dao/model"
+	"goapp/internal/app/stores/dao/model"
 )
 
 func newUser(db *gorm.DB, opts ...gen.DOOption) user {
@@ -41,6 +41,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.InviteBy = field.NewInt64(tableName, "invite_by")
 	_user.CreatedAt = field.NewInt64(tableName, "created_at")
 	_user.UpdatedAt = field.NewInt64(tableName, "updated_at")
+	_user.Version = field.NewInt64(tableName, "version")
 
 	_user.fillFieldMap()
 
@@ -65,6 +66,7 @@ type user struct {
 	InviteBy   field.Int64
 	CreatedAt  field.Int64
 	UpdatedAt  field.Int64
+	Version    field.Int64
 
 	fieldMap map[string]field.Expr
 }
@@ -95,6 +97,7 @@ func (u *user) updateTableName(table string) *user {
 	u.InviteBy = field.NewInt64(table, "invite_by")
 	u.CreatedAt = field.NewInt64(table, "created_at")
 	u.UpdatedAt = field.NewInt64(table, "updated_at")
+	u.Version = field.NewInt64(table, "version")
 
 	u.fillFieldMap()
 
@@ -111,7 +114,7 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 14)
+	u.fieldMap = make(map[string]field.Expr, 15)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["phone"] = u.Phone
 	u.fieldMap["name"] = u.Name
@@ -126,6 +129,7 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["invite_by"] = u.InviteBy
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
+	u.fieldMap["version"] = u.Version
 }
 
 func (u user) clone(db *gorm.DB) user {

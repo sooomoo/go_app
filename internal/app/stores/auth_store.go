@@ -1,4 +1,4 @@
-package repositories
+package stores
 
 import (
 	"context"
@@ -22,19 +22,19 @@ const (
 	TokenTypeRefresh TokenType = 2
 )
 
-type AuthRepository struct {
+type AuthStore struct {
 	cache *cache.Cache
 }
 
-func NewAuthRepository(cache *cache.Cache) *AuthRepository {
-	return &AuthRepository{cache: cache}
+func NewAuthStore(cache *cache.Cache) *AuthStore {
+	return &AuthStore{cache: cache}
 }
 
-func (a *AuthRepository) SaveCsrfToken(ctx context.Context, token, val string, expire time.Duration) error {
+func (a *AuthStore) SaveCsrfToken(ctx context.Context, token, val string, expire time.Duration) error {
 	_, err := a.cache.Set(ctx, fmt.Sprintf("csrf_token:%s", token), val, expire)
 	return err
 }
-func (a *AuthRepository) GetCsrfToken(ctx context.Context, token string, del bool) (string, error) {
+func (a *AuthStore) GetCsrfToken(ctx context.Context, token string, del bool) (string, error) {
 	if del {
 		val, err := a.cache.GetDel(ctx, fmt.Sprintf("csrf_token:%s", token))
 		if err == redis.Nil {
@@ -50,7 +50,7 @@ func (a *AuthRepository) GetCsrfToken(ctx context.Context, token string, del boo
 	}
 }
 
-func (a *AuthRepository) SaveHandledRequest(ctx context.Context, requestId string, expireAfter time.Duration) (bool, error) {
+func (a *AuthStore) SaveHandledRequest(ctx context.Context, requestId string, expireAfter time.Duration) (bool, error) {
 	exists, err := a.cache.SetNX(ctx, "handled_requests:"+requestId, "1", expireAfter)
 	if err != nil {
 		return false, err
@@ -67,7 +67,7 @@ type AuthorizedClaims struct {
 	Ip              string        `json:"ip"`
 }
 
-func (a *AuthRepository) SaveAccessToken(ctx context.Context, token string, ttl time.Duration, claims *AuthorizedClaims) error {
+func (a *AuthStore) SaveAccessToken(ctx context.Context, token string, ttl time.Duration, claims *AuthorizedClaims) error {
 	key := fmt.Sprintf("access_token:%s", token)
 	val, err := json.Marshal(claims)
 	if err != nil {
@@ -78,13 +78,13 @@ func (a *AuthRepository) SaveAccessToken(ctx context.Context, token string, ttl 
 	return err
 }
 
-func (a *AuthRepository) DeleteAccessToken(ctx context.Context, token string) error {
+func (a *AuthStore) DeleteAccessToken(ctx context.Context, token string) error {
 	key := fmt.Sprintf("access_token:%s", token)
 	_, err := a.cache.KeyDel(ctx, key)
 	return err
 }
 
-func (a *AuthRepository) GetAccessTokenClaims(ctx context.Context, token string) (*AuthorizedClaims, error) {
+func (a *AuthStore) GetAccessTokenClaims(ctx context.Context, token string) (*AuthorizedClaims, error) {
 	if len(token) == 0 {
 		return nil, redis.Nil
 	}
@@ -103,7 +103,7 @@ func (a *AuthRepository) GetAccessTokenClaims(ctx context.Context, token string)
 	return &dto, nil
 }
 
-func (a *AuthRepository) SaveRefreshToken(ctx context.Context, token string, credendials *AuthorizedClaims, expire time.Duration) error {
+func (a *AuthStore) SaveRefreshToken(ctx context.Context, token string, credendials *AuthorizedClaims, expire time.Duration) error {
 	key := fmt.Sprintf("refresh_token:%s", token)
 	val, err := json.Marshal(credendials)
 	if err != nil {
@@ -114,13 +114,13 @@ func (a *AuthRepository) SaveRefreshToken(ctx context.Context, token string, cre
 	return err
 }
 
-func (a *AuthRepository) DeleteRefreshToken(ctx context.Context, token string) error {
+func (a *AuthStore) DeleteRefreshToken(ctx context.Context, token string) error {
 	key := fmt.Sprintf("refresh_token:%s", token)
 	_, err := a.cache.KeyDel(ctx, key)
 	return err
 }
 
-func (a *AuthRepository) GetRefreshTokenCredential(ctx context.Context, token string) *AuthorizedClaims {
+func (a *AuthStore) GetRefreshTokenCredential(ctx context.Context, token string) *AuthorizedClaims {
 	key := fmt.Sprintf("refresh_token:%s", token)
 	jsonStr, err := a.cache.Get(ctx, key)
 	if err != nil {
@@ -136,6 +136,6 @@ func (a *AuthRepository) GetRefreshTokenCredential(ctx context.Context, token st
 	return &dto
 }
 
-func (a *AuthRepository) SaveSMSCode(ctx context.Context, phone string, code string) error {
+func (a *AuthStore) SaveSMSCode(ctx context.Context, phone string, code string) error {
 	return nil
 }

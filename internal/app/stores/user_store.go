@@ -1,10 +1,10 @@
-package repositories
+package stores
 
 import (
 	"context"
 	"goapp/internal/app"
-	"goapp/internal/app/repositories/dao/model"
-	"goapp/internal/app/repositories/dao/query"
+	"goapp/internal/app/stores/dao/model"
+	"goapp/internal/app/stores/dao/query"
 	"goapp/pkg/cache"
 	"time"
 
@@ -24,17 +24,17 @@ const (
 	RoleAdmin  Role = 0b10000000 // 管理员
 )
 
-type UserRepository struct {
+type UserStore struct {
 	cache *cache.Cache
 }
 
-func NewUserRepository(cache *cache.Cache) *UserRepository {
-	return &UserRepository{
+func NewUserStore(cache *cache.Cache) *UserStore {
+	return &UserStore{
 		cache: cache,
 	}
 }
 
-func (r *UserRepository) Upsert(ctx context.Context, phone, ip string) (*model.User, error) {
+func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, error) {
 	u := query.User
 
 	// 使用事务进行 upsert
@@ -89,6 +89,6 @@ func (r *UserRepository) Upsert(ctx context.Context, phone, ip string) (*model.U
 	return u.WithContext(ctx).Where(u.Phone.Eq(phone)).Take()
 }
 
-func (r *UserRepository) GetById(ctx context.Context, userId int64) (*model.User, error) {
+func (r *UserStore) GetById(ctx context.Context, userId int64) (*model.User, error) {
 	return query.User.WithContext(ctx).Where(query.User.ID.Eq(userId)).Take()
 }

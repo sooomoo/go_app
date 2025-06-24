@@ -3,8 +3,8 @@ package headers
 import (
 	"errors"
 	"goapp/internal/app"
-	"goapp/internal/app/repositories"
 	"goapp/internal/app/services/crypto"
+	"goapp/internal/app/stores"
 	"goapp/pkg/core"
 	"goapp/pkg/cryptos"
 	"strings"
@@ -240,19 +240,19 @@ func GetClientKeys(ctx *gin.Context) *SessionClientKeys {
 	return keys
 }
 
-func GetClaims(c *gin.Context) *repositories.AuthorizedClaims {
+func GetClaims(c *gin.Context) *stores.AuthorizedClaims {
 	val, exist := c.Get(KeyClaims)
 	if !exist {
 		return nil
 	}
-	claims, ok := val.(*repositories.AuthorizedClaims)
+	claims, ok := val.(*stores.AuthorizedClaims)
 	if !ok {
 		return nil
 	}
 	return claims
 }
 
-func SaveClaims(ctx *gin.Context, claims *repositories.AuthorizedClaims) {
+func SaveClaims(ctx *gin.Context, claims *stores.AuthorizedClaims) {
 	if claims == nil {
 		return
 	}

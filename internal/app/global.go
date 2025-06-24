@@ -3,7 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
-	"goapp/internal/app/repositories/dao/query"
+	"goapp/internal/app/stores/dao/query"
 	"goapp/internal/pkg/services"
 	"goapp/pkg/cache"
 	"goapp/pkg/core"

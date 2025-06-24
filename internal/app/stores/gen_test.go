@@ -1,4 +1,4 @@
-package repositories_test
+package stores_test
 
 import (
 	"strings"

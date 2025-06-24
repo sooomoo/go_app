@@ -3,20 +3,20 @@ package services
 import (
 	"errors"
 	"goapp/internal/app"
-	"goapp/internal/app/repositories"
 	"goapp/internal/app/services/headers"
+	"goapp/internal/app/stores"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
 type UserService struct {
-	userRepo *repositories.UserRepository
+	userRepo *stores.UserStore
 }
 
 func NewUserService() *UserService {
 	return &UserService{
-		userRepo: repositories.NewUserRepository(app.GetGlobal().GetCache()),
+		userRepo: stores.NewUserStore(app.GetGlobal().GetCache()),
 	}
 }
 

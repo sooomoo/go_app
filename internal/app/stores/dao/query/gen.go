@@ -16,39 +16,44 @@ import (
 )
 
 var (
-	Q       = new(Query)
-	User    *user
-	UserLog *userLog
+	Q                   = new(Query)
+	User                *user
+	UserLog             *userLog
+	WorkerWebSearchTask *workerWebSearchTask
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
 	User = &Q.User
 	UserLog = &Q.UserLog
+	WorkerWebSearchTask = &Q.WorkerWebSearchTask
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:      db,
-		User:    newUser(db, opts...),
-		UserLog: newUserLog(db, opts...),
+		db:                  db,
+		User:                newUser(db, opts...),
+		UserLog:             newUserLog(db, opts...),
+		WorkerWebSearchTask: newWorkerWebSearchTask(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	User    user
-	UserLog userLog
+	User                user
+	UserLog             userLog
+	WorkerWebSearchTask workerWebSearchTask
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:      db,
-		User:    q.User.clone(db),
-		UserLog: q.UserLog.clone(db),
+		db:                  db,
+		User:                q.User.clone(db),
+		UserLog:             q.UserLog.clone(db),
+		WorkerWebSearchTask: q.WorkerWebSearchTask.clone(db),
 	}
 }
 
@@ -62,21 +67,24 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:      db,
-		User:    q.User.replaceDB(db),
-		UserLog: q.UserLog.replaceDB(db),
+		db:                  db,
+		User:                q.User.replaceDB(db),
+		UserLog:             q.UserLog.replaceDB(db),
+		WorkerWebSearchTask: q.WorkerWebSearchTask.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	User    IUserDo
-	UserLog IUserLogDo
+	User                IUserDo
+	UserLog             IUserLogDo
+	WorkerWebSearchTask IWorkerWebSearchTaskDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		User:    q.User.WithContext(ctx),
-		UserLog: q.UserLog.WithContext(ctx),
+		User:                q.User.WithContext(ctx),
+		UserLog:             q.UserLog.WithContext(ctx),
+		WorkerWebSearchTask: q.WorkerWebSearchTask.WithContext(ctx),
 	}
 }
 

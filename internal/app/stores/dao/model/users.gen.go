@@ -22,6 +22,7 @@ type User struct {
 	InviteBy   int64  `gorm:"column:invite_by;not null" json:"inviteBy"`
 	CreatedAt  int64  `gorm:"column:created_at;not null" json:"createdAt"`
 	UpdatedAt  int64  `gorm:"column:updated_at;not null" json:"updatedAt"`
+	Version    int64  `gorm:"column:version;not null" json:"version"`
 }
 
 // TableName User's table name
