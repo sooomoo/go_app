@@ -80,7 +80,7 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 			TraceResolverMode: true,
 		}).
 			SetConnMaxIdleTime(time.Hour).
-			SetConnMaxLifetime(24 * time.Hour).
+			SetConnMaxLifetime(2 * time.Hour).
 			SetMaxIdleConns(100).
 			SetMaxOpenConns(200),
 	)
