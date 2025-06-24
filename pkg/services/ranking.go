@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"goapp/pkg/cache"
 	"math"
@@ -28,14 +29,14 @@ var (
 		local score = integer + ARGV[3]   -- 组合位浮点数
 		return redis.call('ZADD', KEYS[2], score, ARGV[1])
 	end
-	return 0
+	return -2
 	`)
 	luaAdd = redis.NewScript(`
 	local res = redis.call('SET', KEYS[1], '0', 'EX', ARGV[3], 'NX')
 	if res ~= false then
 		return redis.call('ZADD', KEYS[2], ARGV[2], ARGV[1])
 	end
-	return 0
+	return -2
 	`)
 	luaTruncate = redis.NewScript(`
 	local elements = redis.call('ZRANGE', KEYS[1], '+inf', '-inf','BYSCORE', 'REV', 'LIMIT', ARGV[1], ARGV[2]); 
@@ -48,6 +49,10 @@ var (
 
 var (
 	rankingTimeFuture = time.Date(2050, 0, 0, 0, 0, 0, 0, time.UTC)
+)
+
+var (
+	ErrIdempotent = errors.New("idempotent error: request already processed") // 重复请求错误，表示请求已经处理过了
 )
 
 // 排名服务
@@ -172,9 +177,14 @@ func (r *RankingService) Increment(ctx context.Context, requestId string, member
 		return err
 	}
 	// 使用 Lua 脚本来保证原子性
-	_, err = luaIncr.Eval(ctx, r.db.Master(), []string{idempotentKey, r.key}, member, delta, frac, idempotentExpSecs).Result()
+	v, err := luaIncr.Eval(ctx, r.db.Master(), []string{idempotentKey, r.key}, member, delta, frac, idempotentExpSecs).Result()
 	if err != nil {
 		return err
+	}
+	if vv, ok := v.(int64); ok {
+		if vv == -2 {
+			return ErrIdempotent
+		}
 	}
 	return nil
 }
@@ -196,9 +206,14 @@ func (r *RankingService) UpdateScore(ctx context.Context, requestId string, memb
 	}
 	finalScore := float64(score) + frac
 	// 使用 Lua 脚本来保证原子性
-	_, err = luaAdd.Eval(ctx, r.db.Master(), []string{idempotentKey, r.key}, member, finalScore, idempotentExpSecs).Result()
+	v, err := luaAdd.Eval(ctx, r.db.Master(), []string{idempotentKey, r.key}, member, finalScore, idempotentExpSecs).Result()
 	if err != nil {
 		return err
+	}
+	if vv, ok := v.(int64); ok {
+		if vv == -2 {
+			return ErrIdempotent
+		}
 	}
 	return nil
 }
