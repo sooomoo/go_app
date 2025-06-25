@@ -3,11 +3,15 @@ package core
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
+
+type UUIDv8 [11]byte
+
+var NilUUIDv8 = UUIDv8{}
 
 // uuidV8Generator 用于生成适用于MySQL的UUID v8
 type uuidV8Generator struct {
@@ -19,7 +23,7 @@ type uuidV8Generator struct {
 const uuidv8StartEpochMs = 1735660800000
 
 // Generate 生成一个优化的UUID v8，格式为字节切片
-func (g *uuidV8Generator) Generate() ([]byte, error) {
+func (g *uuidV8Generator) Generate() (UUIDv8, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -50,7 +54,7 @@ func (g *uuidV8Generator) Generate() ([]byte, error) {
 	g.lastTimestamp = now
 
 	// 构建UUID各部分
-	uuid := make([]byte, 11)
+	uuid := UUIDv8{}
 
 	// 7字节：56位：42 位时间戳+14 位计数
 	pre := now<<14 + g.counter
@@ -60,7 +64,7 @@ func (g *uuidV8Generator) Generate() ([]byte, error) {
 	// 随机数部分（32位）
 	_, err := rand.Read(uuid[7:11])
 	if err != nil {
-		return nil, errors.New("failed to generate random bytes")
+		return NilUUIDv8, errors.New("failed to generate random bytes")
 	}
 
 	return uuid, nil
@@ -73,12 +77,10 @@ var uuidv8Gen = &uuidV8Generator{
 func NewUUIDv8() UUIDv8 {
 	id, err := uuidv8Gen.Generate()
 	if err != nil {
-		return nil
+		return NilUUIDv8
 	}
 	return id
 }
-
-type UUIDv8 []byte
 
 func (u UUIDv8) IsEmpty() bool {
 	return len(u) == 0
@@ -86,9 +88,5 @@ func (u UUIDv8) IsEmpty() bool {
 
 // ToString 将UUID字节切片转换为标准字符串格式
 func (u UUIDv8) String() string {
-	return fmt.Sprintf("%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-		u[0], u[1], u[2], u[3],
-		u[4], u[5],
-		u[6], u[7],
-		u[8], u[9], u[10])
+	return hex.EncodeToString(u[:])
 }

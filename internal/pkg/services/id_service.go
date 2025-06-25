@@ -10,10 +10,11 @@ import (
 
 // 此处的 id 长度不超过 53bit: 为了兼容js的 number
 type IDService interface {
-	NextUserID() int64
-	NextOrderID() int64
-	NextUUIDv7() string
-	NextShortUUIDv8() string
+	NewUserID() int64
+	NewOrderID() int64
+	NewUUIDv7() string
+	NewUUIDv8() core.UUIDv8
+	NewSeqID() core.SeqID
 }
 
 type defaultIdService struct {
@@ -32,15 +33,15 @@ func NewDefaultIDService(workerId int64) IDService {
 	}
 }
 
-func (i *defaultIdService) NextUserID() int64 {
+func (i *defaultIdService) NewUserID() int64 {
 	return i.userIdGenerator.Next()
 }
 
-func (i *defaultIdService) NextOrderID() int64 {
+func (i *defaultIdService) NewOrderID() int64 {
 	return i.orderIdGenerator.Next()
 }
 
-func (i *defaultIdService) NextUUIDv7() string {
+func (i *defaultIdService) NewUUIDv7() string {
 	val, err := uuid.NewV7()
 	if err != nil {
 		return ""
@@ -48,6 +49,10 @@ func (i *defaultIdService) NextUUIDv7() string {
 	return strings.ReplaceAll(val.String(), "-", "")
 }
 
-func (i *defaultIdService) NextShortUUIDv8() string {
-	return core.NewUUIDv8().String()
+func (i *defaultIdService) NewUUIDv8() core.UUIDv8 {
+	return core.NewUUIDv8()
+}
+
+func (i *defaultIdService) NewSeqID() core.SeqID {
+	return core.NewSeqID()
 }

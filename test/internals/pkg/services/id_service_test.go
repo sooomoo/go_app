@@ -12,9 +12,9 @@ import (
 
 func TestIdService(t *testing.T) {
 	idSvc := services.NewDefaultIDService(1)
-	userId := idSvc.NextUserID()
-	orderId := idSvc.NextOrderID()
-	uidv7 := idSvc.NextUUIDv7()
+	userId := idSvc.NewUserID()
+	orderId := idSvc.NewOrderID()
+	uidv7 := idSvc.NewUUIDv7()
 	cusRadix := core.NewCustomRadix34()
 	fmt.Println(userId, cusRadix.Encode(int(userId)), strconv.FormatInt(userId, 36))
 	fmt.Println(orderId, cusRadix.Encode(int(orderId)), strconv.FormatInt(orderId, 36))

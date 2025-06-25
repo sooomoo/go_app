@@ -42,7 +42,7 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 		_, err := tx.User.WithContext(ctx).Where(tx.User.Phone.Eq(phone)).Take()
 		if err == gorm.ErrRecordNotFound {
 			// 添加
-			userId := app.GetGlobal().GetIDService().NextUserID()
+			userId := app.GetGlobal().GetIDService().NewUserID()
 			err = tx.User.WithContext(ctx).Create(&model.User{
 				ID:        int64(userId),
 				Phone:     phone,
