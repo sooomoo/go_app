@@ -5,6 +5,7 @@ import (
 	"goapp/internal/app"
 	"goapp/internal/app/services/headers"
 	"goapp/internal/app/stores"
+	"goapp/pkg/core"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -21,11 +22,11 @@ func NewUserService() *UserService {
 }
 
 type GetUserInfoResponse struct {
-	Id        int64  `json:"id"`
-	Name      string `json:"name"`
-	AvatarUrl string `json:"avatarUrl"`
-	Role      int32  `json:"role"`
-	IpLatest  string `json:"ipLatest"`
+	Id        core.BigID `json:"id"`
+	Name      string     `json:"name"`
+	AvatarUrl string     `json:"avatarUrl"`
+	Role      int32      `json:"role"`
+	IpLatest  string     `json:"ipLatest"`
 }
 type GetUserInfoResponseDto ResponseDto[*GetUserInfoResponse]
 
@@ -47,7 +48,7 @@ func (u *UserService) GetSelfInfo(c *gin.Context) (*GetUserInfoResponseDto, erro
 		Code: RespCodeSucceed,
 		Msg:  "succeed",
 		Data: &GetUserInfoResponse{
-			Id:        int64(user.ID),
+			Id:        user.ID,
 			Name:      user.Name,
 			AvatarUrl: user.AvatarURL,
 			Role:      user.Role,
