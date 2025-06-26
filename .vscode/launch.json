@@ -12,7 +12,8 @@
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/app",
             "env": {
-                "env": "dev"
+                "env": "dev",
+                "node_id": 2,
             }
         }
     ]

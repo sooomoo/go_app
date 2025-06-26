@@ -8,13 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sync/atomic"
+	"sync"
 	"time"
 )
 
 var (
-	ErrInvalidHex   = errors.New("hex string is not a valid SeqID")
-	ErrInvalidSeqID = errors.New("invalid SeqID")
+	ErrInvalidHex = errors.New("hex string is not a valid SeqID")
+	ErrInvalidID  = errors.New("invalid ID")
 )
 
 var processUnique [3]byte
@@ -32,40 +32,54 @@ func init() {
 	if err != nil {
 		panic(fmt.Errorf("cannot initialize objectid package with crypto.rand.Reader: %w", err))
 	}
-	cnt := (uint32(b[0]) << 0) | (uint32(b[1]) << 8) | (uint32(b[2]) << 16)
-	seqIDCounter.Store(cnt)
+	seqIDCounter = (uint32(b[0]) << 0) | (uint32(b[1]) << 8) | (uint32(b[2]) << 16)
 }
 
 type SeqID [10]byte
 
 var NilSeqID SeqID
 
-var seqIDCounter = atomic.Uint32{}
+var seqIDLastTimestamp int64 = 0
+var seqIDCounter uint32 = 0
+var seqIDMutex = sync.Mutex{}
 
 func NewSeqID() SeqID {
-	var b [10]byte
+	seqIDMutex.Lock()
+	defer seqIDMutex.Unlock()
 
-	binary.BigEndian.PutUint32(b[0:4], uint32(time.Now().Unix()))
-	copy(b[4:7], processUnique[:])
-	var newV uint32
-	for {
-		old := seqIDCounter.Load() // 原子读取当前值
-		newV = old + 1
+	var b [10]byte
+	now := time.Now().Unix()
+	if now == seqIDLastTimestamp {
+		seqIDCounter++
 		// 超过阈值 0x00FFFFFF (16,777,215) 则重置为 0
-		if old >= 0x00FFFFFF {
-			newV = 1
+		if seqIDCounter >= 0x00FFFFFF {
+			for now <= seqIDLastTimestamp {
+				time.Sleep(time.Microsecond * 10)
+				now = time.Now().Unix()
+			}
+			seqIDCounter = 0
 		}
-		// CAS 原子更新：若当前值仍为 old，则更新为 new
-		if seqIDCounter.CompareAndSwap(old, newV) {
-			break // 更新成功则退出循环
+	} else if now < seqIDLastTimestamp {
+		// 时钟回拨：等待到下一个时间戳
+		for now < seqIDLastTimestamp {
+			time.Sleep(time.Microsecond * 10)
+			now = time.Now().Unix()
 		}
-		// 更新失败说明其他协程已修改值，重试
+		seqIDCounter = 0
+	} else {
+		// 不同时间戳（精度：秒）下直接使用序列号：0
+		seqIDCounter = 0
 	}
 
+	seqIDLastTimestamp = now
+
+	binary.BigEndian.PutUint32(b[0:4], uint32(now))
+	copy(b[4:7], processUnique[:])
+
 	// 取低24位
-	b[7] = byte(newV >> 16)
-	b[8] = byte(newV >> 8)
-	b[9] = byte(newV)
+	b[7] = byte(seqIDCounter >> 16)
+	b[8] = byte(seqIDCounter >> 8)
+	b[9] = byte(seqIDCounter)
 
 	return b
 }
@@ -158,5 +172,5 @@ func (id *SeqID) UnmarshalJSON(b []byte) error {
 		return nil
 	}
 
-	return ErrInvalidSeqID
+	return ErrInvalidID
 }

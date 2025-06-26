@@ -15,14 +15,23 @@ type BytePool struct{ p sync.Pool }
 func NewBytePool(size, cap int) *BytePool {
 	return &BytePool{
 		p: sync.Pool{
-			New: func() any { return make([]byte, size, cap) },
+			New: func() any {
+				b := make([]byte, size, cap)
+				return &b
+			},
 		},
 	}
 }
 
-func (p *BytePool) Get() []byte { return p.p.Get().([]byte) }
+func (p *BytePool) Get() []byte {
+	b := p.p.Get().(*[]byte)
+	return *b
+}
 
-func (p *BytePool) Put(b []byte) { p.p.Put(b[:0]) } // 重置已用长度
+func (p *BytePool) Put(b []byte) {
+	b = b[:0] // 重置已用长度
+	p.p.Put(&b)
+}
 
 type ByteBufferPool struct {
 	p sync.Pool
