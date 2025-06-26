@@ -1,6 +1,7 @@
 package stores_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -42,6 +43,19 @@ func TestGenDao(t *testing.T) {
 	gormdb, _ := gorm.Open(mysql.Open("root:abc12345@tcp(localhost:3306)/niu?charset=utf8mb4&parseTime=true&loc=Local"))
 	g.UseDB(gormdb) // reuse your gorm db
 	g.WithJSONTagNameStrategy(underScoreToCamelCase)
+	g.WithDataTypeMap(map[string]func(columnType gorm.ColumnType) (dataType string){
+		"bigint": func(columnType gorm.ColumnType) (dataType string) {
+			name := strings.ToLower(columnType.Name())
+			if name == "id" || strings.HasSuffix(name, "_id") {
+				dataType = "core.BigID"
+			} else {
+				dataType = "int64"
+			}
+
+			fmt.Println(name)
+			return
+		},
+	})
 
 	// Generate basic type-safe DAO API for struct `model.User` following conventions
 	g.ApplyBasic(

@@ -27,9 +27,9 @@ func newUserLog(db *gorm.DB, opts ...gen.DOOption) userLog {
 
 	tableName := _userLog.userLogDo.TableName()
 	_userLog.ALL = field.NewAsterisk(tableName)
-	_userLog.ID = field.NewInt64(tableName, "id")
-	_userLog.TraceID = field.NewInt64(tableName, "trace_id")
-	_userLog.UserID = field.NewInt64(tableName, "user_id")
+	_userLog.ID = field.NewField(tableName, "id")
+	_userLog.TraceID = field.NewField(tableName, "trace_id")
+	_userLog.UserID = field.NewField(tableName, "user_id")
 	_userLog.OldValue = field.NewString(tableName, "old_value")
 	_userLog.NewValue = field.NewString(tableName, "new_value")
 	_userLog.IP = field.NewString(tableName, "ip")
@@ -44,9 +44,9 @@ type userLog struct {
 	userLogDo
 
 	ALL       field.Asterisk
-	ID        field.Int64
-	TraceID   field.Int64
-	UserID    field.Int64
+	ID        field.Field
+	TraceID   field.Field
+	UserID    field.Field
 	OldValue  field.String
 	NewValue  field.String
 	IP        field.String
@@ -67,9 +67,9 @@ func (u userLog) As(alias string) *userLog {
 
 func (u *userLog) updateTableName(table string) *userLog {
 	u.ALL = field.NewAsterisk(table)
-	u.ID = field.NewInt64(table, "id")
-	u.TraceID = field.NewInt64(table, "trace_id")
-	u.UserID = field.NewInt64(table, "user_id")
+	u.ID = field.NewField(table, "id")
+	u.TraceID = field.NewField(table, "trace_id")
+	u.UserID = field.NewField(table, "user_id")
 	u.OldValue = field.NewString(table, "old_value")
 	u.NewValue = field.NewString(table, "new_value")
 	u.IP = field.NewString(table, "ip")

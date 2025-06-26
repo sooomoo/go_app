@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"goapp/internal/app/stores/dao/query"
-	"goapp/internal/pkg/services"
 	"goapp/pkg/cache"
 	"goapp/pkg/core"
 	"goapp/pkg/distribute"
@@ -28,7 +27,6 @@ type GlobalInstance struct {
 
 	pool      core.CoroutinePool
 	cache     *cache.Cache
-	idService services.IDService
 	locker    *distribute.Locker
 	queue     distribute.MessageQueue
 	appConfig *AppConfig
@@ -104,8 +102,6 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 	if err != nil {
 		panic(err)
 	}
-
-	g.idService = services.NewDefaultIDService(1)
 }
 
 func (g *GlobalInstance) loadConfig() error {
@@ -167,9 +163,7 @@ func (g *GlobalInstance) GetCoroutinePool() core.CoroutinePool {
 func (g *GlobalInstance) GetCache() *cache.Cache {
 	return g.cache
 }
-func (g *GlobalInstance) GetIDService() services.IDService {
-	return g.idService
-}
+
 func (g *GlobalInstance) GetLocker() *distribute.Locker {
 	return g.locker
 }

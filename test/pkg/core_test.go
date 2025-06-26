@@ -52,6 +52,8 @@ func TestSeqId(t *testing.T) {
 	fmt.Printf("New SeqID: %v\n", id)
 	fmt.Printf("SeqID Hex: %s\n", id.Hex())
 	fmt.Printf("SeqID B64: %s\n", id.Base64())
+	fmt.Printf("SeqID Time: %v\n", id.Timestamp())
+	return
 
 	set := collection.Set[core.SeqID]{}
 	cnt := 2000
@@ -180,7 +182,7 @@ func TestBigIdNewMany(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			id := core.NewBigID()
-			fmt.Printf("New BigID: %d\n", id)
+			fmt.Printf("New BigID: %d, time: %v\n", id, id.Timestamp())
 		}()
 	}
 	wg.Wait()
@@ -194,18 +196,18 @@ func BenchmarkConcurrentID(b *testing.B) {
 }
 
 type BigIDExample struct {
-	ID  core.BigID   `json:"id"`
-	Arr []core.BigID `json:"arr"`
-	Age int          `json:"age"`
+	ID  int64   `json:"id"`
+	Arr []int64 `json:"arr"`
+	Age int     `json:"age"`
 }
 
 func TestBigIDMarshalJsonExp(t *testing.T) {
 	exp := BigIDExample{
-		ID: core.NewBigID(),
-		Arr: []core.BigID{
-			core.NewBigID(),
-			core.NewBigID(),
-			core.NewBigID(),
+		ID: int64(core.NewBigID()),
+		Arr: []int64{
+			int64(core.NewBigID()),
+			int64(core.NewBigID()),
+			int64(core.NewBigID()),
 		},
 		Age: 30,
 	}

@@ -34,7 +34,7 @@ func (u *UserService) GetSelfInfo(c *gin.Context) (*GetUserInfoResponseDto, erro
 	if claims == nil {
 		return nil, errors.New("not found")
 	}
-	user, err := u.userRepo.GetById(c, int64(claims.UserId))
+	user, err := u.userRepo.GetById(c, claims.UserId)
 	if err == gorm.ErrRecordNotFound {
 		c.AbortWithStatus(401)
 		return nil, nil
@@ -47,7 +47,7 @@ func (u *UserService) GetSelfInfo(c *gin.Context) (*GetUserInfoResponseDto, erro
 		Code: RespCodeSucceed,
 		Msg:  "succeed",
 		Data: &GetUserInfoResponse{
-			Id:        user.ID,
+			Id:        int64(user.ID),
 			Name:      user.Name,
 			AvatarUrl: user.AvatarURL,
 			Role:      user.Role,

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"os"
 	"strconv"
@@ -58,7 +59,7 @@ func NewBigID() BigID {
 	if now == bigIDTimestamp {
 		// 当同一时间戳（精度：毫秒）下多次生成id会增加序列号
 		bigIDCounter++
-		if bigIDCounter >= maxSequence {
+		if bigIDCounter > maxSequence {
 			// 当前序列 Id 已经使用完，则需要等待下一毫秒
 			for now <= bigIDTimestamp {
 				time.Sleep(time.Microsecond * 10)
@@ -93,15 +94,19 @@ func NewBigIDFromString(str string) BigID {
 	return BigID(v)
 }
 
-func (id BigID) Timestamp(sid int64) time.Time {
+func (id BigID) Timestamp() time.Time {
 	timestampBits := 63 - nodeIDBits - counterBits
 	timestampMax := int64(-1 ^ (-1 << timestampBits))
-	ms := (sid>>(counterBits+nodeIDBits))&timestampMax + bigIDEpoch
+	ms := (int64(id)>>(counterBits+nodeIDBits))&timestampMax + bigIDEpoch
 	return time.UnixMilli(ms).UTC()
 }
 
 func (id BigID) String() string {
 	return fmt.Sprintf("BigID(%d)", id)
+}
+
+func (id BigID) Value() (driver.Value, error) {
+	return int64(id), nil
 }
 
 func (id BigID) IsZero() bool {

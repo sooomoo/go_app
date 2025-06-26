@@ -272,7 +272,7 @@ func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID int, clientId
 	}
 	token := core.NewUUIDWithoutDash()
 	claims := stores.AuthorizedClaims{
-		UserId:          userID,
+		UserId:          core.BigID(userID),
 		Platform:        platform,
 		UserAgent:       headers.GetUserAgent(ctx),
 		ClientId:        clientId,

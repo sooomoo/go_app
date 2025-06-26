@@ -13,7 +13,7 @@
             "program": "${workspaceFolder}/cmd/app",
             "env": {
                 "env": "dev",
-                "node_id": 2,
+                "node_id": "1",
             }
         }
     ]

@@ -2,10 +2,10 @@ package stores
 
 import (
 	"context"
-	"goapp/internal/app"
 	"goapp/internal/app/stores/dao/model"
 	"goapp/internal/app/stores/dao/query"
 	"goapp/pkg/cache"
+	"goapp/pkg/core"
 	"time"
 
 	"gorm.io/gorm"
@@ -42,9 +42,9 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 		_, err := tx.User.WithContext(ctx).Where(tx.User.Phone.Eq(phone)).Take()
 		if err == gorm.ErrRecordNotFound {
 			// 添加
-			userId := app.GetGlobal().GetIDService().NewUserID()
+			userId := core.NewBigID()
 			err = tx.User.WithContext(ctx).Create(&model.User{
-				ID:        int64(userId),
+				ID:        userId,
 				Phone:     phone,
 				Name:      phone[3:6] + "****" + phone[10:],
 				Role:      int32(RoleNormal),
@@ -89,6 +89,6 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 	return u.WithContext(ctx).Where(u.Phone.Eq(phone)).Take()
 }
 
-func (r *UserStore) GetById(ctx context.Context, userId int64) (*model.User, error) {
+func (r *UserStore) GetById(ctx context.Context, userId core.BigID) (*model.User, error) {
 	return query.User.WithContext(ctx).Where(query.User.ID.Eq(userId)).Take()
 }
