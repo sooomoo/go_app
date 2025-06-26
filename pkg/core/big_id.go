@@ -51,7 +51,7 @@ var bigIDTimestamp int64
 var bigIDCounter int64
 var bigMutex = sync.Mutex{}
 
-func NewBigID() BigID {
+func NewID() int64 {
 	bigMutex.Lock()
 	defer bigMutex.Unlock()
 
@@ -80,7 +80,11 @@ func NewBigID() BigID {
 	}
 
 	bigIDTimestamp = now
-	return BigID(((now - bigIDEpoch) << timestampShift) | (nodeId << counterBits) | bigIDCounter)
+	return ((now - bigIDEpoch) << timestampShift) | (nodeId << counterBits) | bigIDCounter
+}
+
+func NewBigID() BigID {
+	return BigID(NewID())
 }
 
 func NewBigIDFromString(str string) BigID {
@@ -92,6 +96,10 @@ func NewBigIDFromString(str string) BigID {
 		return NilBigID
 	}
 	return BigID(v)
+}
+
+func (id BigID) ToInt64() int64 {
+	return int64(id)
 }
 
 func (id BigID) Timestamp() time.Time {

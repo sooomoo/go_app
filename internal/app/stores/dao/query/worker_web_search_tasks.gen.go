@@ -27,7 +27,7 @@ func newWorkerWebSearchTask(db *gorm.DB, opts ...gen.DOOption) workerWebSearchTa
 
 	tableName := _workerWebSearchTask.workerWebSearchTaskDo.TableName()
 	_workerWebSearchTask.ALL = field.NewAsterisk(tableName)
-	_workerWebSearchTask.ID = field.NewField(tableName, "id")
+	_workerWebSearchTask.ID = field.NewInt64(tableName, "id")
 	_workerWebSearchTask.Keywords = field.NewString(tableName, "keywords")
 	_workerWebSearchTask.CreateAt = field.NewInt64(tableName, "create_at")
 
@@ -41,7 +41,7 @@ type workerWebSearchTask struct {
 	workerWebSearchTaskDo
 
 	ALL      field.Asterisk
-	ID       field.Field
+	ID       field.Int64
 	Keywords field.String // 搜索词
 	CreateAt field.Int64
 
@@ -60,7 +60,7 @@ func (w workerWebSearchTask) As(alias string) *workerWebSearchTask {
 
 func (w *workerWebSearchTask) updateTableName(table string) *workerWebSearchTask {
 	w.ALL = field.NewAsterisk(table)
-	w.ID = field.NewField(table, "id")
+	w.ID = field.NewInt64(table, "id")
 	w.Keywords = field.NewString(table, "keywords")
 	w.CreateAt = field.NewInt64(table, "create_at")
 

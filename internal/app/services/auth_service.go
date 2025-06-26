@@ -124,7 +124,7 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 	}
 
 	// 生成token, 将这些Token与该用户绑定
-	accessToken, refreshToken, err := a.GenerateTokenPair(ctx, int(user.ID))
+	accessToken, refreshToken, err := a.GenerateTokenPair(ctx, user.ID)
 	if err != nil {
 		ctx.AbortWithError(500, err)
 		return nil
@@ -184,7 +184,7 @@ func (a *AuthService) RefreshToken(ctx *gin.Context) *AuthResponseDto {
 	}
 
 	// 轮换 clientid 与 refresh token
-	accessToken, refreshToken, err := a.GenerateTokenPair(ctx, int(credentials.UserId))
+	accessToken, refreshToken, err := a.GenerateTokenPair(ctx, credentials.UserId)
 	if err != nil {
 		ctx.AbortWithStatus(401) // token 已经删除，此时只能重新登录
 		return nil
@@ -251,7 +251,7 @@ func (a *AuthService) RevokeRefreshToken(ctx context.Context, refreshToken strin
 	return a.authRepo.DeleteRefreshToken(ctx, refreshToken) // 调用Repository层的方法
 }
 
-func (a *AuthService) GenerateTokenPair(ctx *gin.Context, userID int) (string, string, error) {
+func (a *AuthService) GenerateTokenPair(ctx *gin.Context, userID int64) (string, string, error) {
 	clientId := headers.GetClientId(ctx)
 	platform := headers.GetPlatform(ctx)
 	accessToken, claims, err := a.GenerateAccessToken(ctx, userID, clientId, platform)
@@ -266,13 +266,13 @@ func (a *AuthService) GenerateTokenPair(ctx *gin.Context, userID int) (string, s
 	return accessToken, refreshToken, nil
 }
 
-func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID int, clientId string, platform core.Platform) (string, *stores.AuthorizedClaims, error) {
+func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID int64, clientId string, platform core.Platform) (string, *stores.AuthorizedClaims, error) {
 	if len(clientId) == 0 || platform == core.Unspecify {
 		return "", nil, errors.New("invalid args")
 	}
 	token := core.NewUUIDWithoutDash()
 	claims := stores.AuthorizedClaims{
-		UserId:          core.BigID(userID),
+		UserId:          userID,
 		Platform:        platform,
 		UserAgent:       headers.GetUserAgent(ctx),
 		ClientId:        clientId,

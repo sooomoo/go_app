@@ -42,7 +42,7 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 		_, err := tx.User.WithContext(ctx).Where(tx.User.Phone.Eq(phone)).Take()
 		if err == gorm.ErrRecordNotFound {
 			// 添加
-			userId := core.NewBigID()
+			userId := core.NewID()
 			err = tx.User.WithContext(ctx).Create(&model.User{
 				ID:        userId,
 				Phone:     phone,
@@ -89,6 +89,6 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 	return u.WithContext(ctx).Where(u.Phone.Eq(phone)).Take()
 }
 
-func (r *UserStore) GetById(ctx context.Context, userId core.BigID) (*model.User, error) {
+func (r *UserStore) GetById(ctx context.Context, userId int64) (*model.User, error) {
 	return query.User.WithContext(ctx).Where(query.User.ID.Eq(userId)).Take()
 }

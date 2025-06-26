@@ -4,19 +4,17 @@
 
 package model
 
-import "goapp/pkg/core"
-
 const TableNameUserLog = "user_logs"
 
 // UserLog mapped from table <user_logs>
 type UserLog struct {
-	ID        core.BigID `gorm:"column:id;primaryKey" json:"id"`
-	TraceID   core.BigID `gorm:"column:trace_id;not null" json:"traceId"`
-	UserID    core.BigID `gorm:"column:user_id;not null" json:"userId"`
-	OldValue  string     `gorm:"column:old_value;not null" json:"oldValue"`
-	NewValue  string     `gorm:"column:new_value;not null" json:"newValue"`
-	IP        string     `gorm:"column:ip;not null" json:"ip"`
-	CreatedAt int64      `gorm:"column:created_at;not null" json:"createdAt"`
+	ID        int64  `gorm:"column:id;primaryKey" json:"id"`
+	TraceID   int64  `gorm:"column:trace_id;not null" json:"traceId"`
+	UserID    int64  `gorm:"column:user_id;not null" json:"userId"`
+	OldValue  string `gorm:"column:old_value;not null" json:"oldValue"`
+	NewValue  string `gorm:"column:new_value;not null" json:"newValue"`
+	IP        string `gorm:"column:ip;not null" json:"ip"`
+	CreatedAt int64  `gorm:"column:created_at;not null" json:"createdAt"`
 }
 
 // TableName UserLog's table name

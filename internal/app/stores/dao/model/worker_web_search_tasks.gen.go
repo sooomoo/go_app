@@ -4,15 +4,13 @@
 
 package model
 
-import "goapp/pkg/core"
-
 const TableNameWorkerWebSearchTask = "worker_web_search_tasks"
 
 // WorkerWebSearchTask 搜索任务
 type WorkerWebSearchTask struct {
-	ID       core.BigID `gorm:"column:id;primaryKey" json:"id"`
-	Keywords string     `gorm:"column:keywords;not null;comment:搜索词" json:"keywords"` // 搜索词
-	CreateAt int64      `gorm:"column:create_at;not null" json:"createAt"`
+	ID       int64  `gorm:"column:id;primaryKey" json:"id"`
+	Keywords string `gorm:"column:keywords;not null;comment:搜索词" json:"keywords"` // 搜索词
+	CreateAt int64  `gorm:"column:create_at;not null" json:"createAt"`
 }
 
 // TableName WorkerWebSearchTask's table name
