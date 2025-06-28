@@ -42,11 +42,11 @@ func GetTrimmedHeader(ctx *gin.Context, name string) string {
 
 func GetPlatform(ctx *gin.Context) core.Platform {
 	platform := GetTrimmedHeader(ctx, HeaderPlatform)
-	pla := core.ParsePlatform(platform)
+	pla := core.PlatformFromString(platform)
 	if pla == core.Unspecify {
 		str, _ := ctx.Cookie(CookieKeyPlatform)
 		if len(str) > 0 {
-			pla = core.ParsePlatform(str)
+			pla = core.PlatformFromString(str)
 		}
 	}
 

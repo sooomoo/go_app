@@ -51,7 +51,7 @@ func (a *AuthService) PrepareLogin(ctx *gin.Context) *PrepareLoginResponseDto {
 	}
 	base64Str := item.EncodeB64string()
 	// 生成csrf token
-	csrfToken := core.NewUUIDWithoutDash()
+	csrfToken := core.NewUUID()
 	// 将验证码存入缓存中
 	dur := 10 * time.Minute
 	err = a.authRepo.SaveCsrfToken(ctx, csrfToken, answer, dur)
@@ -258,7 +258,7 @@ func (a *AuthService) GenerateTokenPair(ctx *gin.Context, userID int64) (string,
 	if err != nil {
 		return "", "", err
 	}
-	refreshToken := core.NewUUIDWithoutDash()
+	refreshToken := core.NewUUID()
 	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, claims, time.Duration(app.GetGlobal().GetAuthConfig().Jwt.RefreshTtl)*time.Minute)
 	if err != nil {
 		return "", "", err
@@ -270,7 +270,7 @@ func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID int64, client
 	if len(clientId) == 0 || platform == core.Unspecify {
 		return "", nil, errors.New("invalid args")
 	}
-	token := core.NewUUIDWithoutDash()
+	token := core.NewUUID()
 	claims := stores.AuthorizedClaims{
 		UserId:          userID,
 		Platform:        platform,

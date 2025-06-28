@@ -4,7 +4,6 @@ import (
 	"errors"
 	"goapp/internal/app/services"
 	"goapp/internal/app/services/headers"
-	"goapp/pkg/core"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,7 +16,7 @@ func ReplayMiddleware() gin.HandlerFunc {
 		platform := headers.GetPlatform(c)
 		signature := headers.GetTrimmedHeader(c, headers.HeaderSignature)
 		sessionId := headers.GetSessionId(c)
-		if len(nonce) == 0 || len(timestampStr) == 0 || len(signature) == 0 || len(sessionId) == 0 || !core.IsPlatformValid(platform) {
+		if len(nonce) == 0 || len(timestampStr) == 0 || len(signature) == 0 || len(sessionId) == 0 || !platform.IsValid() {
 			c.AbortWithStatus(400)
 			return
 		}

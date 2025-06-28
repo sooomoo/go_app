@@ -90,7 +90,7 @@ func SignMiddleware() gin.HandlerFunc {
 		// 签名响应体
 		responseBody := bodyWriter.GetBytes()
 		respTimestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
-		respNonce := core.NewUUIDWithoutDash()
+		respNonce := core.NewUUID()
 		dataToSign := map[string]string{
 			"session":   extendData.SessionId,
 			"nonce":     respNonce,

@@ -5,14 +5,9 @@ import (
 	"fmt"
 	"goapp/pkg/collection"
 	"goapp/pkg/core"
-	"os"
 	"sync"
 	"testing"
 )
-
-func init() {
-	os.Setenv("node_id", "2")
-}
 
 type Example struct {
 	ID    int64   `json:"id,string"` // 增加 string 标签，序列化时转为字符串
