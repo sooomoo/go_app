@@ -49,11 +49,12 @@ func IsUUIDValid(s string) bool {
 	return err == nil
 }
 
+// UUIDv8 10字节: 用于生成具有顺序性的UUID，前 5字节为毫秒时间戳（可表示 34.8 年），后 5字节为随机数
 type UUIDv8 [10]byte
 
 var NilUUIDv8 UUIDv8
 
-const uuidv8StartEpochMs = 1735660800000
+const uuidv8StartEpochMs = 1735660800000 // 2025-01-01 00:00:00 UTC
 
 // 生成一个优化的UUID v8，10字节
 func NewUUIDv8() UUIDv8 {
@@ -63,10 +64,10 @@ func NewUUIDv8() UUIDv8 {
 	// 构建UUID各部分
 	uuid := UUIDv8{}
 
-	// 6字节: 毫秒时间戳 (48位)
-	binary.BigEndian.PutUint64(uuid[0:8], now<<16) // 高48位为时间戳
-	// 4字节: 随机数部分 (32位)
-	_, err := rand.Read(uuid[6:10])
+	// 5字节: 毫秒时间戳 (40位)，可以表示 34.8 年，够用了
+	binary.BigEndian.PutUint64(uuid[0:8], now<<24) // 高48位为时间戳
+	// 5字节: 随机数部分 (40位)
+	_, err := rand.Read(uuid[5:10])
 	if err != nil {
 		return NilUUIDv8
 	}
@@ -100,8 +101,8 @@ func (u UUIDv8) String() string {
 
 func (id UUIDv8) Timestamp() time.Time {
 	unixSecs := binary.BigEndian.Uint64(id[0:8])
-	unixSecs >>= 16
-	return time.UnixMilli(int64(unixSecs)).UTC()
+	unixSecs >>= 24
+	return time.UnixMilli(int64(unixSecs) + uuidv8StartEpochMs).UTC()
 }
 
 func (id UUIDv8) Hex() string {
@@ -163,10 +164,12 @@ func (id *UUIDv8) UnmarshalJSON(b []byte) error {
 }
 
 var (
-	ErrInvalidHex = errors.New("hex string is not a valid SeqID")
-	ErrInvalidID  = errors.New("invalid ID")
+	ErrInvalidID = errors.New("invalid ID")
 )
 
+// 相较于 UUIDv8，SeqID 更加具有顺序性，每秒内有一个 counter 用于表示当前秒内的序列号
+//
+// 规则如下：前 4 字节为时间戳，中间 3 字节为进程唯一标识（随机生成），最后 3 字节为序列号
 type SeqID [10]byte
 
 var NilSeqID SeqID

@@ -18,7 +18,7 @@ const (
 	snowCounterBits    = 12 // 一个节点每毫秒可生成 4096 个 ID
 	snowTimestampShift = snowNodeIDBits + snowCounterBits
 	snowMaxSequence    = int64(-1 ^ (-1 << snowCounterBits))
-	snowIDEpoch        = 1735660800000
+	snowIDEpoch        = 1735660800000     // 2025-01-01 00:00:00 UTC
 	snowIDMin          = 15980274272700000 // 生成的 ID 不应该小于此值
 	snowIDMinLen       = 17
 )
@@ -85,10 +85,10 @@ func NewID() int64 {
 }
 
 // 获取 NewID 生成的 ID 的时间戳
-func SnowIDTimestamp(id int64) time.Time {
+func IDTimestamp(snowId int64) time.Time {
 	timestampBits := 63 - snowNodeIDBits - snowCounterBits
 	timestampMax := int64(-1 ^ (-1 << timestampBits))
-	ms := (id>>(snowCounterBits+snowNodeIDBits))&timestampMax + snowIDEpoch
+	ms := (snowId>>(snowCounterBits+snowNodeIDBits))&timestampMax + snowIDEpoch
 	return time.UnixMilli(ms).UTC()
 }
 
@@ -118,7 +118,7 @@ func (id BigID) ToInt64() int64 {
 }
 
 func (id BigID) Timestamp() time.Time {
-	return SnowIDTimestamp(id.ToInt64())
+	return IDTimestamp(id.ToInt64())
 }
 
 func (id BigID) String() string {
@@ -129,7 +129,7 @@ func (id BigID) Value() (driver.Value, error) {
 	return int64(id), nil
 }
 
-func (id BigID) IsZero() bool {
+func (id BigID) IsNil() bool {
 	return id == NilBigID
 }
 
