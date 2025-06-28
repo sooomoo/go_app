@@ -1,7 +1,9 @@
 package pkg_test
 
-import "os"
+// func init() {
+// 	fmt.Println("init")
+// }
 
-func init() {
-	os.Setenv("node_id", "2")
-}
+// func TestMain(m *testing.M) {
+// 	os.Setenv("node_id", "2")
+// }

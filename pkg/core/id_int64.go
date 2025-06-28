@@ -24,12 +24,9 @@ const (
 )
 
 func init() {
-	idstr := os.Getenv("node_id")
+	idstr := strings.TrimSpace(os.Getenv("node_id"))
 	if len(idstr) == 0 {
-		if strings.EqualFold(os.Getenv("env"), "prod") {
-			panic("cannot find 'node_id' in env varibles")
-		}
-		idstr = "1"
+		panic("cannot find 'node_id' in env varibles")
 	}
 	id, err := strconv.ParseInt(idstr, 10, 64)
 	if err != nil {

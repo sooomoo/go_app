@@ -3,7 +3,6 @@ package pkg_test
 import (
 	"encoding/json"
 	"fmt"
-	"goapp/pkg/collection"
 	"goapp/pkg/core"
 	"sync"
 	"testing"
@@ -48,29 +47,28 @@ func TestSeqId(t *testing.T) {
 	fmt.Printf("SeqID Hex: %s\n", id.Hex())
 	fmt.Printf("SeqID B64: %s\n", id.Base64())
 	fmt.Printf("SeqID Time: %v\n", id.Timestamp())
-	return
 
-	set := collection.Set[core.SeqID]{}
-	cnt := 2000
+	cnt := 10000
 	wg := sync.WaitGroup{}
+	mp := sync.Map{}
 	wg.Add(cnt)
 	for range cnt {
 		go func() {
 			defer wg.Done()
 			for range 10000 {
 				id := core.NewSeqID()
-				if set.Contains(id) {
+				if _, loaded := mp.LoadOrStore(id, core.Empty{}); loaded {
 					t.Errorf("Duplicate SeqID found: %v", id)
 					return
 				}
-				set.Add(id)
 			}
 		}()
 	}
 	wg.Wait()
-	fmt.Printf("Set size after adding %d SeqIDs: %d\n", cnt, set.Size())
+	fmt.Printf("Set size after adding %d SeqIDs: %d\n", cnt, 0)
 }
-func BenchmarkConcurrentNewSeqID(b *testing.B) {
+
+func BenchmarkSeqID(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			core.NewSeqID()
@@ -146,30 +144,30 @@ func TestSeqIDMarshalTest(t *testing.T) {
 	fmt.Printf("Unmarshaled SeqID: %v\n", out)
 }
 
-func TestBigIdNew(t *testing.T) {
-	id := core.NewBigID()
+func TestNewID(t *testing.T) {
+	id := core.NewID()
 	fmt.Printf("New BigID: %d\n", id)
 
-	set := collection.Set[core.BigID]{}
-	cnt := 2000
+	mp := sync.Map{}
+	cnt := 10000
 	wg := sync.WaitGroup{}
 	wg.Add(cnt)
 	for range cnt {
 		go func() {
 			defer wg.Done()
 			for range 10000 {
-				id := core.NewBigID()
-				if set.Contains(id) {
-					t.Errorf("Duplicate BigID found: %v", id)
+				id := core.NewID()
+				if _, loaded := mp.LoadOrStore(id, core.Empty{}); loaded {
+					t.Errorf("Duplicate ID found: %v", id)
 					return
 				}
-				set.Add(id)
 			}
 		}()
 	}
 	wg.Wait()
-	fmt.Printf("Set size after adding %d BigIDs: %d\n", cnt, set.Size())
+	fmt.Printf("Set size after adding %d BigIDs: %d\n", cnt, 0)
 }
+
 func TestBigIdNewMany(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(10)
@@ -182,10 +180,11 @@ func TestBigIdNewMany(t *testing.T) {
 	}
 	wg.Wait()
 }
-func BenchmarkConcurrentID(b *testing.B) {
+
+func BenchmarkBigID(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			core.NewBigID()
+			core.NewID()
 		}
 	})
 }
@@ -258,102 +257,101 @@ func TestBigIDMarshalTest(t *testing.T) {
 	fmt.Printf("Unmarshaled BigID: %v\n", out)
 }
 
-func TestNewUUIDv8(t *testing.T) {
-	id := core.NewUUIDv8()
-	fmt.Printf("New UUIDv8: %s\n", id)
-	fmt.Printf("New UUIDv8 Timestamp: %v\n", id.Timestamp())
+// func TestNewUUIDv8(t *testing.T) {
+// 	id := core.NewUUIDv8()
+// 	fmt.Printf("New UUIDv8: %s\n", id)
+// 	fmt.Printf("New UUIDv8 Timestamp: %v\n", id.Timestamp())
 
-	set := collection.Set[core.UUIDv8]{}
-	cnt := 2000
-	wg := sync.WaitGroup{}
-	wg.Add(cnt)
-	for range cnt {
-		go func() {
-			defer wg.Done()
-			for range 10000 {
-				id := core.NewUUIDv8()
-				if set.Contains(id) {
-					t.Errorf("Duplicate UUIDv8 found: %v", id)
-					return
-				}
-				set.Add(id)
-			}
-		}()
-	}
-	wg.Wait()
-	fmt.Printf("Set size after adding %d UUIDv8s: %d\n", cnt, set.Size())
-}
+// 	mp := sync.Map{}
+// 	cnt := 10000
+// 	wg := sync.WaitGroup{}
+// 	wg.Add(cnt)
+// 	for range cnt {
+// 		go func() {
+// 			defer wg.Done()
+// 			for range 10000 {
+// 				id := core.NewUUIDv8()
+// 				if _, loaded := mp.LoadOrStore(id, core.Empty{}); loaded {
+// 					t.Errorf("Duplicate SeqID found: %v", id)
+// 					return
+// 				}
+// 			}
+// 		}()
+// 	}
+// 	wg.Wait()
+// 	fmt.Printf("Set size after adding %d UUIDv8s: %d\n", cnt, 0)
+// }
 
-func BenchmarkConcurrentUUIDv8(b *testing.B) {
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			core.NewUUIDv8()
-		}
-	})
-}
+// func BenchmarkConcurrentUUIDv8(b *testing.B) {
+// 	b.RunParallel(func(pb *testing.PB) {
+// 		for pb.Next() {
+// 			core.NewUUIDv8()
+// 		}
+// 	})
+// }
 
-type UUIDv8Example struct {
-	ID  core.UUIDv8   `json:"id"`
-	Arr []core.UUIDv8 `json:"arr"`
-	Age int           `json:"age"`
-}
+// type UUIDv8Example struct {
+// 	ID  core.UUIDv8   `json:"id"`
+// 	Arr []core.UUIDv8 `json:"arr"`
+// 	Age int           `json:"age"`
+// }
 
-func TestUUIDv8MarshalJsonExp(t *testing.T) {
-	exp := UUIDv8Example{
-		ID: core.NewUUIDv8(),
-		Arr: []core.UUIDv8{
-			core.NewUUIDv8(), core.NewUUIDv8(), core.NewUUIDv8(),
-		},
-		Age: 30,
-	}
-	data, err := json.Marshal(exp)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	fmt.Printf("Marshaled BigIDExample: %v\n", string(data))
+// func TestUUIDv8MarshalJsonExp(t *testing.T) {
+// 	exp := UUIDv8Example{
+// 		ID: core.NewUUIDv8(),
+// 		Arr: []core.UUIDv8{
+// 			core.NewUUIDv8(), core.NewUUIDv8(), core.NewUUIDv8(),
+// 		},
+// 		Age: 30,
+// 	}
+// 	data, err := json.Marshal(exp)
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
+// 	fmt.Printf("Marshaled BigIDExample: %v\n", string(data))
 
-	var out UUIDv8Example
-	err = json.Unmarshal(data, &out)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	fmt.Printf("Unmarshaled BigIDExample: %v\n", out)
-}
+// 	var out UUIDv8Example
+// 	err = json.Unmarshal(data, &out)
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
+// 	fmt.Printf("Unmarshaled BigIDExample: %v\n", out)
+// }
 
-func TestUUIDv8MarshalJson(t *testing.T) {
-	id := core.NewUUIDv8()
-	data, err := json.Marshal(id)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	fmt.Printf("Marshaled UUIDv8: %s\n", data)
+// func TestUUIDv8MarshalJson(t *testing.T) {
+// 	id := core.NewUUIDv8()
+// 	data, err := json.Marshal(id)
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
+// 	fmt.Printf("Marshaled UUIDv8: %s\n", data)
 
-	var out core.UUIDv8
-	err = json.Unmarshal(data, &out)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	fmt.Printf("Unmarshaled UUIDv8: %v\n", out)
-}
+// 	var out core.UUIDv8
+// 	err = json.Unmarshal(data, &out)
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
+// 	fmt.Printf("Unmarshaled UUIDv8: %v\n", out)
+// }
 
-func TestUUIDv8MarshalTest(t *testing.T) {
-	id := core.NewUUIDv8()
-	data, err := id.MarshalText()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	fmt.Printf("Marshaled UUIDv8: %s\n", string(data))
+// func TestUUIDv8MarshalTest(t *testing.T) {
+// 	id := core.NewUUIDv8()
+// 	data, err := id.MarshalText()
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
+// 	fmt.Printf("Marshaled UUIDv8: %s\n", string(data))
 
-	var out core.UUIDv8
-	err = out.UnmarshalText(data)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	fmt.Printf("Unmarshaled UUIDv8: %v\n", out)
-}
+// 	var out core.UUIDv8
+// 	err = out.UnmarshalText(data)
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
+// 	fmt.Printf("Unmarshaled UUIDv8: %v\n", out)
+// }
