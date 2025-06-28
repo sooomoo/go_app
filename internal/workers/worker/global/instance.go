@@ -32,7 +32,7 @@ var queue distribute.MessageQueue
 func GetQueue() distribute.MessageQueue { return queue }
 
 func Init(ctx context.Context) error {
-	appId = core.NewUUIDv8().Hex()
+	appId = core.NewSeqID().Hex()
 
 	var err error = nil
 	pool, err = ants.NewPool(100000, ants.WithExpiryDuration(5*time.Minute))

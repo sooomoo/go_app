@@ -50,7 +50,7 @@ func TestRankingSvcTruncate(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			time.Sleep(time.Duration(rand.Float32()) * 5 * time.Second)
-			svc.UpdateScore(ctx, core.NewUUIDv8().String(), fmt.Sprintf("item_%v", i), int64(rand.Intn(10000000)), 60)
+			svc.UpdateScore(ctx, core.NewSeqID().Hex(), fmt.Sprintf("item_%v", i), int64(rand.Intn(10000000)), 60)
 		}(i)
 	}
 	wg.Wait()

@@ -56,7 +56,7 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 	if err != nil {
 		panic(err)
 	}
-	g.appConfig.Id = core.NewUUIDv8().Hex()
+	g.appConfig.Id = core.NewSeqID().Hex()
 
 	g.pool, err = ants.NewPool(500000, ants.WithExpiryDuration(5*time.Minute))
 	if err != nil {

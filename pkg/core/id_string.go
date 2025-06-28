@@ -169,9 +169,9 @@ func init() {
 	seqIDCounter = (uint32(b[0]) << 0) | (uint32(b[1]) << 8) | (uint32(b[2]) << 16)
 }
 
-// 相较于 UUIDv8，SeqID 更加具有顺序性，每秒内有一个 counter 用于表示当前秒内的序列号
+// 相较于 UUIDv7/v8，SeqID 更加具有顺序性，每秒内有一个 counter 用于表示当前秒内的序列号
 //
-// 规则如下：前 4 字节为时间戳，中间 3 字节为进程唯一标识（随机生成），最后 3 字节为序列号
+// 规则如下：前 4 字节为时间戳，中间 3 字节为进程唯一标识（随机生成），最后 3 字节为序列号(参考了 golang ObjectID 的实现)
 type SeqID [10]byte
 
 var NilSeqID SeqID
@@ -179,6 +179,7 @@ var NilSeqID SeqID
 var processUnique [3]byte
 var seqIDCounter uint32 = 0
 
+// 生成一个全局唯一 ID (SeqID 自定义实现，精度秒级)
 func NewSeqID() SeqID {
 	// 不用担心时钟回拨，因为 seqIDCounter 的表示范围为 2^24，所以最多每秒产生 16777216 个 ID，
 	// 就算时钟回拨，ID 的增量足以应对

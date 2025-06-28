@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -19,6 +19,7 @@ const (
 	snowTimestampShift = snowNodeIDBits + snowCounterBits
 	snowMaxSequence    = int64(-1 ^ (-1 << snowCounterBits))
 	snowIDEpoch        = 1735660800000     // 2025-01-01 00:00:00 UTC
+	snowIDEpochSeconds = 1735660800        // 2025-01-01 00:00:00 UTC
 	snowIDMin          = 15980274272700000 // 生成的 ID 不应该小于此值
 	snowIDMinLen       = 17
 )
@@ -40,54 +41,75 @@ func init() {
 	snowNodeId = id
 }
 
-var snowIDTimestamp int64
-var snowIDCounter int64
-var snowIDMutex = sync.Mutex{}
+var snowIDSeq uint32
 
-// 生成一个全局唯一 ID (雪花算法的自定义实现)
+// 生成一个全局唯一 ID (雪花算法的自定义实现，精度秒级)
+//
+// 规则: 63 位(第1位不用), 31位时间戳(2^31 秒可以表示 69 年), 8 位节点 ID, 24 位序列号
 //
 // nodeID: 8 位，即最多支持 256 个节点 (节点的值会在 init 函数自动从环境变量中获取， key 为 'node_id')
 //
-// counter: 12 位，即每毫秒最多可生成 4096 个 ID
+// counter: 24 位，即每毫秒最多可生成 1677,7216 个 ID
 func NewID() int64 {
-	snowIDMutex.Lock()
-	defer snowIDMutex.Unlock()
-
-	now := time.Now().UnixMilli()
-	if now == snowIDTimestamp {
-		// 当同一时间戳（精度：毫秒）下多次生成id会增加序列号
-		snowIDCounter++
-		if snowIDCounter > snowMaxSequence {
-			// 当前序列 Id 已经使用完，则需要等待下一毫秒
-			for now <= snowIDTimestamp {
-				time.Sleep(time.Microsecond * 10)
-				now = time.Now().UnixMilli()
-			}
-			snowIDCounter = 0
-		}
-	} else if now < snowIDTimestamp {
-		// 时钟回拨：等待到下一个时间戳
-		for now < snowIDTimestamp {
-			time.Sleep(time.Microsecond * 10)
-			now = time.Now().UnixMilli()
-		}
-		snowIDCounter = 0
-	} else {
-		// 不同时间戳（精度：毫秒）下直接使用序列号：0
-		snowIDCounter = 0
-	}
-
-	snowIDTimestamp = now
-	return ((now - snowIDEpoch) << snowTimestampShift) | (snowNodeId << snowCounterBits) | snowIDCounter
+	now := time.Now().Unix()
+	seq := atomic.AddUint32(&snowIDSeq, 1)
+	// seq 取低24位
+	return ((now - snowIDEpochSeconds) << 32) | (snowNodeId << 24) | int64(seq&0x00FFFFFF)
 }
 
 // 获取 NewID 生成的 ID 的时间戳
 func IDTimestamp(snowId int64) time.Time {
-	timestampBits := 63 - snowNodeIDBits - snowCounterBits
-	timestampMax := int64(-1 ^ (-1 << timestampBits))
-	ms := (snowId>>(snowCounterBits+snowNodeIDBits))&timestampMax + snowIDEpoch
-	return time.UnixMilli(ms).UTC()
+	sec := snowId >> 32
+	return time.Unix(sec, 0).UTC()
 }
+
+// var snowIDTimestamp int64
+// var snowIDCounter int64
+// var snowIDMutex = sync.Mutex{}
+// 生成一个全局唯一 ID (雪花算法的自定义实现，精度毫秒级)
+//
+// nodeID: 8 位，即最多支持 256 个节点 (节点的值会在 init 函数自动从环境变量中获取， key 为 'node_id')
+//
+// counter: 12 位，即每毫秒最多可生成 4096 个 ID
+// func NewID() int64 {
+// 	snowIDMutex.Lock()
+// 	defer snowIDMutex.Unlock()
+
+// 	now := time.Now().UnixMilli()
+// 	if now == snowIDTimestamp {
+// 		// 当同一时间戳（精度：毫秒）下多次生成id会增加序列号
+// 		snowIDCounter++
+// 		if snowIDCounter > snowMaxSequence {
+// 			// 当前序列 Id 已经使用完，则需要等待下一毫秒
+// 			for now <= snowIDTimestamp {
+// 				time.Sleep(time.Microsecond * 10)
+// 				now = time.Now().UnixMilli()
+// 			}
+// 			snowIDCounter = 0
+// 		}
+// 	} else if now < snowIDTimestamp {
+// 		// 时钟回拨：等待到下一个时间戳
+// 		for now < snowIDTimestamp {
+// 			time.Sleep(time.Microsecond * 10)
+// 			now = time.Now().UnixMilli()
+// 		}
+// 		snowIDCounter = 0
+// 	} else {
+// 		// 不同时间戳（精度：毫秒）下直接使用序列号：0
+// 		snowIDCounter = 0
+// 	}
+
+// 	snowIDTimestamp = now
+// 	return ((now - snowIDEpoch) << snowTimestampShift) | (snowNodeId << snowCounterBits) | snowIDCounter
+// }
+
+// // 获取 NewID 生成的 ID 的时间戳
+// func IDTimestamp(snowId int64) time.Time {
+// 	timestampBits := 63 - snowNodeIDBits - snowCounterBits
+// 	timestampMax := int64(-1 ^ (-1 << timestampBits))
+// 	ms := (snowId>>(snowCounterBits+snowNodeIDBits))&timestampMax + snowIDEpoch
+// 	return time.UnixMilli(ms).UTC()
+// }
 
 // 支持自定义序列化的 int64 ID
 // 用于支持需要将 ID 序列化为字符串的场景
