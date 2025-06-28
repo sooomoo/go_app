@@ -59,7 +59,7 @@ authenticator:
     cookie_domain: 
     cookie_secure: true
     cookie_httponly: true
-    cookie_same_site_mode: 4 # 1: default , 2: lax, 3: strict, 4: none
+    cookie_same_site_mode: 2 # 1: default , 2: lax, 3: strict, 4: none
   replay_max_interval: 120 # 120秒
   
 cors:
