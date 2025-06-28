@@ -73,14 +73,14 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 			Sources:  []gorm.Dialector{mysql.Open(g.appConfig.Database.ConnectString)},
 			Replicas: []gorm.Dialector{mysql.Open(g.appConfig.Database.ConnectString), mysql.Open(g.appConfig.Database.ConnectString)},
 			// sources/replicas load balancing policy
-			Policy: dbresolver.RandomPolicy{},
+			Policy: dbresolver.RoundRobinPolicy(),
 			// print sources/replicas mode in logger
 			TraceResolverMode: true,
 		}).
 			SetConnMaxIdleTime(time.Hour).
 			SetConnMaxLifetime(2 * time.Hour).
-			SetMaxIdleConns(100).
-			SetMaxOpenConns(200),
+			SetMaxIdleConns(10).
+			SetMaxOpenConns(100),
 	)
 	// 设置默认的 Db 连接
 	query.SetDefault(g.db)
