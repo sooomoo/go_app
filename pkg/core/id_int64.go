@@ -66,6 +66,11 @@ func IDTimestamp(snowId int64) time.Time {
 	return time.Unix(sec+snowIDEpochSeconds, 0).UTC()
 }
 
+// 获取 NewID 生成的 ID 的节点 ID
+func IDNodeID(snowId int64) int64 {
+	return (snowId >> 24) & 0xFF
+}
+
 // var snowIDTimestamp int64
 // var snowIDCounter int64
 // var snowIDMutex = sync.Mutex{}
@@ -77,7 +82,6 @@ func IDTimestamp(snowId int64) time.Time {
 // func NewID() int64 {
 // 	snowIDMutex.Lock()
 // 	defer snowIDMutex.Unlock()
-
 // 	now := time.Now().UnixMilli()
 // 	if now == snowIDTimestamp {
 // 		// 当同一时间戳（精度：毫秒）下多次生成id会增加序列号
@@ -101,11 +105,9 @@ func IDTimestamp(snowId int64) time.Time {
 // 		// 不同时间戳（精度：毫秒）下直接使用序列号：0
 // 		snowIDCounter = 0
 // 	}
-
 // 	snowIDTimestamp = now
 // 	return ((now - snowIDEpoch) << snowTimestampShift) | (snowNodeId << snowCounterBits) | snowIDCounter
 // }
-
 // // 获取 NewID 生成的 ID 的时间戳
 // func IDTimestamp(snowId int64) time.Time {
 // 	timestampBits := 63 - snowNodeIDBits - snowCounterBits
@@ -141,6 +143,10 @@ func (id BigID) ToInt64() int64 {
 
 func (id BigID) Timestamp() time.Time {
 	return IDTimestamp(id.ToInt64())
+}
+
+func (id BigID) NodeID() int64 {
+	return IDNodeID(id.ToInt64())
 }
 
 func (id BigID) String() string {

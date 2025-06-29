@@ -46,12 +46,18 @@ func TestInt64String(t *testing.T) {
 func TestID(t *testing.T) {
 	id := core.NewID()
 	fmt.Printf("New ID: %v\n", id)
-	fmt.Printf("ID Time: %v\n", core.IDTimestamp(id))
+	fmt.Printf("ID Time: %v, nodeid:%v\n", core.IDTimestamp(id), core.IDNodeID(id))
 	seqID := core.NewSeqID()
 	fmt.Printf("New SeqID: %v\n", seqID)
 	fmt.Printf("SeqID Hex: %s\n", seqID.Hex())
 	fmt.Printf("SeqID B64: %s\n", seqID.Base64())
 	fmt.Printf("SeqID Time: %v\n", seqID.Timestamp())
+	fmt.Printf("SeqID ProID: %v\n", seqID.ProcessID())
+	var nilSeq core.SeqID
+	fmt.Printf("Nil SeqEq: %v\n", nilSeq == core.NilSeqID)
+
+	var bigID core.BigID
+	fmt.Printf("New BigEQ: %v\n", bigID == core.NilBigID)
 
 	var seqIDCounter uint32 = 0xffffffff
 	seq := atomic.AddUint32(&seqIDCounter, 20)

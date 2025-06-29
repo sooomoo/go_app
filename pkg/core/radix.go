@@ -14,9 +14,12 @@ type CustomRadix struct {
 	chars string
 }
 
+// 自定义进制转换
 func NewCustomRadix(chars string) *CustomRadix {
 	return &CustomRadix{chars: chars}
 }
+
+// 默认使用34进制
 func NewCustomRadix34() *CustomRadix {
 	return &CustomRadix{chars: customBase34Chars}
 }

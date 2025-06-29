@@ -37,19 +37,14 @@ func IsUUIDValid(s string) bool {
 
 // // UUIDv8 10字节: 用于生成具有顺序性的UUID，前 5字节为毫秒时间戳（可表示 34.8 年），后 5字节为随机数
 // type UUIDv8 [10]byte
-
 // var NilUUIDv8 UUIDv8
-
 // const uuidv8StartEpochMs = 1735660800000 // 2025-01-01 00:00:00 UTC
-
 // // 生成一个优化的UUID v8，10字节
 // func NewUUIDv8() UUIDv8 {
 // 	// 获取当前时间戳（毫秒）
 // 	now := uint64(time.Now().UnixMilli() - uuidv8StartEpochMs)
-
 // 	// 构建UUID各部分
 // 	uuid := UUIDv8{}
-
 // 	// 5字节: 毫秒时间戳 (40位)，可以表示 34.8 年，够用了
 // 	binary.BigEndian.PutUint64(uuid[0:8], now<<24) // 高48位为时间戳
 // 	// 5字节: 随机数部分 (40位)
@@ -57,59 +52,47 @@ func IsUUIDValid(s string) bool {
 // 	if err != nil {
 // 		return NilUUIDv8
 // 	}
-
 // 	return uuid
 // }
-
 // func NewUUIDv8FromHex(str string) UUIDv8 {
 // 	if len(str) != 20 {
 // 		return NilUUIDv8
 // 	}
-
 // 	var oid UUIDv8
 // 	_, err := hex.Decode(oid[:], []byte(str))
 // 	if err != nil {
 // 		return NilUUIDv8
 // 	}
-
 // 	return oid
 // }
-
 // // 是否是空UUID，即所有字节为 0
 // func (u UUIDv8) IsNil() bool {
 // 	return u == NilUUIDv8
 // }
-
 // // ToString 将UUID字节切片转换为标准字符串格式
 // func (u UUIDv8) String() string {
 // 	return `UUIDv8("` + u.Hex() + `")`
 // }
-
 // func (id UUIDv8) Timestamp() time.Time {
 // 	unixSecs := binary.BigEndian.Uint64(id[0:8])
 // 	unixSecs >>= 24
 // 	return time.UnixMilli(int64(unixSecs) + uuidv8StartEpochMs).UTC()
 // }
-
 // func (id UUIDv8) Hex() string {
 // 	return hex.EncodeToString(id[:])
 // }
-
 // func (id UUIDv8) Base64() string {
 // 	// 使用 base64.RawURLEncoding 编码，去掉 padding
 // 	return base64.RawURLEncoding.EncodeToString(id[:])
 // }
-
 // func (id UUIDv8) MarshalText() ([]byte, error) {
 // 	var buf [20]byte
 // 	hex.Encode(buf[:], id[:])
 // 	return buf[:], nil
 // }
-
 // func (id *UUIDv8) UnmarshalText(b []byte) error {
 // 	// NB(charlie): The json package will use UnmarshalText instead of
 // 	// UnmarshalJSON if the value is a string.
-
 // 	// An empty string is not a valid ObjectID, but we treat it as a
 // 	// special value that decodes as NilObjectID.
 // 	if len(b) == 0 {
@@ -118,7 +101,6 @@ func IsUUIDValid(s string) bool {
 // 	*id = NewUUIDv8FromHex(string(b))
 // 	return nil
 // }
-
 // func (id UUIDv8) MarshalJSON() ([]byte, error) {
 // 	var buf [22]byte
 // 	buf[0] = '"'
@@ -126,7 +108,6 @@ func IsUUIDValid(s string) bool {
 // 	buf[21] = '"'
 // 	return buf[:], nil
 // }
-
 // func (id *UUIDv8) UnmarshalJSON(b []byte) error {
 // 	// Ignore "null" to keep parity with the standard library. Decoding a JSON
 // 	// null into a non-pointer ObjectID field will leave the field unchanged.
@@ -135,7 +116,6 @@ func IsUUIDValid(s string) bool {
 // 	if string(b) == "null" {
 // 		return nil
 // 	}
-
 // 	// Handle string
 // 	if len(b) >= 2 && b[0] == '"' {
 // 		// TODO: fails because of error
@@ -145,7 +125,6 @@ func IsUUIDValid(s string) bool {
 // 		copy(id[:], b)
 // 		return nil
 // 	}
-
 // 	return ErrInvalidID
 // }
 
@@ -225,6 +204,10 @@ func NewSeqIDFromHex(s string) SeqID {
 func (id SeqID) Timestamp() time.Time {
 	unixSecs := binary.BigEndian.Uint32(id[0:4])
 	return time.Unix(int64(unixSecs), 0).UTC()
+}
+
+func (id SeqID) ProcessID() string {
+	return hex.EncodeToString(id[4:7])
 }
 
 func (id SeqID) Hex() string {
