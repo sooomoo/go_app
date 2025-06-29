@@ -2,12 +2,11 @@ package core
 
 import (
 	"crypto/rand"
+	"database/sql/driver"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
-	"fmt"
-	"io"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -134,61 +133,37 @@ var (
 
 func init() {
 	// 初始化进程唯一标识符
-	if _, err := io.ReadFull(rand.Reader, processUnique[:]); err != nil {
+	if _, err := rand.Read(processUnique[:]); err != nil {
 		panic("failed to generate process unique identifier: " + err.Error())
 	}
-	// 程序启动时初始化 seqIDCounter
-	// 使用 crypto/rand.Reader 生成一个随机数作为初始计数器值
-	// 防止每次启动时计数器从 0 开始
-	var b [3]byte
-	_, err := io.ReadFull(rand.Reader, b[:])
-	if err != nil {
-		panic(fmt.Errorf("cannot initialize objectid package with crypto.rand.Reader: %w", err))
-	}
-	seqIDCounter = (uint32(b[0]) << 0) | (uint32(b[1]) << 8) | (uint32(b[2]) << 16)
 }
 
-// 相较于 UUIDv7/v8，SeqID 更加具有顺序性，每秒内有一个 counter 用于表示当前秒内的序列号
+// 相较于 UUIDv7/v8，SeqID 更加具有顺序性，每毫秒内有一个 counter 用于表示当前毫秒内的序列号
 //
-// 规则如下：前 4 字节为时间戳，中间 3 字节为进程唯一标识（随机生成），最后 3 字节为序列号(参考了 golang ObjectID 的实现)
-type SeqID [10]byte
+// 规则如下：前 5 字节为时间戳，中间 3 字节为进程唯一标识（随机生成），最后 4 字节为序列号(参考了 golang ObjectID 的实现)
+type SeqID [12]byte
 
 var NilSeqID SeqID
 
 var processUnique [3]byte
 var seqIDCounter uint32 = 0
+var seqIDEpoch = int64(1735660800000)
 
 // 生成一个全局唯一 ID (SeqID 自定义实现，精度秒级)
 func NewSeqID() SeqID {
-	// 不用担心时钟回拨，因为 seqIDCounter 的表示范围为 2^24，所以最多每秒产生 16777216 个 ID，
-	// 就算时钟回拨，ID 的增量足以应对
-	var b [10]byte
-	now := time.Now().Unix()
-	binary.BigEndian.PutUint32(b[0:4], uint32(now))
-
-	// 测试时使用，模拟多个进程同时启动
-	// var process [3]byte
-	// // 初始化进程唯一标识符
-	// if _, err := io.ReadFull(rand.Reader, process[:]); err != nil {
-	// 	panic("failed to generate process unique identifier: " + err.Error())
-	// }
-	// copy(b[4:7], process[:])
-	copy(b[4:7], processUnique[:])
+	var b [12]byte
+	now := time.Now().UnixMilli() - seqIDEpoch
+	binary.BigEndian.PutUint64(b[0:8], uint64(now<<24))
+	copy(b[5:8], processUnique[:])
 	seq := atomic.AddUint32(&seqIDCounter, 1)
-	seq &= 0x00FFFFFF
-	// seq 取低24位，不用担心 snowIDSeq 超出 0x00FFFFFF 的情况
-	// 因为当它超出 0x00FFFFFF 时，会自动回绕到 0x00000000
-	// 且此时早已不在之前的时间戳内了
-	b[7] = byte(seq >> 16)
-	b[8] = byte(seq >> 8)
-	b[9] = byte(seq)
+	binary.BigEndian.PutUint32(b[8:12], uint32(seq))
 
 	return b
 }
 
 // NewSeqIDFromHex creates a SeqID from a hex string.
 func NewSeqIDFromHex(s string) SeqID {
-	if len(s) != 20 {
+	if len(s) != 24 {
 		return NilSeqID
 	}
 
@@ -201,13 +176,24 @@ func NewSeqIDFromHex(s string) SeqID {
 	return oid
 }
 
+// 从数据库读取时反序列化
+func (u *SeqID) Scan(value any) error {
+	*u, _ = value.(SeqID)
+	return nil
+}
+
+// 写入数据库时序列化
+func (u SeqID) Value() (driver.Value, error) {
+	return [12]byte(u), nil
+}
+
 func (id SeqID) Timestamp() time.Time {
-	unixSecs := binary.BigEndian.Uint32(id[0:4])
-	return time.Unix(int64(unixSecs), 0).UTC()
+	unixSecs := binary.BigEndian.Uint64(id[0:8])
+	return time.UnixMilli(int64(unixSecs>>24) + seqIDEpoch).UTC()
 }
 
 func (id SeqID) ProcessID() string {
-	return hex.EncodeToString(id[4:7])
+	return hex.EncodeToString(id[5:8])
 }
 
 func (id SeqID) Hex() string {

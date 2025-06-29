@@ -65,7 +65,7 @@ func TestID(t *testing.T) {
 
 	fmt.Println(seqID.Hex())
 	r := core.NewCustomRadix34()
-	fmt.Println(id)
+	fmt.Println(id, len(strconv.FormatInt(id, 10)))
 	fmt.Println(r.Encode(int(id)))
 	fmt.Println(strconv.FormatInt(id, 16))
 }
@@ -197,17 +197,20 @@ func TestNewID(t *testing.T) {
 	fmt.Printf("Set size after adding %d BigIDs: %d\n", cnt, 0)
 }
 
-func TestBigIdNewMany(t *testing.T) {
-	wg := sync.WaitGroup{}
-	wg.Add(10)
+func TestIDMany(t *testing.T) {
 	for range 10 {
-		go func() {
-			defer wg.Done()
-			id := core.NewBigID()
-			fmt.Printf("New BigID: %d, time: %v\n", id, id.Timestamp())
-		}()
+		id := core.NewID()
+		fmt.Printf("New RawID: %d, time: %v\n", id, core.IDTimestamp(id))
 	}
-	wg.Wait()
+	for range 10 {
+		id := core.NewBigID()
+		fmt.Printf("New BigID: %d, time: %v\n", id, id.Timestamp())
+	}
+
+	for range 10 {
+		id := core.NewSeqID()
+		fmt.Printf("New SeqID: %s, time: %v\n", id.Hex(), id.Timestamp())
+	}
 }
 
 func BenchmarkBigID(b *testing.B) {
