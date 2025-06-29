@@ -7,6 +7,8 @@ import (
 	"syscall"
 )
 
+type Empty struct{}
+
 // wait system signals.
 //
 // when signal comes, do some cleanups

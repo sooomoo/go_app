@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"goapp/pkg/core"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -55,6 +56,12 @@ func TestID(t *testing.T) {
 	var seqIDCounter uint32 = 0xffffffff
 	seq := atomic.AddUint32(&seqIDCounter, 20)
 	fmt.Println(seq)
+
+	fmt.Println(seqID.Hex())
+	r := core.NewCustomRadix34()
+	fmt.Println(id)
+	fmt.Println(r.Encode(int(id)))
+	fmt.Println(strconv.FormatInt(id, 16))
 }
 
 func TestSeqId(t *testing.T) {

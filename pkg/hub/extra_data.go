@@ -23,6 +23,42 @@ func (e ExtraData) GetInt(key string) int {
 		if i, ok := v.(int); ok {
 			return i
 		}
+		if i, ok := v.(int64); ok {
+			return int(i)
+		}
+		if i, ok := v.(int32); ok {
+			return int(i)
+		}
+		if i, ok := v.(int16); ok {
+			return int(i)
+		}
+		if i, ok := v.(int8); ok {
+			return int(i)
+		}
+	}
+	return 0
+}
+
+func (e ExtraData) GetInt64(key string) int64 {
+	if v, ok := e[key]; ok {
+		if i, ok := v.(int64); ok {
+			return i
+		}
+		if i, ok := v.(int); ok {
+			return int64(i)
+		}
+	}
+	return 0
+}
+
+func (e ExtraData) GetInt32(key string) int32 {
+	if v, ok := e[key]; ok {
+		if i, ok := v.(int32); ok {
+			return i
+		}
+		if i, ok := v.(int); ok {
+			return int32(i)
+		}
 	}
 	return 0
 }
@@ -34,9 +70,7 @@ func (e ExtraData) Delete(key string) {
 	delete(e, key)
 }
 func (e ExtraData) Clear() {
-	for k := range e {
-		delete(e, k)
-	}
+	clear(e)
 }
 func (e ExtraData) Len() int {
 	return len(e)
