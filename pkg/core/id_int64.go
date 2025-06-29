@@ -53,14 +53,17 @@ var snowIDSeq uint32
 func NewID() int64 {
 	now := time.Now().Unix()
 	seq := atomic.AddUint32(&snowIDSeq, 1)
-	// seq 取低24位
-	return ((now - snowIDEpochSeconds) << 32) | (snowNodeId << 24) | int64(seq&0x00FFFFFF)
+	seq &= 0x00FFFFFF
+	// seq 取低24位，不用担心 snowIDSeq 超出 0x00FFFFFF 的情况
+	// 因为当它超出 0x00FFFFFF 时，会自动回绕到 0x00000000
+	// 且此时早已不在之前的时间戳内了
+	return ((now - snowIDEpochSeconds) << 32) | (snowNodeId << 24) | int64(seq)
 }
 
 // 获取 NewID 生成的 ID 的时间戳
 func IDTimestamp(snowId int64) time.Time {
 	sec := snowId >> 32
-	return time.Unix(sec, 0).UTC()
+	return time.Unix(sec+snowIDEpochSeconds, 0).UTC()
 }
 
 // var snowIDTimestamp int64

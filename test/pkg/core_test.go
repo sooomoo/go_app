@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"goapp/pkg/core"
 	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -39,6 +40,21 @@ func TestInt64String(t *testing.T) {
 		return
 	}
 	fmt.Println(out)
+}
+
+func TestID(t *testing.T) {
+	id := core.NewID()
+	fmt.Printf("New ID: %v\n", id)
+	fmt.Printf("ID Time: %v\n", core.IDTimestamp(id))
+	seqID := core.NewSeqID()
+	fmt.Printf("New SeqID: %v\n", seqID)
+	fmt.Printf("SeqID Hex: %s\n", seqID.Hex())
+	fmt.Printf("SeqID B64: %s\n", seqID.Base64())
+	fmt.Printf("SeqID Time: %v\n", seqID.Timestamp())
+
+	var seqIDCounter uint32 = 0xffffffff
+	seq := atomic.AddUint32(&seqIDCounter, 20)
+	fmt.Println(seq)
 }
 
 func TestSeqId(t *testing.T) {

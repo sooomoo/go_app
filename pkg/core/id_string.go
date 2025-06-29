@@ -186,10 +186,20 @@ func NewSeqID() SeqID {
 	var b [10]byte
 	now := time.Now().Unix()
 	binary.BigEndian.PutUint32(b[0:4], uint32(now))
+
+	// 测试时使用，模拟多个进程同时启动
+	// var process [3]byte
+	// // 初始化进程唯一标识符
+	// if _, err := io.ReadFull(rand.Reader, process[:]); err != nil {
+	// 	panic("failed to generate process unique identifier: " + err.Error())
+	// }
+	// copy(b[4:7], process[:])
 	copy(b[4:7], processUnique[:])
 	seq := atomic.AddUint32(&seqIDCounter, 1)
-
-	// 取低24位
+	seq &= 0x00FFFFFF
+	// seq 取低24位，不用担心 snowIDSeq 超出 0x00FFFFFF 的情况
+	// 因为当它超出 0x00FFFFFF 时，会自动回绕到 0x00000000
+	// 且此时早已不在之前的时间戳内了
 	b[7] = byte(seq >> 16)
 	b[8] = byte(seq >> 8)
 	b[9] = byte(seq)
