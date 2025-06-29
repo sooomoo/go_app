@@ -27,6 +27,12 @@ func IsEmpty(value string) bool {
 	return utf8.RuneCountInString(value) == 0
 }
 
+// 获取字符串的长度，此方法可以正确获取中文字符的个数，
+// 与 len(value) 不同，len(value) 返回的是字节长度，而不是字符个数
+func Length(value string) int {
+	return utf8.RuneCountInString(value)
+}
+
 const (
 	urlRegexStr   = `((http|ftp|https)://)(([a-zA-Z0-9\._-]+\.[a-zA-Z]{2,6})|([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}))(:[0-9]{1,4})*(/[a-zA-Z0-9\&%_\./-~-]*)?`
 	emailRegexStr = `^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$`

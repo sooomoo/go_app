@@ -1,7 +1,7 @@
 package collection
 
 import (
-	"goapp/pkg/core"
+	"goapp/pkg/collection"
 	"math/rand"
 	"strings"
 	"time"
@@ -40,11 +40,16 @@ func Filter[T any](data []T, filter func(*T) bool) []T {
 }
 
 // 查看数组中是否存在指定值
-func ContainsIgnoreCase(data []string, target string) bool {
-	tgtLow := strings.ToLower(target)
+func Contains(data []string, target string, ignoreCase bool) bool {
 	for _, v := range data {
-		if strings.ToLower(v) == tgtLow {
-			return true
+		if ignoreCase {
+			if strings.EqualFold(v, target) {
+				return true
+			}
+		} else {
+			if v == target {
+				return true
+			}
 		}
 	}
 	return false
@@ -88,7 +93,7 @@ func GroupBy[T any, TField comparable](data []T, fieldFilter func(*T) TField) ma
 	out := make(map[TField][]T)
 	for _, v := range data {
 		f := fieldFilter(&v)
-		if out[f] == nil || len(out[f]) == 0 {
+		if len(out[f]) == 0 {
 			out[f] = []T{}
 		}
 		out[f] = append(out[f], v)
@@ -101,7 +106,7 @@ func GroupByWithMap[S any, TOutField any, TGroupField comparable](data []S, fiel
 	out := make(map[TGroupField][]TOutField)
 	for _, v := range data {
 		f := fieldFilter(&v)
-		if out[f] == nil || len(out[f]) == 0 {
+		if len(out[f]) == 0 {
 			out[f] = []TOutField{}
 		}
 		out[f] = append(out[f], mapper(&v))
@@ -133,15 +138,9 @@ func SplitIntoBatches[T any](arr []T, batchSize int) [][]T {
 
 // 去除数组中重复的元素
 func Deduplication[T comparable](arr []T) []T {
-	tmp := map[T]core.Empty{}
-	for _, v := range arr {
-		tmp[v] = core.Empty{}
-	}
-	newSlice := []T{}
-	for k := range tmp {
-		newSlice = append(newSlice, k)
-	}
-	return newSlice
+	set := collection.Set[T]{}
+	set.Add(arr...)
+	return set.ToSlice()
 }
 
 // 打乱数组：这会改变原数组

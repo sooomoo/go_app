@@ -31,9 +31,9 @@ func Init(dbPath string) error {
 }
 
 // 国家|区域|省份|城市|ISP，缺省的地域信息默认是0
-func Search(ip string) (string, error) {
-	return searcher.SearchByStr(ip)
-}
+// func Search(ip string) (string, error) {
+// 	return searcher.SearchByStr(ip)
+// }
 
 // Ip2Region 搜索结果的格式化结构
 type IPRegionFormated struct {
@@ -57,7 +57,7 @@ func getValue(val string) string {
 }
 
 // 解析搜索结果
-func ParseSearchResult(result string) (*IPRegionFormated, error) {
+func parseSearchResult(result string) (*IPRegionFormated, error) {
 	splits := strings.Split(result, "|")
 	if len(splits) != 5 {
 		return nil, errors.New("InvalidFormat")
@@ -72,12 +72,12 @@ func ParseSearchResult(result string) (*IPRegionFormated, error) {
 }
 
 // 返回格式化之后的数据
-func SearchFmt(ip string) (*IPRegionFormated, error) {
+func Search(ip string) (*IPRegionFormated, error) {
 	result, err := searcher.SearchByStr(ip)
 	if err != nil {
 		return nil, err
 	}
-	return ParseSearchResult(result)
+	return parseSearchResult(result)
 }
 
 func Release() {

@@ -13,7 +13,7 @@ func TestIp2Region(t *testing.T) {
 		return
 	}
 
-	result, err := ipregion.SearchFmt("60.255.166.251")
+	result, err := ipregion.Search("60.255.166.251")
 	if err != nil {
 		t.Error(err)
 	} else {
