@@ -145,18 +145,21 @@ type SeqID [12]byte
 
 var NilSeqID SeqID
 
-var processUnique [3]byte
+var processUnique [4]byte
 var seqIDCounter uint32 = 0
 var seqIDEpoch = int64(1735660800000)
 
 // 生成一个全局唯一 ID (SeqID 自定义实现，精度秒级)
 func NewSeqID() SeqID {
 	var b [12]byte
-	now := time.Now().UnixMilli() - seqIDEpoch
-	binary.BigEndian.PutUint64(b[0:8], uint64(now<<24))
-	copy(b[5:8], processUnique[:])
+	now := time.Now().Unix()
+	binary.BigEndian.PutUint32(b[0:4], uint32(now))
+	copy(b[4:8], processUnique[:])
 	seq := atomic.AddUint32(&seqIDCounter, 1)
 	binary.BigEndian.PutUint32(b[8:12], uint32(seq))
+	// if _, err := rand.Read(b[5:12]); err != nil {
+	// 	panic("failed to generate process unique identifier: " + err.Error())
+	// }
 
 	return b
 }
