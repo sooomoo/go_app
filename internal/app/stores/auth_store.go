@@ -59,7 +59,7 @@ func (a *AuthStore) SaveHandledRequest(ctx context.Context, requestId string, ex
 }
 
 type AuthorizedClaims struct {
-	UserId          int64         `json:"userId"`
+	UserId          core.SeqID    `json:"userId"`
 	Platform        core.Platform `json:"platform"`
 	UserAgent       string        `json:"userAgent"`
 	UserAgentHashed string        `json:"userAgentHashed"`

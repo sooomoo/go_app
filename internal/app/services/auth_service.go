@@ -251,7 +251,7 @@ func (a *AuthService) RevokeRefreshToken(ctx context.Context, refreshToken strin
 	return a.authRepo.DeleteRefreshToken(ctx, refreshToken) // 调用Repository层的方法
 }
 
-func (a *AuthService) GenerateTokenPair(ctx *gin.Context, userID int64) (string, string, error) {
+func (a *AuthService) GenerateTokenPair(ctx *gin.Context, userID core.SeqID) (string, string, error) {
 	clientId := headers.GetClientId(ctx)
 	platform := headers.GetPlatform(ctx)
 	accessToken, claims, err := a.GenerateAccessToken(ctx, userID, clientId, platform)
@@ -266,7 +266,7 @@ func (a *AuthService) GenerateTokenPair(ctx *gin.Context, userID int64) (string,
 	return accessToken, refreshToken, nil
 }
 
-func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID int64, clientId string, platform core.Platform) (string, *stores.AuthorizedClaims, error) {
+func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID core.SeqID, clientId string, platform core.Platform) (string, *stores.AuthorizedClaims, error) {
 	if len(clientId) == 0 || platform == core.Unspecify {
 		return "", nil, errors.New("invalid args")
 	}

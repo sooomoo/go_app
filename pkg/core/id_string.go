@@ -95,6 +95,13 @@ func NewSeqIDFromHex(s string) SeqID {
 
 // 从数据库读取时反序列化
 func (u *SeqID) Scan(value any) error {
+	v, ok := value.([]byte)
+	if ok {
+		if len(v) == 12 {
+			copy(u[:], v)
+			return nil
+		}
+	}
 	if v, ok := value.(SeqID); ok {
 		*u = v
 		return nil
@@ -104,7 +111,7 @@ func (u *SeqID) Scan(value any) error {
 
 // 写入数据库时序列化
 func (u SeqID) Value() (driver.Value, error) {
-	return [12]byte(u), nil
+	return u[:], nil
 }
 
 func (id SeqID) Timestamp() time.Time {
