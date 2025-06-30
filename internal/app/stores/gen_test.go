@@ -32,6 +32,13 @@ func underScoreToCamelCase(name string) string {
 	return builder.String()
 }
 
+// 可以通过以下方式，为 binary 的 id 创建虚拟列，以便于查看
+// ALTER TABLE users
+// ADD COLUMN id_hex VARCHAR(24) GENERATED ALWAYS AS (
+//
+//	HEX(id)
+//
+// ) VIRTUAL AFTER `id`;
 func TestGenDao(t *testing.T) {
 	g := gen.NewGenerator(gen.Config{
 		OutPath:      "./dao/query",
