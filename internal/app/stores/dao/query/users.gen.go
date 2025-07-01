@@ -27,21 +27,19 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 
 	tableName := _user.userDo.TableName()
 	_user.ALL = field.NewAsterisk(tableName)
-	_user.ID = field.NewField(tableName, "id")
+	_user.ID = field.NewInt64(tableName, "id")
 	_user.Phone = field.NewString(tableName, "phone")
 	_user.Name = field.NewString(tableName, "name")
 	_user.Password = field.NewString(tableName, "password")
-	_user.AvatarURL = field.NewString(tableName, "avatar_url")
 	_user.Email = field.NewString(tableName, "email")
+	_user.ThirdAuth = field.NewString(tableName, "third_auth")
 	_user.Role = field.NewInt32(tableName, "role")
-	_user.IPInit = field.NewString(tableName, "ip_init")
-	_user.IPLatest = field.NewString(tableName, "ip_latest")
+	_user.Profiles = field.NewString(tableName, "profiles")
+	_user.Invite = field.NewString(tableName, "invite")
+	_user.IP = field.NewString(tableName, "ip")
 	_user.Status = field.NewInt32(tableName, "status")
-	_user.InviteCode = field.NewString(tableName, "invite_code")
-	_user.InviteBy = field.NewInt64(tableName, "invite_by")
 	_user.CreatedAt = field.NewInt64(tableName, "created_at")
 	_user.UpdatedAt = field.NewInt64(tableName, "updated_at")
-	_user.Version = field.NewInt64(tableName, "version")
 
 	_user.fillFieldMap()
 
@@ -49,24 +47,22 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 }
 
 type user struct {
-	userDo
+	userDo userDo
 
-	ALL        field.Asterisk
-	ID         field.Field
-	Phone      field.String // 如08615900001111
-	Name       field.String
-	Password   field.String // hash之后的密码
-	AvatarURL  field.String
-	Email      field.String
-	Role       field.Int32
-	IPInit     field.String
-	IPLatest   field.String
-	Status     field.Int32
-	InviteCode field.String
-	InviteBy   field.Int64
-	CreatedAt  field.Int64
-	UpdatedAt  field.Int64
-	Version    field.Int64
+	ALL       field.Asterisk
+	ID        field.Int64
+	Phone     field.String // 如08615900001111
+	Name      field.String
+	Password  field.String // hash之后的密码
+	Email     field.String
+	ThirdAuth field.String
+	Role      field.Int32
+	Profiles  field.String
+	Invite    field.String
+	IP        field.String
+	Status    field.Int32
+	CreatedAt field.Int64
+	UpdatedAt field.Int64
 
 	fieldMap map[string]field.Expr
 }
@@ -83,26 +79,32 @@ func (u user) As(alias string) *user {
 
 func (u *user) updateTableName(table string) *user {
 	u.ALL = field.NewAsterisk(table)
-	u.ID = field.NewField(table, "id")
+	u.ID = field.NewInt64(table, "id")
 	u.Phone = field.NewString(table, "phone")
 	u.Name = field.NewString(table, "name")
 	u.Password = field.NewString(table, "password")
-	u.AvatarURL = field.NewString(table, "avatar_url")
 	u.Email = field.NewString(table, "email")
+	u.ThirdAuth = field.NewString(table, "third_auth")
 	u.Role = field.NewInt32(table, "role")
-	u.IPInit = field.NewString(table, "ip_init")
-	u.IPLatest = field.NewString(table, "ip_latest")
+	u.Profiles = field.NewString(table, "profiles")
+	u.Invite = field.NewString(table, "invite")
+	u.IP = field.NewString(table, "ip")
 	u.Status = field.NewInt32(table, "status")
-	u.InviteCode = field.NewString(table, "invite_code")
-	u.InviteBy = field.NewInt64(table, "invite_by")
 	u.CreatedAt = field.NewInt64(table, "created_at")
 	u.UpdatedAt = field.NewInt64(table, "updated_at")
-	u.Version = field.NewInt64(table, "version")
 
 	u.fillFieldMap()
 
 	return u
 }
+
+func (u *user) WithContext(ctx context.Context) IUserDo { return u.userDo.WithContext(ctx) }
+
+func (u user) TableName() string { return u.userDo.TableName() }
+
+func (u user) Alias() string { return u.userDo.Alias() }
+
+func (u user) Columns(cols ...field.Expr) gen.Columns { return u.userDo.Columns(cols...) }
 
 func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 	_f, ok := u.fieldMap[fieldName]
@@ -114,22 +116,20 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 15)
+	u.fieldMap = make(map[string]field.Expr, 13)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["phone"] = u.Phone
 	u.fieldMap["name"] = u.Name
 	u.fieldMap["password"] = u.Password
-	u.fieldMap["avatar_url"] = u.AvatarURL
 	u.fieldMap["email"] = u.Email
+	u.fieldMap["third_auth"] = u.ThirdAuth
 	u.fieldMap["role"] = u.Role
-	u.fieldMap["ip_init"] = u.IPInit
-	u.fieldMap["ip_latest"] = u.IPLatest
+	u.fieldMap["profiles"] = u.Profiles
+	u.fieldMap["invite"] = u.Invite
+	u.fieldMap["ip"] = u.IP
 	u.fieldMap["status"] = u.Status
-	u.fieldMap["invite_code"] = u.InviteCode
-	u.fieldMap["invite_by"] = u.InviteBy
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
-	u.fieldMap["version"] = u.Version
 }
 
 func (u user) clone(db *gorm.DB) user {

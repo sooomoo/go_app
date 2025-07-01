@@ -4,15 +4,13 @@
 
 package model
 
-import "goapp/pkg/core"
-
 const TableNameTaskWebSearch = "task_web_searches"
 
 // TaskWebSearch 搜索任务
 type TaskWebSearch struct {
-	ID       core.SeqID `gorm:"column:id;primaryKey" json:"id"`
-	Keywords string     `gorm:"column:keywords;not null;comment:搜索词" json:"keywords"` // 搜索词
-	CreateAt int64      `gorm:"column:create_at;not null" json:"createAt"`
+	ID       int64  `gorm:"column:id;primaryKey" json:"id"`
+	Keywords string `gorm:"column:keywords;not null;comment:搜索词" json:"keywords"` // 搜索词
+	CreateAt int64  `gorm:"column:create_at;not null" json:"createAt"`
 }
 
 // TableName TaskWebSearch's table name

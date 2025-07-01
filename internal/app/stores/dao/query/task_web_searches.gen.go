@@ -27,7 +27,7 @@ func newTaskWebSearch(db *gorm.DB, opts ...gen.DOOption) taskWebSearch {
 
 	tableName := _taskWebSearch.taskWebSearchDo.TableName()
 	_taskWebSearch.ALL = field.NewAsterisk(tableName)
-	_taskWebSearch.ID = field.NewField(tableName, "id")
+	_taskWebSearch.ID = field.NewInt64(tableName, "id")
 	_taskWebSearch.Keywords = field.NewString(tableName, "keywords")
 	_taskWebSearch.CreateAt = field.NewInt64(tableName, "create_at")
 
@@ -38,10 +38,10 @@ func newTaskWebSearch(db *gorm.DB, opts ...gen.DOOption) taskWebSearch {
 
 // taskWebSearch 搜索任务
 type taskWebSearch struct {
-	taskWebSearchDo
+	taskWebSearchDo taskWebSearchDo
 
 	ALL      field.Asterisk
-	ID       field.Field
+	ID       field.Int64
 	Keywords field.String // 搜索词
 	CreateAt field.Int64
 
@@ -60,13 +60,25 @@ func (t taskWebSearch) As(alias string) *taskWebSearch {
 
 func (t *taskWebSearch) updateTableName(table string) *taskWebSearch {
 	t.ALL = field.NewAsterisk(table)
-	t.ID = field.NewField(table, "id")
+	t.ID = field.NewInt64(table, "id")
 	t.Keywords = field.NewString(table, "keywords")
 	t.CreateAt = field.NewInt64(table, "create_at")
 
 	t.fillFieldMap()
 
 	return t
+}
+
+func (t *taskWebSearch) WithContext(ctx context.Context) ITaskWebSearchDo {
+	return t.taskWebSearchDo.WithContext(ctx)
+}
+
+func (t taskWebSearch) TableName() string { return t.taskWebSearchDo.TableName() }
+
+func (t taskWebSearch) Alias() string { return t.taskWebSearchDo.Alias() }
+
+func (t taskWebSearch) Columns(cols ...field.Expr) gen.Columns {
+	return t.taskWebSearchDo.Columns(cols...)
 }
 
 func (t *taskWebSearch) GetFieldByName(fieldName string) (field.OrderExpr, bool) {

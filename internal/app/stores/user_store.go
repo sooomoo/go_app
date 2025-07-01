@@ -42,15 +42,15 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 		_, err := tx.User.WithContext(ctx).Where(tx.User.Phone.Eq(phone)).Take()
 		if err == gorm.ErrRecordNotFound {
 			// 添加
-			userId := core.NewSeqID()
+			userId := core.NewID()
 			err = tx.User.WithContext(ctx).Create(&model.User{
-				ID:        userId,
-				Phone:     phone,
-				Name:      phone[3:6] + "****" + phone[10:],
-				Role:      int32(RoleNormal),
-				Status:    UserStatusNormal,
-				IPInit:    ip,
-				IPLatest:  ip,
+				ID:     userId,
+				Phone:  phone,
+				Name:   phone[3:6] + "****" + phone[10:],
+				Role:   int32(RoleNormal),
+				Status: UserStatusNormal,
+				// IPInit:    ip,
+				// IPLatest:  ip,
 				CreatedAt: time.Now().Unix(),
 				UpdatedAt: time.Now().Unix(),
 			})
@@ -58,7 +58,7 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 			// 更新
 			_, err = tx.User.WithContext(ctx).Where(tx.User.Phone.Eq(phone)).Updates(map[string]any{
 				u.UpdatedAt.ColumnName().String(): time.Now().Unix(),
-				u.IPLatest.ColumnName().String():  ip,
+				// u.IPLatest.ColumnName().String():  ip,
 			})
 		}
 
@@ -89,6 +89,6 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 	return u.WithContext(ctx).Where(u.Phone.Eq(phone)).Take()
 }
 
-func (r *UserStore) GetById(ctx context.Context, userId core.SeqID) (*model.User, error) {
+func (r *UserStore) GetById(ctx context.Context, userId int64) (*model.User, error) {
 	return query.User.WithContext(ctx).Where(query.User.ID.Eq(userId)).Take()
 }
