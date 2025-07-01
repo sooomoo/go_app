@@ -38,7 +38,7 @@ func newTaskWebSearch(db *gorm.DB, opts ...gen.DOOption) taskWebSearch {
 
 // taskWebSearch 搜索任务
 type taskWebSearch struct {
-	taskWebSearchDo taskWebSearchDo
+	taskWebSearchDo
 
 	ALL      field.Asterisk
 	ID       field.Int64
@@ -67,18 +67,6 @@ func (t *taskWebSearch) updateTableName(table string) *taskWebSearch {
 	t.fillFieldMap()
 
 	return t
-}
-
-func (t *taskWebSearch) WithContext(ctx context.Context) ITaskWebSearchDo {
-	return t.taskWebSearchDo.WithContext(ctx)
-}
-
-func (t taskWebSearch) TableName() string { return t.taskWebSearchDo.TableName() }
-
-func (t taskWebSearch) Alias() string { return t.taskWebSearchDo.Alias() }
-
-func (t taskWebSearch) Columns(cols ...field.Expr) gen.Columns {
-	return t.taskWebSearchDo.Columns(cols...)
 }
 
 func (t *taskWebSearch) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
