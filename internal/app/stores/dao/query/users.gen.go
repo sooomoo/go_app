@@ -32,11 +32,11 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Name = field.NewString(tableName, "name")
 	_user.Password = field.NewString(tableName, "password")
 	_user.Email = field.NewString(tableName, "email")
-	_user.ThirdAuth = field.NewString(tableName, "third_auth")
+	_user.ThirdAuth = field.NewField(tableName, "third_auth")
 	_user.Role = field.NewInt32(tableName, "role")
-	_user.Profiles = field.NewString(tableName, "profiles")
-	_user.Invite = field.NewString(tableName, "invite")
-	_user.IP = field.NewString(tableName, "ip")
+	_user.Profiles = field.NewField(tableName, "profiles")
+	_user.Invite = field.NewField(tableName, "invite")
+	_user.IP = field.NewField(tableName, "ip")
 	_user.Status = field.NewInt32(tableName, "status")
 	_user.CreatedAt = field.NewInt64(tableName, "created_at")
 	_user.UpdatedAt = field.NewInt64(tableName, "updated_at")
@@ -55,11 +55,11 @@ type user struct {
 	Name      field.String
 	Password  field.String // hash之后的密码
 	Email     field.String
-	ThirdAuth field.String
+	ThirdAuth field.Field
 	Role      field.Int32
-	Profiles  field.String
-	Invite    field.String
-	IP        field.String
+	Profiles  field.Field
+	Invite    field.Field
+	IP        field.Field
 	Status    field.Int32
 	CreatedAt field.Int64
 	UpdatedAt field.Int64
@@ -84,11 +84,11 @@ func (u *user) updateTableName(table string) *user {
 	u.Name = field.NewString(table, "name")
 	u.Password = field.NewString(table, "password")
 	u.Email = field.NewString(table, "email")
-	u.ThirdAuth = field.NewString(table, "third_auth")
+	u.ThirdAuth = field.NewField(table, "third_auth")
 	u.Role = field.NewInt32(table, "role")
-	u.Profiles = field.NewString(table, "profiles")
-	u.Invite = field.NewString(table, "invite")
-	u.IP = field.NewString(table, "ip")
+	u.Profiles = field.NewField(table, "profiles")
+	u.Invite = field.NewField(table, "invite")
+	u.IP = field.NewField(table, "ip")
 	u.Status = field.NewInt32(table, "status")
 	u.CreatedAt = field.NewInt64(table, "created_at")
 	u.UpdatedAt = field.NewInt64(table, "updated_at")

@@ -8,6 +8,7 @@ import (
 	"goapp/pkg/core"
 	"time"
 
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -49,16 +50,21 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 				Name:   phone[3:6] + "****" + phone[10:],
 				Role:   int32(RoleNormal),
 				Status: UserStatusNormal,
-				// IPInit:    ip,
-				// IPLatest:  ip,
+				IP: datatypes.JSON(core.JsonMarshal(map[string]any{
+					"init":   ip,
+					"latest": ip,
+				})),
+				Profiles:  datatypes.JSON("{}"),
+				Invite:    datatypes.JSON("{}"),
+				ThirdAuth: datatypes.JSON("{}"),
 				CreatedAt: time.Now().Unix(),
 				UpdatedAt: time.Now().Unix(),
 			})
 		} else {
 			// 更新
-			_, err = tx.User.WithContext(ctx).Where(tx.User.Phone.Eq(phone)).Updates(map[string]any{
+			_, err = tx.User.WithContext(ctx).Where(tx.User.Phone.Eq(phone)).UpdateColumns(map[string]any{
+				u.IP.ColumnName().String():        datatypes.JSONSet(u.IP.ColumnName().String()).Set("latest", ip),
 				u.UpdatedAt.ColumnName().String(): time.Now().Unix(),
-				// u.IPLatest.ColumnName().String():  ip,
 			})
 		}
 

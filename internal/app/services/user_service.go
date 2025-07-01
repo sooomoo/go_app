@@ -5,6 +5,7 @@ import (
 	"goapp/internal/app"
 	"goapp/internal/app/services/headers"
 	"goapp/internal/app/stores"
+	"goapp/pkg/core"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -42,16 +43,18 @@ func (u *UserService) GetSelfInfo(c *gin.Context) (*GetUserInfoResponseDto, erro
 	if err != nil {
 		return nil, err
 	}
+	ipmp := core.JsonUnmarshalSqlJSON(user.IP)
+
 	// convert
 	return &GetUserInfoResponseDto{
 		Code: RespCodeSucceed,
 		Msg:  "succeed",
 		Data: &GetUserInfoResponse{
-			Id:        user.ID,
-			Name:      user.Name,
-			AvatarUrl: user.Profiles,
-			Role:      user.Role,
-			IpLatest:  user.IP,
+			Id:   user.ID,
+			Name: user.Name,
+			// AvatarUrl: user.Profiles,
+			Role:     user.Role,
+			IpLatest: ipmp.GetString("latest"),
 		},
 	}, nil
 }
