@@ -50,13 +50,10 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 				Name:   phone[3:6] + "****" + phone[10:],
 				Role:   int32(RoleNormal),
 				Status: UserStatusNormal,
-				IP: datatypes.JSON(core.JsonMarshal(map[string]any{
+				IP: core.SqlJSON{
 					"init":   ip,
 					"latest": ip,
-				})),
-				Profiles:  datatypes.JSON("{}"),
-				Invite:    datatypes.JSON("{}"),
-				ThirdAuth: datatypes.JSON("{}"),
+				},
 				CreatedAt: time.Now().Unix(),
 				UpdatedAt: time.Now().Unix(),
 			})

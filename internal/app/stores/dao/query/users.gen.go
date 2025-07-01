@@ -6,6 +6,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -31,7 +32,6 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Phone = field.NewString(tableName, "phone")
 	_user.Name = field.NewString(tableName, "name")
 	_user.Password = field.NewString(tableName, "password")
-	_user.Email = field.NewString(tableName, "email")
 	_user.ThirdAuth = field.NewField(tableName, "third_auth")
 	_user.Role = field.NewInt32(tableName, "role")
 	_user.Profiles = field.NewField(tableName, "profiles")
@@ -54,7 +54,6 @@ type user struct {
 	Phone     field.String // 如08615900001111
 	Name      field.String
 	Password  field.String // hash之后的密码
-	Email     field.String
 	ThirdAuth field.Field
 	Role      field.Int32
 	Profiles  field.Field
@@ -83,7 +82,6 @@ func (u *user) updateTableName(table string) *user {
 	u.Phone = field.NewString(table, "phone")
 	u.Name = field.NewString(table, "name")
 	u.Password = field.NewString(table, "password")
-	u.Email = field.NewString(table, "email")
 	u.ThirdAuth = field.NewField(table, "third_auth")
 	u.Role = field.NewInt32(table, "role")
 	u.Profiles = field.NewField(table, "profiles")
@@ -108,12 +106,11 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 13)
+	u.fieldMap = make(map[string]field.Expr, 12)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["phone"] = u.Phone
 	u.fieldMap["name"] = u.Name
 	u.fieldMap["password"] = u.Password
-	u.fieldMap["email"] = u.Email
 	u.fieldMap["third_auth"] = u.ThirdAuth
 	u.fieldMap["role"] = u.Role
 	u.fieldMap["profiles"] = u.Profiles
@@ -191,6 +188,8 @@ type IUserDo interface {
 	FirstOrCreate() (*model.User, error)
 	FindByPage(offset int, limit int) (result []*model.User, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Rows() (*sql.Rows, error)
+	Row() *sql.Row
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IUserDo
 	UnderlyingDB() *gorm.DB
