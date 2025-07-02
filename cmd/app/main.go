@@ -29,13 +29,14 @@ func main() {
 	app.GetGlobal().Init(ctx) // 初始化全局变量, 失败时会 panic
 
 	// 设置Gin模式
-	if env == "release" {
+	switch env {
+	case "release":
 		gin.SetMode(gin.ReleaseMode)
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	} else if env == "test" {
+	case "test":
 		gin.SetMode(gin.TestMode)
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	} else {
+	default:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 

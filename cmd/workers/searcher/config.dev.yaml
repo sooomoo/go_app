@@ -1,0 +1,22 @@
+name: searcher 
+
+database:
+  connect_string: root:abc12345@tcp(127.0.0.1:3306)/niu?charset=utf8mb4&parseTime=True&loc=Local
+
+cache:
+  addr: 127.0.0.1:6379
+  db: 1
+
+locker:
+  addr: 127.0.0.1:6379
+  db: 2
+  ttl: 15 # 15秒
+  retry_strategy: linear # linear or exponential
+  backoff: 2 # 2秒
+  max_retry: 3
+
+queue:
+  addr: 127.0.0.1:6379
+  db: 3
+  xadd_maxlen: 1024 
+  batch_size: 100

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"goapp/internal/app"
 	"goapp/pkg/cache"
 	"goapp/pkg/core"
 	"time"
@@ -26,8 +27,8 @@ type AuthStore struct {
 	cache *cache.Cache
 }
 
-func NewAuthStore(cache *cache.Cache) *AuthStore {
-	return &AuthStore{cache: cache}
+func NewAuthStore() *AuthStore {
+	return &AuthStore{cache: app.GetGlobal().GetCache()}
 }
 
 func (a *AuthStore) SaveCsrfToken(ctx context.Context, token, val string, expire time.Duration) error {

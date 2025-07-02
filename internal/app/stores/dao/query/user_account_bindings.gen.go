@@ -31,8 +31,9 @@ func newUserAccountBinding(db *gorm.DB, opts ...gen.DOOption) userAccountBinding
 	_userAccountBinding.ID = field.NewInt64(tableName, " id")
 	_userAccountBinding.AccountType = field.NewUint8(tableName, "account_type")
 	_userAccountBinding.Account = field.NewString(tableName, "account")
-	_userAccountBinding.BoundAt = field.NewString(tableName, "bound_at")
 	_userAccountBinding.Status = field.NewUint8(tableName, "status")
+	_userAccountBinding.UserID = field.NewInt64(tableName, "user_id")
+	_userAccountBinding.BindAt = field.NewString(tableName, "bind_at")
 
 	_userAccountBinding.fillFieldMap()
 
@@ -47,8 +48,9 @@ type userAccountBinding struct {
 	ID          field.Int64
 	AccountType field.Uint8  // 账户类型：微信，邮箱等等
 	Account     field.String // 具体账户：邮箱，微信 openid 等
-	BoundAt     field.String // 绑定时间
 	Status      field.Uint8  // 状态：正常，解绑等等
+	UserID      field.Int64  // 绑定到哪个用户上的
+	BindAt      field.String // 绑定时间
 
 	fieldMap map[string]field.Expr
 }
@@ -68,8 +70,9 @@ func (u *userAccountBinding) updateTableName(table string) *userAccountBinding {
 	u.ID = field.NewInt64(table, " id")
 	u.AccountType = field.NewUint8(table, "account_type")
 	u.Account = field.NewString(table, "account")
-	u.BoundAt = field.NewString(table, "bound_at")
 	u.Status = field.NewUint8(table, "status")
+	u.UserID = field.NewInt64(table, "user_id")
+	u.BindAt = field.NewString(table, "bind_at")
 
 	u.fillFieldMap()
 
@@ -86,12 +89,13 @@ func (u *userAccountBinding) GetFieldByName(fieldName string) (field.OrderExpr, 
 }
 
 func (u *userAccountBinding) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 5)
+	u.fieldMap = make(map[string]field.Expr, 6)
 	u.fieldMap[" id"] = u.ID
 	u.fieldMap["account_type"] = u.AccountType
 	u.fieldMap["account"] = u.Account
-	u.fieldMap["bound_at"] = u.BoundAt
 	u.fieldMap["status"] = u.Status
+	u.fieldMap["user_id"] = u.UserID
+	u.fieldMap["bind_at"] = u.BindAt
 }
 
 func (u userAccountBinding) clone(db *gorm.DB) userAccountBinding {

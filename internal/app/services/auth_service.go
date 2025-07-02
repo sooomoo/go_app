@@ -25,8 +25,8 @@ type AuthService struct {
 
 func NewAuthService() *AuthService {
 	return &AuthService{
-		authRepo: stores.NewAuthStore(app.GetGlobal().GetCache()),
-		userRepo: stores.NewUserStore(app.GetGlobal().GetCache()),
+		authRepo: stores.NewAuthStore(),
+		userRepo: stores.NewUserStore(),
 	}
 }
 

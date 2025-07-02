@@ -11,8 +11,9 @@ type UserAccountBinding struct {
 	ID          int64  `gorm:"column: id;primaryKey" json:"id"`
 	AccountType uint8  `gorm:"column:account_type;not null;comment:账户类型：微信，邮箱等等" json:"accountType"` // 账户类型：微信，邮箱等等
 	Account     string `gorm:"column:account;not null;comment:具体账户：邮箱，微信 openid 等" json:"account"`   // 具体账户：邮箱，微信 openid 等
-	BoundAt     string `gorm:"column:bound_at;not null;comment:绑定时间" json:"boundAt"`                 // 绑定时间
 	Status      uint8  `gorm:"column:status;comment:状态：正常，解绑等等" json:"status"`                       // 状态：正常，解绑等等
+	UserID      int64  `gorm:"column:user_id;not null;comment:绑定到哪个用户上的" json:"userId"`              // 绑定到哪个用户上的
+	BindAt      string `gorm:"column:bind_at;not null;comment:绑定时间" json:"bindAt"`                   // 绑定时间
 }
 
 // TableName UserAccountBinding's table name

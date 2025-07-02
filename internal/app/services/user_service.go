@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"goapp/internal/app"
 	"goapp/internal/app/services/headers"
 	"goapp/internal/app/stores"
 
@@ -16,7 +15,7 @@ type UserService struct {
 
 func NewUserService() *UserService {
 	return &UserService{
-		userRepo: stores.NewUserStore(app.GetGlobal().GetCache()),
+		userRepo: stores.NewUserStore(),
 	}
 }
 

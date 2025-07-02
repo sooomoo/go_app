@@ -2,6 +2,7 @@ package stores
 
 import (
 	"context"
+	"goapp/internal/app"
 	"goapp/internal/app/stores/dao/model"
 	"goapp/internal/app/stores/dao/query"
 	"goapp/pkg/cache"
@@ -29,9 +30,9 @@ type UserStore struct {
 	cache *cache.Cache
 }
 
-func NewUserStore(cache *cache.Cache) *UserStore {
+func NewUserStore() *UserStore {
 	return &UserStore{
-		cache: cache,
+		cache: app.GetGlobal().GetCache(),
 	}
 }
 

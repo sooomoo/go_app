@@ -4,17 +4,37 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-    
         {
-            "name": "Launch Package",
+            "name": "App",
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/app",
+            "program": "${workspaceFolder}/cmd/app/main.go",
             "env": {
                 "env": "dev",
                 "node_id": "1",
-            }, 
+            },
+        },
+        {
+            "name": "Searcher",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/workers/searcher/main.go",
+            "env": {
+                "env": "dev",
+                "node_id": "2",
+            },
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Launch ALL",
+            "configurations": [
+                "Searcher",
+                "App"
+            ],
+            "stopAll": true // 可选：停止时同时终止所有调试会话
         }
     ]
 }

@@ -30,7 +30,13 @@ func newTaskWebSearch(db *gorm.DB, opts ...gen.DOOption) taskWebSearch {
 	_taskWebSearch.ALL = field.NewAsterisk(tableName)
 	_taskWebSearch.ID = field.NewInt64(tableName, "id")
 	_taskWebSearch.Keywords = field.NewString(tableName, "keywords")
-	_taskWebSearch.CreateAt = field.NewInt64(tableName, "create_at")
+	_taskWebSearch.TraceID = field.NewString(tableName, "trace_id")
+	_taskWebSearch.Status = field.NewUint8(tableName, "status")
+	_taskWebSearch.StatusText = field.NewString(tableName, "status_text")
+	_taskWebSearch.Result = field.NewField(tableName, "result")
+	_taskWebSearch.CreatedAt = field.NewInt64(tableName, "created_at")
+	_taskWebSearch.SearchAt = field.NewInt64(tableName, "search_at")
+	_taskWebSearch.FinishAt = field.NewInt64(tableName, "finish_at")
 
 	_taskWebSearch.fillFieldMap()
 
@@ -41,10 +47,16 @@ func newTaskWebSearch(db *gorm.DB, opts ...gen.DOOption) taskWebSearch {
 type taskWebSearch struct {
 	taskWebSearchDo
 
-	ALL      field.Asterisk
-	ID       field.Int64
-	Keywords field.String // 搜索词
-	CreateAt field.Int64
+	ALL        field.Asterisk
+	ID         field.Int64
+	Keywords   field.String // 搜索词，多个搜索词以逗号分隔
+	TraceID    field.String // 多个 ID 以逗号分隔
+	Status     field.Uint8
+	StatusText field.String
+	Result     field.Field
+	CreatedAt  field.Int64 // 由 app 创建
+	SearchAt   field.Int64 // 什么时候开始的搜索：由 searcher 更新
+	FinishAt   field.Int64 // 什么时候结束的搜索：由 searcher 更新
 
 	fieldMap map[string]field.Expr
 }
@@ -63,7 +75,13 @@ func (t *taskWebSearch) updateTableName(table string) *taskWebSearch {
 	t.ALL = field.NewAsterisk(table)
 	t.ID = field.NewInt64(table, "id")
 	t.Keywords = field.NewString(table, "keywords")
-	t.CreateAt = field.NewInt64(table, "create_at")
+	t.TraceID = field.NewString(table, "trace_id")
+	t.Status = field.NewUint8(table, "status")
+	t.StatusText = field.NewString(table, "status_text")
+	t.Result = field.NewField(table, "result")
+	t.CreatedAt = field.NewInt64(table, "created_at")
+	t.SearchAt = field.NewInt64(table, "search_at")
+	t.FinishAt = field.NewInt64(table, "finish_at")
 
 	t.fillFieldMap()
 
@@ -80,10 +98,16 @@ func (t *taskWebSearch) GetFieldByName(fieldName string) (field.OrderExpr, bool)
 }
 
 func (t *taskWebSearch) fillFieldMap() {
-	t.fieldMap = make(map[string]field.Expr, 3)
+	t.fieldMap = make(map[string]field.Expr, 9)
 	t.fieldMap["id"] = t.ID
 	t.fieldMap["keywords"] = t.Keywords
-	t.fieldMap["create_at"] = t.CreateAt
+	t.fieldMap["trace_id"] = t.TraceID
+	t.fieldMap["status"] = t.Status
+	t.fieldMap["status_text"] = t.StatusText
+	t.fieldMap["result"] = t.Result
+	t.fieldMap["created_at"] = t.CreatedAt
+	t.fieldMap["search_at"] = t.SearchAt
+	t.fieldMap["finish_at"] = t.FinishAt
 }
 
 func (t taskWebSearch) clone(db *gorm.DB) taskWebSearch {
