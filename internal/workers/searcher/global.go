@@ -3,6 +3,7 @@ package searcher
 import (
 	"context"
 	"fmt"
+	"goapp/internal/workers/searcher/stores/dao/query"
 	"goapp/pkg/cache"
 	"goapp/pkg/core"
 	"goapp/pkg/distribute"
@@ -89,7 +90,7 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 			SetMaxOpenConns(100),
 	)
 	// 设置默认的 Db 连接
-	// query.SetDefault(g.db)
+	query.SetDefault(g.db)
 
 	g.cache, err = cache.NewCache(ctx, g.config.Cache.GetRedisOption(), nil)
 	if err != nil {
@@ -109,6 +110,7 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 		panic(err)
 	}
 }
+
 func (g *GlobalInstance) loadConfig() error {
 	env := os.Getenv("env")
 	// 设置配置文件名称和类型
