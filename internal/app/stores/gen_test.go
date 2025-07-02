@@ -64,11 +64,7 @@ func TestGenDao(t *testing.T) {
 		// },
 		"json": func(columnType gorm.ColumnType) (dataType string) {
 			name := strings.ToLower(columnType.Name())
-			if strings.HasSuffix(name, "_arr") {
-				dataType = "[]core.SqlJSON"
-			} else {
-				dataType = "core.SqlJSON"
-			}
+			dataType = "core.SqlJSON"
 			fmt.Println(name)
 			return
 		},

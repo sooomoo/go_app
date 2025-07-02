@@ -42,18 +42,17 @@ func (u *UserService) GetSelfInfo(c *gin.Context) (*GetUserInfoResponseDto, erro
 	if err != nil {
 		return nil, err
 	}
-	// ipmp := core.JsonUnmarshalSqlJSON(user.IP)
 
 	// convert
 	return &GetUserInfoResponseDto{
 		Code: RespCodeSucceed,
 		Msg:  "succeed",
 		Data: &GetUserInfoResponse{
-			Id:   user.ID,
-			Name: user.Name,
-			// AvatarUrl: user.Profiles,
-			Role:     user.Role,
-			IpLatest: user.IP.GetString("latest"),
+			Id:        user.ID,
+			Name:      user.Name,
+			AvatarUrl: user.Profiles.GetString("avatar"),
+			Role:      user.Role,
+			IpLatest:  user.IP.GetString("latest"),
 		},
 	}, nil
 }
