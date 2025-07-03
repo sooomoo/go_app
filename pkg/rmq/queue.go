@@ -122,14 +122,61 @@ func (c *Queue) init() error {
 	return err
 }
 
-func (c *Queue) Push(data []byte) error {
-	return c.PushWithOptions(data, core.NewSeqID().Hex(), "", "", "")
+type messageOption struct {
+	msgID   string
+	msgType string
+	userID  string
+	appID   string
+
+	retryTimes int
 }
 
-func (c *Queue) PushWithOptions(data []byte, msgID, msgType, userID, appID string) error {
+type optionFunc func(*messageOption)
+
+func WithMsgID(msgID string) optionFunc {
+	return func(option *messageOption) {
+		option.msgID = msgID
+	}
+}
+func WithMsgType(msgType string) optionFunc {
+	return func(option *messageOption) {
+		option.msgType = msgType
+	}
+}
+func WithUserID(userID string) optionFunc {
+	return func(option *messageOption) {
+		option.userID = userID
+	}
+}
+func WithAppID(appID string) optionFunc {
+	return func(option *messageOption) {
+		option.appID = appID
+	}
+}
+func WithRetry(retryTimes int) optionFunc {
+	if retryTimes < 1 {
+		retryTimes = 1
+	}
+	return func(option *messageOption) {
+		option.retryTimes = retryTimes
+	}
+}
+
+func (c *Queue) Push(data []byte, options ...optionFunc) error {
+	option := &messageOption{}
+	for _, optionFunc := range options {
+		optionFunc(option)
+	}
+	if len(option.msgID) == 0 {
+		option.msgID = core.NewSeqID().Hex()
+	}
+	if option.retryTimes < 1 {
+		option.retryTimes = 1
+	}
+
 	var err error
-	for range 5 {
-		if err = c.internalPush(data, msgID, msgType, userID, appID); err != nil {
+	for range option.retryTimes {
+		if err = c.internalPush(data, option); err != nil {
 			fmt.Println("push failed. Retrying...")
 			select {
 			case <-c.chCloseNormal:
@@ -147,7 +194,7 @@ func (c *Queue) PushWithOptions(data []byte, msgID, msgType, userID, appID strin
 	return err
 }
 
-func (c *Queue) internalPush(data []byte, msgID, msgType, userID, appID string) error {
+func (c *Queue) internalPush(data []byte, option *messageOption) error {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -164,11 +211,11 @@ func (c *Queue) internalPush(data []byte, msgID, msgType, userID, appID string) 
 			DeliveryMode: amqp.Persistent,
 			ContentType:  "text/plain",
 			Body:         data,
-			MessageId:    msgID,
+			MessageId:    option.msgID,
 			Timestamp:    time.Now(),
-			Type:         msgType,
-			UserId:       userID,
-			AppId:        appID,
+			Type:         option.msgType,
+			UserId:       option.userID,
+			AppId:        option.appID,
 		},
 	)
 }
