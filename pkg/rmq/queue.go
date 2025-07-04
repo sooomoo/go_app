@@ -21,6 +21,7 @@ type Queue struct {
 	chNotifyClose   chan *amqp.Error
 	chNotifyConfirm chan amqp.Confirmation
 	chCloseNormal   chan core.Empty
+	chReconnected   chan core.Empty
 
 	connected atomic.Bool
 }
@@ -33,6 +34,7 @@ func newQueue(name string) *Queue {
 		chNotifyClose:   make(chan *amqp.Error, 1),
 		chNotifyConfirm: make(chan amqp.Confirmation, 1),
 		chCloseNormal:   make(chan core.Empty, 1),
+		chReconnected:   make(chan core.Empty, 1),
 	}
 }
 
@@ -52,6 +54,7 @@ func (c *Queue) open(connection *amqp.Connection) error {
 			time.Sleep(time.Second)
 			continue
 		}
+		break
 	}
 	if err != nil {
 		return err
@@ -74,7 +77,13 @@ func (c *Queue) autoReconnect() {
 				c.connected.Store(false)
 
 				time.Sleep(reconnectDelay)
-				c.init()
+				err := c.init()
+				if err != nil {
+					fmt.Println("reconnect failed:", err)
+					continue
+				} else {
+					c.chReconnected <- core.Empty{}
+				}
 			}
 		}
 	}()
@@ -225,6 +234,13 @@ func (c *Queue) ConsumeSingle() (<-chan amqp.Delivery, error) {
 }
 
 func (c *Queue) Consume(prefetchCount int) (<-chan amqp.Delivery, error) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	if !c.connected.Load() {
+		return nil, errNotConnected
+	}
+
 	if prefetchCount < 1 {
 		prefetchCount = 1
 	}
@@ -237,15 +253,45 @@ func (c *Queue) Consume(prefetchCount int) (<-chan amqp.Delivery, error) {
 		return nil, err
 	}
 
-	return c.channel.Consume(
-		c.name, // queue
-		"",     // consumer
-		false,  // auto-ack 手动确认
-		false,  // exclusive
-		false,  // no-local
-		false,  // no-wait
-		nil,    // args
-	)
+	consumeFn := func() (<-chan amqp.Delivery, error) {
+		return c.channel.Consume(
+			c.name, // queue
+			"",     // consumer
+			false,  // auto-ack 手动确认
+			false,  // exclusive
+			false,  // no-local
+			false,  // no-wait
+			nil,    // args
+		)
+	}
+
+	del, err := consumeFn()
+	if err != nil {
+		return nil, err
+	}
+
+	deliveries := make(chan amqp.Delivery)
+	go func() {
+		for {
+			select {
+			case <-c.chCloseNormal:
+				close(deliveries)
+				return // close consumer
+			case d := <-del:
+				deliveries <- d
+			case <-c.chReconnected:
+				for range 5 {
+					del, err = consumeFn()
+					if err != nil {
+						time.Sleep(time.Second)
+					} else {
+						break
+					}
+				}
+			}
+		}
+	}()
+	return deliveries, nil
 }
 
 func (c *Queue) close() error {
