@@ -1,6 +1,8 @@
 package rmq
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"goapp/pkg/core"
 	"sync"
@@ -20,10 +22,12 @@ type Queue struct {
 
 	chNotifyClose   chan *amqp.Error
 	chNotifyConfirm chan amqp.Confirmation
-	chCloseNormal   chan core.Empty
 	chReconnected   chan core.Empty
 
 	connected atomic.Bool
+
+	cancelComsume       context.CancelFunc
+	cancelAutoReconnect context.CancelFunc
 }
 
 func newQueue(name string) *Queue {
@@ -33,30 +37,13 @@ func newQueue(name string) *Queue {
 		connected:       atomic.Bool{},
 		chNotifyClose:   make(chan *amqp.Error, 1),
 		chNotifyConfirm: make(chan amqp.Confirmation, 1),
-		chCloseNormal:   make(chan core.Empty, 1),
 		chReconnected:   make(chan core.Empty, 1),
 	}
 }
 
 func (c *Queue) open(connection *amqp.Connection) error {
-	if c.connection != nil {
-		// 关闭自动重连协程
-		c.chCloseNormal <- core.Empty{}
-		time.Sleep(100 * time.Millisecond)
-	}
-	close(c.chCloseNormal)
-	c.chCloseNormal = make(chan core.Empty, 1)
-
 	c.connection = connection
-	var err error
-	for range 5 {
-		if err = c.init(); err != nil {
-			time.Sleep(time.Second)
-			continue
-		}
-		break
-	}
-	if err != nil {
+	if err := c.init(); err != nil {
 		return err
 	}
 
@@ -65,20 +52,26 @@ func (c *Queue) open(connection *amqp.Connection) error {
 }
 
 func (c *Queue) autoReconnect() {
-	go func() {
+	if c.cancelAutoReconnect != nil {
+		c.cancelAutoReconnect()
+		time.Sleep(500 * time.Millisecond)
+		c.cancelAutoReconnect = nil
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	c.cancelAutoReconnect = cancel
+
+	go func(ctx context.Context) {
 		for {
 			select {
-			case <-c.chCloseNormal:
-				fmt.Println("channel closed normal.")
-				c.connected.Store(false)
+			case <-ctx.Done():
+				fmt.Println("channel cancelled.")
 				return
 			case <-c.chNotifyClose:
 				fmt.Println("channel closed. Reconnecting...")
 				c.connected.Store(false)
 
 				time.Sleep(reconnectDelay)
-				err := c.init()
-				if err != nil {
+				if err := c.init(); err != nil {
 					fmt.Println("reconnect failed:", err)
 					continue
 				} else {
@@ -86,12 +79,16 @@ func (c *Queue) autoReconnect() {
 				}
 			}
 		}
-	}()
+	}(ctx)
 }
 
 func (c *Queue) init() error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+
+	if c.connection == nil {
+		return errors.New("connection is nil")
+	}
 
 	c.connected.Store(false)
 	close(c.chNotifyClose)
@@ -126,7 +123,6 @@ func (c *Queue) init() error {
 
 	c.channel = channel
 	c.queue = queue
-
 	c.connected.Store(true)
 	return err
 }
@@ -187,11 +183,7 @@ func (c *Queue) Push(data []byte, options ...optionFunc) error {
 	for range option.retryTimes {
 		if err = c.internalPush(data, option); err != nil {
 			fmt.Println("push failed. Retrying...")
-			select {
-			case <-c.chCloseNormal:
-				return errClosed
-			case <-time.After(resendDelay):
-			}
+			time.Sleep(resendDelay)
 			continue
 		}
 		confirm := <-c.chNotifyConfirm
@@ -227,10 +219,6 @@ func (c *Queue) internalPush(data []byte, option *messageOption) error {
 			AppId:        option.appID,
 		},
 	)
-}
-
-func (c *Queue) ConsumeSingle() (<-chan amqp.Delivery, error) {
-	return c.Consume(1)
 }
 
 func (c *Queue) Consume(prefetchCount int) (<-chan amqp.Delivery, error) {
@@ -271,10 +259,13 @@ func (c *Queue) Consume(prefetchCount int) (<-chan amqp.Delivery, error) {
 	}
 
 	deliveries := make(chan amqp.Delivery)
-	go func() {
+
+	ctx, cancel := context.WithCancel(context.Background())
+	c.cancelComsume = cancel
+	go func(ctx context.Context) {
 		for {
 			select {
-			case <-c.chCloseNormal:
+			case <-ctx.Done():
 				close(deliveries)
 				return // close consumer
 			case d := <-del:
@@ -290,7 +281,7 @@ func (c *Queue) Consume(prefetchCount int) (<-chan amqp.Delivery, error) {
 				}
 			}
 		}
-	}()
+	}(ctx)
 	return deliveries, nil
 }
 
@@ -299,12 +290,20 @@ func (c *Queue) close() error {
 	defer c.mutex.Unlock()
 
 	c.connected.Store(false)
-	c.chCloseNormal <- core.Empty{}
-	time.Sleep(100 * time.Millisecond)
 
-	close(c.chCloseNormal)
+	if c.cancelComsume != nil {
+		c.cancelComsume()
+		c.cancelComsume = nil
+	}
+	if c.cancelAutoReconnect != nil {
+		c.cancelAutoReconnect()
+		c.cancelAutoReconnect = nil
+	}
+	time.Sleep(500 * time.Millisecond)
+
 	close(c.chNotifyClose)
 	close(c.chNotifyConfirm)
+	close(c.chReconnected)
 
 	if err := c.channel.Close(); err != nil {
 		return err

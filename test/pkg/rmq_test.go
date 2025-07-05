@@ -29,7 +29,7 @@ func TestPush(t *testing.T) {
 	mqQueue.Push(fmt.Appendf(nil, "hello world at %s", time.Now().Format("2006-01-02 15:04:05")))
 }
 func TestConsume(t *testing.T) {
-	deliveries, err := mqQueue.ConsumeSingle()
+	deliveries, err := mqQueue.Consume(1)
 	if err != nil {
 		t.Error(err)
 		return
