@@ -52,18 +52,18 @@ func (c *Client) Connect() error {
 	return nil
 }
 
-func (c *Client) NewQueue(name string) *Queue {
+func (c *Client) NewQueue(name string) (*Queue, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
 	if q, ok := c.queues[name]; ok {
-		return q
+		return q, nil
 	}
 
 	queue := newQueue(name)
 	c.queues[name] = queue
-	queue.open(c.connection)
-	return queue
+	err := queue.open(c.connection)
+	return queue, err
 }
 
 func (c *Client) CloseQueue(name string) {

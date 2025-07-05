@@ -8,7 +8,7 @@ type WorkerConfig struct {
 	Database DatabaseConfig `mapstructure:"database"`
 	Cache    CacheConfig    `mapstructure:"cache"`
 	Locker   LockerConfig   `mapstructure:"locker"`
-	Queue    QueueConfig    `mapstructure:"queue"`
+	RMQ      RMQConfig      `mapstructure:"rmq"`
 }
 
 type DatabaseConfig struct {
@@ -43,16 +43,6 @@ func (c *LockerConfig) GetRedisOption() *redis.Options {
 	}
 }
 
-type QueueConfig struct {
-	Addr       string `mapstructure:"addr"`
-	Db         int    `mapstructure:"db"`
-	XAddMaxLen int    `mapstructure:"xadd_max_len"`
-	BatchSize  int    `mapstructure:"batch_size"`
-}
-
-func (c *QueueConfig) GetRedisOption() *redis.Options {
-	return &redis.Options{
-		Addr: c.Addr,
-		DB:   c.Db,
-	}
+type RMQConfig struct {
+	Addr string `mapstructure:"addr"`
 }

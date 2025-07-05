@@ -15,8 +15,5 @@ locker:
   backoff: 2 # 2秒
   max_retry: 3
 
-queue:
-  addr: 127.0.0.1:6379
-  db: 3
-  xadd_maxlen: 1024 
-  batch_size: 100
+rmq:
+  addr: amqp://admin:admin@localhost:5672/

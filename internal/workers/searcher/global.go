@@ -7,6 +7,7 @@ import (
 	"goapp/pkg/cache"
 	"goapp/pkg/core"
 	"goapp/pkg/distribute"
+	"goapp/pkg/rmq"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -25,12 +26,12 @@ type GlobalInstance struct {
 	inited   atomic.Bool
 	released atomic.Bool
 
-	pool   core.CoroutinePool
-	db     *gorm.DB
-	config *WorkerConfig
-	cache  *cache.Cache
-	locker *distribute.Locker
-	queue  distribute.MessageQueue
+	pool      core.CoroutinePool
+	db        *gorm.DB
+	config    *WorkerConfig
+	cache     *cache.Cache
+	locker    *distribute.Locker
+	rmqClient *rmq.Client
 }
 
 var (
@@ -105,7 +106,8 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 		panic(err)
 	}
 
-	g.queue, err = distribute.NewRedisMessageQueue(ctx, g.config.Queue.GetRedisOption(), g.pool, g.config.Queue.XAddMaxLen, g.config.Queue.BatchSize)
+	g.rmqClient = rmq.NewClient(g.config.RMQ.Addr)
+	err = g.rmqClient.Connect()
 	if err != nil {
 		panic(err)
 	}
@@ -158,5 +160,5 @@ func (g *GlobalInstance) Release() {
 	g.pool.Release()
 	g.cache.Close()
 	g.locker.Close()
-	g.queue.Close()
+	g.rmqClient.Close()
 }
