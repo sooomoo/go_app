@@ -4,7 +4,7 @@ import (
 	"context"
 	"goapp/pkg/core"
 	"strings"
-	"sync"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -19,7 +19,6 @@ type MessageQueue interface {
 }
 
 type RedisMessageQueue struct {
-	mutex      sync.RWMutex
 	client     *redis.Client      // Redis连接
 	pool       core.CoroutinePool // 协程池
 	xaddMaxLen int                // 发布消息时XAddArgs中MaxLen的值
@@ -33,16 +32,15 @@ func NewRedisMessageQueue(ctx context.Context, opt *redis.Options, pool core.Cor
 	if err != nil {
 		return nil, err
 	}
-	return &RedisMessageQueue{sync.RWMutex{}, client, pool, xaddMaxLen, batchSize, make(chan core.Empty)}, nil
+	return &RedisMessageQueue{client, pool, xaddMaxLen, batchSize, make(chan core.Empty)}, nil
 }
 
 func (m *RedisMessageQueue) Close() {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
 	if m.client == nil {
 		return
 	}
 	m.closeChan <- core.Empty{}
+	time.Sleep(500 * time.Millisecond)
 	m.client.Close()
 	m.client = nil
 }
