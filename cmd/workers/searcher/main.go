@@ -35,22 +35,22 @@ func main() {
 	}
 
 	log.Info().Msg("准备启动任务...")
-	time.Sleep(time.Second * 5)
+	ctx, cancel := context.WithCancel(ctx)
+	searcher.Start(ctx)
 
 	log.Info().Msg("任务启动完毕！")
 
 	// Wait system signal, and cleanup resources
 	core.WaitSysSignal(func() {
 		log.Info().Msg("正在关闭服务器...")
-		c, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
 
 		// 关闭所有任务
+		cancel()
+		time.Sleep(2 * time.Second)
 
 		// 释放资源
 		searcher.GetGlobal().Release()
 
-		<-c.Done()
 		log.Info().Msg("服务器已优雅地关闭")
 	})
 }
