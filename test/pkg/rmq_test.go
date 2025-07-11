@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 		if err != nil {
 			panic(err)
 		}
-		mqQueue = mqClient.NewQueue("queue_test")
+		mqQueue, err = mqClient.NewQueue("queue_test")
 	}
 	m.Run()
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"goapp/pkg/core"
 	"math/rand"
 	"sync"
 	"time"
@@ -38,9 +39,11 @@ func NewRedLocker(addr string) *RedLocker {
 }
 
 type RedLockerConfig struct {
-	TTL          time.Duration // 锁的存活时间（秒）：默认 8s
-	AcquireTries int           // 尝试获取锁的次数：默认 32
-	RetryDelay   time.Duration // 重试间隔：默认 rand(50ms, 250ms)
+	TTL                time.Duration // 锁的存活时间（秒）：默认 8s
+	AcquireTries       int           // 尝试获取锁的次数：默认 32
+	RetryDelay         time.Duration // 重试间隔：默认 rand(50ms, 250ms)
+	AutoExtendLock     bool          // 是否自动续期：默认 false
+	AutoExtendInterval time.Duration // 自动续期间隔：默认 TTL * 0.67
 }
 
 func (c *RedLockerConfig) useDefaultIfNotSepecified() {
@@ -52,6 +55,11 @@ func (c *RedLockerConfig) useDefaultIfNotSepecified() {
 	}
 	if c.RetryDelay <= 0 {
 		c.RetryDelay = time.Duration(time.Duration(50+rand.Intn(200)) * time.Millisecond)
+	}
+	if c.AutoExtendLock {
+		if c.AutoExtendInterval <= 0 {
+			c.AutoExtendInterval = time.Duration(float64(c.TTL.Milliseconds())*0.67) * time.Millisecond
+		}
 	}
 }
 
@@ -72,6 +80,12 @@ func RedLockWithRetryDelay(retryDelay time.Duration) RedLockerOption {
 		config.RetryDelay = retryDelay
 	}
 }
+func RedLockWithAutoExtend(extendInterval time.Duration) RedLockerOption {
+	return func(config *RedLockerConfig) {
+		config.AutoExtendLock = true
+		config.AutoExtendInterval = extendInterval
+	}
+}
 
 func (r *RedLocker) Lock(ctx context.Context, mutexname string, options ...RedLockerOption) (*RedLock, error) {
 	config := &RedLockerConfig{}
@@ -84,32 +98,38 @@ func (r *RedLocker) Lock(ctx context.Context, mutexname string, options ...RedLo
 	if err := mutex.LockContext(ctx); err != nil {
 		return nil, err
 	}
+	lock := &RedLock{mutex: mutex, mut: sync.RWMutex{}}
+	if config.AutoExtendLock {
+		lock.autoExtend(ctx, config.AutoExtendInterval)
+	}
 
-	return &RedLock{mutex: mutex}, nil
+	return lock, nil
 }
 
 type RedLock struct {
 	mutex *redsync.Mutex
 
-	mut           sync.RWMutex
-	cancelExtend  context.CancelFunc
-	chExtendError chan error
+	mut              sync.RWMutex
+	cancelExtend     context.CancelFunc
+	chExtendError    chan error
+	chAutoExtendDone chan core.Empty
 }
 
 // 调用了 AutoExtend 之后，必须在 Unlock 之前调用 CancelAutoExtend 取消自动续期
-func (r *RedLock) AutoExtend(ctx context.Context, extendInterval time.Duration, maxTimes int) {
+func (r *RedLock) autoExtend(ctx context.Context, extendInterval time.Duration) {
 	r.mut.Lock()
 	defer r.mut.Unlock()
 
 	ctx, cancel := context.WithCancel(ctx)
 	r.cancelExtend = cancel
 	r.chExtendError = make(chan error, 1)
+	r.chAutoExtendDone = make(chan core.Empty, 1)
 
 	go func(ctx context.Context) {
-		remainExtendTimes := maxTimes
 		for {
 			select {
 			case <-ctx.Done():
+				r.chAutoExtendDone <- core.Empty{}
 				return
 			case <-time.After(extendInterval):
 				val, err := r.mutex.ExtendContext(ctx)
@@ -122,11 +142,6 @@ func (r *RedLock) AutoExtend(ctx context.Context, extendInterval time.Duration, 
 					r.chExtendError <- err
 					return
 				}
-				remainExtendTimes--
-				if remainExtendTimes <= 0 {
-					r.cancelExtend()
-					return
-				}
 			}
 		}
 	}(ctx)
@@ -136,40 +151,28 @@ func (r *RedLock) AutoExtendError() <-chan error {
 	return r.chExtendError
 }
 
-func (r *RedLock) CancelAutoExtend(waitUntilDone time.Duration) {
-	r.mut.Lock()
-	defer r.mut.Unlock()
-
-	if r.cancelExtend != nil {
-		r.cancelExtend()
-		r.cancelExtend = nil
-		time.Sleep(waitUntilDone)
-	}
-	if r.chExtendError != nil {
-		close(r.chExtendError)
-		r.chExtendError = nil
-	}
-}
-
-func (r *RedLock) Extend(ctx context.Context) error {
-	r.mut.RLock()
-	defer r.mut.RUnlock()
-
-	val, err := r.mutex.ExtendContext(ctx)
-	if !val {
-		return ErrFailed
-	}
-	return err
-}
-
+// 释放锁定的资源
 func (r *RedLock) Unlock(ctx context.Context) error {
 	r.mut.Lock()
 	defer r.mut.Unlock()
 	defer func() {
 		r.mutex = nil
+		r.cancelExtend = nil
+		r.chAutoExtendDone = nil
+		r.chExtendError = nil
 	}()
 	if r.mutex == nil {
 		return nil
+	}
+	if r.cancelExtend != nil {
+		r.cancelExtend()
+		<-r.chAutoExtendDone // 等待自动续期协程退出
+	}
+	if r.chAutoExtendDone != nil {
+		close(r.chAutoExtendDone)
+	}
+	if r.chExtendError != nil {
+		close(r.chExtendError)
 	}
 
 	val, err := r.mutex.UnlockContext(ctx)
