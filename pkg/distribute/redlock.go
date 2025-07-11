@@ -25,10 +25,8 @@ type RedLocker struct {
 	redsync *redsync.Redsync
 }
 
-func NewRedLocker(addr string) *RedLocker {
-	client := goredislib.NewClient(&goredislib.Options{
-		Addr: addr,
-	})
+func NewRedLocker(option *goredislib.Options) *RedLocker {
+	client := goredislib.NewClient(option)
 	pool := goredis.NewPool(client)
 	redsync := redsync.New(pool)
 	return &RedLocker{
@@ -63,31 +61,31 @@ func (c *RedLockerConfig) useDefaultIfNotSepecified() {
 	}
 }
 
-type RedLockerOption func(*RedLockerConfig)
+type RedLockOption func(*RedLockerConfig)
 
-func RedLockWithTTL(ttl time.Duration) RedLockerOption {
+func RedLockWithTTL(ttl time.Duration) RedLockOption {
 	return func(config *RedLockerConfig) {
 		config.TTL = ttl
 	}
 }
-func RedLockWithAcquireTries(tries int) RedLockerOption {
+func RedLockWithAcquireTries(tries int) RedLockOption {
 	return func(config *RedLockerConfig) {
 		config.AcquireTries = tries
 	}
 }
-func RedLockWithRetryDelay(retryDelay time.Duration) RedLockerOption {
+func RedLockWithRetryDelay(retryDelay time.Duration) RedLockOption {
 	return func(config *RedLockerConfig) {
 		config.RetryDelay = retryDelay
 	}
 }
-func RedLockWithAutoExtend(extendInterval time.Duration) RedLockerOption {
+func RedLockWithAutoExtend(extendInterval time.Duration) RedLockOption {
 	return func(config *RedLockerConfig) {
 		config.AutoExtendLock = true
 		config.AutoExtendInterval = extendInterval
 	}
 }
 
-func (r *RedLocker) Lock(ctx context.Context, mutexname string, options ...RedLockerOption) (*RedLock, error) {
+func (r *RedLocker) Lock(ctx context.Context, mutexname string, options ...RedLockOption) (*RedLock, error) {
 	config := &RedLockerConfig{}
 	for _, v := range options {
 		v(config)
@@ -166,7 +164,14 @@ func (r *RedLock) Unlock(ctx context.Context) error {
 	}
 	if r.cancelExtend != nil {
 		r.cancelExtend()
-		<-r.chAutoExtendDone // 等待自动续期协程退出
+
+		// 等待自动续期协程退出
+		select {
+		case <-r.chAutoExtendDone:
+			fmt.Println("auto extend goroutine exited")
+		case <-time.After(1 * time.Second):
+			fmt.Println("auto extend goroutine exit Timeout")
+		}
 	}
 	if r.chAutoExtendDone != nil {
 		close(r.chAutoExtendDone)

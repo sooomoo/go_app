@@ -75,8 +75,8 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 
 	g.locker, err = distribute.NewLocker(
 		ctx, g.appConfig.Locker.GetRedisOption(),
-		time.Duration(g.appConfig.Locker.Ttl)*time.Second,
-		distribute.LinearRetryStrategy(time.Duration(g.appConfig.Locker.Backoff)*time.Second))
+		distribute.WithDefaultTtl(time.Duration(g.appConfig.Locker.Ttl)*time.Second),
+		distribute.WithDefaultRetryStrategy(distribute.LinearRetryStrategy(time.Duration(g.appConfig.Locker.Backoff)*time.Second)))
 	if err != nil {
 		panic(err)
 	}
