@@ -55,12 +55,12 @@ func (e *EtcdLockConfig) useDefaultIfNotSepecified() {
 
 type EtcdLockOption func(*EtcdLockConfig)
 
-func WithTTL(ttl int) EtcdLockOption {
+func EtcdWithTTL(ttl int) EtcdLockOption {
 	return func(config *EtcdLockConfig) {
 		config.TTL = ttl
 	}
 }
-func WithLockTimeout(timeout time.Duration) EtcdLockOption {
+func EtcdWithLockTimeout(timeout time.Duration) EtcdLockOption {
 	return func(config *EtcdLockConfig) {
 		config.LockTimeout = timeout
 	}

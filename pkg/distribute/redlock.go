@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -37,21 +38,52 @@ func NewRedLocker(addr string) *RedLocker {
 }
 
 type RedLockerConfig struct {
+	TTL          time.Duration // 锁的存活时间（秒）：默认 8s
+	AcquireTries int           // 尝试获取锁的次数：默认 32
+	RetryDelay   time.Duration // 重试间隔：默认 rand(50ms, 250ms)
+}
+
+func (c *RedLockerConfig) useDefaultIfNotSepecified() {
+	if c.AcquireTries <= 0 {
+		c.AcquireTries = 32
+	}
+	if c.TTL <= 0 {
+		c.TTL = 8 * time.Second
+	}
+	if c.RetryDelay <= 0 {
+		c.RetryDelay = time.Duration(time.Duration(50+rand.Intn(200)) * time.Millisecond)
+	}
 }
 
 type RedLockerOption func(*RedLockerConfig)
 
-func (r *RedLocker) Lock(ctx context.Context, mutexname string) (*RedLock, error) {
-	mutex := r.redsync.NewMutex(mutexname)
+func RedLockWithTTL(ttl time.Duration) RedLockerOption {
+	return func(config *RedLockerConfig) {
+		config.TTL = ttl
+	}
+}
+func RedLockWithAcquireTries(tries int) RedLockerOption {
+	return func(config *RedLockerConfig) {
+		config.AcquireTries = tries
+	}
+}
+func RedLockWithRetryDelay(retryDelay time.Duration) RedLockerOption {
+	return func(config *RedLockerConfig) {
+		config.RetryDelay = retryDelay
+	}
+}
+
+func (r *RedLocker) Lock(ctx context.Context, mutexname string, options ...RedLockerOption) (*RedLock, error) {
+	config := &RedLockerConfig{}
+	for _, v := range options {
+		v(config)
+	}
+	config.useDefaultIfNotSepecified()
+
+	mutex := r.redsync.NewMutex(mutexname, redsync.WithExpiry(config.TTL), redsync.WithTries(config.AcquireTries), redsync.WithRetryDelay(config.RetryDelay))
 	if err := mutex.LockContext(ctx); err != nil {
 		return nil, err
 	}
-
-	// , options ...RedLockerOption
-	// config := &RedLockerConfig{}
-	// for _, v := range options {
-	// 	v(config)
-	// }
 
 	return &RedLock{mutex: mutex}, nil
 }
