@@ -61,7 +61,7 @@ func (a *AuthService) PrepareLogin(ctx *gin.Context) *PrepareLoginResponseDto {
 	}
 	jwtConfig := app.GetGlobal().GetAuthConfig().Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
-	ctx.SetCookie(headers.CookieKeyCsrfToken, csrfToken, int(dur.Seconds()), "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
+	ctx.SetCookie(headers.CookieKeyCsrfToken, csrfToken, int(dur.Seconds()), "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
 	// 返回验证码和csrf token
 	return &PrepareLoginResponseDto{Code: RespCodeSucceed, Data: &PrepareLoginResponse{CsrfToken: csrfToken, ImageData: base64Str}}
 }
@@ -132,7 +132,7 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 
 	jwtConfig := app.GetGlobal().GetAuthConfig().Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
-	ctx.SetCookie(headers.CookieKeyCsrfToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
+	ctx.SetCookie(headers.CookieKeyCsrfToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
 
 	if headers.GetPlatform(ctx) == core.Web {
 		clientId := headers.GetClientId(ctx)
@@ -212,8 +212,8 @@ func (a *AuthService) Logout(ctx *gin.Context) {
 	// 删除 cookie
 	jwtConfig := app.GetGlobal().GetAuthConfig().Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
-	ctx.SetCookie(headers.CookieKeyAccessToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
-	ctx.SetCookie(headers.CookieKeyRefreshToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
+	ctx.SetCookie(headers.CookieKeyAccessToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
+	ctx.SetCookie(headers.CookieKeyRefreshToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
 }
 
 func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, clientId, accessToken, refreshToken string) {
@@ -222,9 +222,9 @@ func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, clientId, accessTo
 	atkMaxAge := int((time.Duration(jwtConfig.AccessTtl) * time.Minute).Seconds())
 	rtkMaxAge := int((time.Duration(jwtConfig.RefreshTtl) * time.Minute).Seconds())
 	cliMaxAge := rtkMaxAge + int((time.Hour * 24 * 30).Seconds())
-	ctx.SetCookie(headers.CookieKeyAccessToken, accessToken, atkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
-	ctx.SetCookie(headers.CookieKeyRefreshToken, refreshToken, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
-	ctx.SetCookie(headers.CookieKeyClientId, clientId, cliMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, true)
+	ctx.SetCookie(headers.CookieKeyAccessToken, accessToken, atkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
+	ctx.SetCookie(headers.CookieKeyRefreshToken, refreshToken, rtkMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
+	ctx.SetCookie(headers.CookieKeyClientId, clientId, cliMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
 }
 
 func (a *AuthService) IsClaimsValid(ctx *gin.Context, claims *stores.AuthorizedClaims) bool {
