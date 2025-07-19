@@ -273,7 +273,7 @@ func (h *Hub) BroadcastMessage(data []byte) {
 	})
 }
 
-func (h *Hub) UpgradeWebSocket(userId string, platform core.Platform, lineId string, extraData ExtraData, w http.ResponseWriter, r *http.Request) error {
+func (h *Hub) UpgradeWebSocket(userId string, platform core.Platform, lineId string, extraData core.MapX, w http.ResponseWriter, r *http.Request) error {
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return err

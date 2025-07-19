@@ -33,7 +33,7 @@ type Line struct {
 	id         string
 	userId     string
 	platform   core.Platform
-	extraData  ExtraData
+	extraData  core.MapX
 	lastActive int64
 	closeChan  chan core.Empty
 	writeChan  chan []byte
