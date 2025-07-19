@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -62,8 +63,10 @@ var NilSeqID SeqID
 
 var seqIDCounter uint32
 var seqIDProcessUnique [5]byte
-var _ encoding.TextMarshaler = SeqID{}
-var _ encoding.TextUnmarshaler = &SeqID{}
+var _ encoding.TextMarshaler = (*SeqID)(nil)
+var _ encoding.TextUnmarshaler = (*SeqID)(nil)
+var _ json.Marshaler = (*SeqID)(nil)
+var _ json.Unmarshaler = (*SeqID)(nil)
 
 // 生成一个全局唯一 ID（精度秒: 复用 mongo-driver 中 golang ObjectID 实现）
 func NewSeqID() SeqID {

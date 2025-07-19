@@ -2,6 +2,8 @@ package core
 
 import (
 	"database/sql/driver"
+	"encoding"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -96,6 +98,10 @@ func IDNodeID(snowId int64) int64 {
 type BigID int64
 
 var NilBigID BigID
+var _ encoding.TextMarshaler = (*BigID)(nil)
+var _ encoding.TextUnmarshaler = (*BigID)(nil)
+var _ json.Marshaler = (*BigID)(nil)
+var _ json.Unmarshaler = (*BigID)(nil)
 
 func NewBigID() BigID {
 	return BigID(NewID())
