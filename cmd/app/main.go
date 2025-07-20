@@ -101,7 +101,6 @@ func main() {
 		// 释放资源
 		app.GetGlobal().Release()
 
-		<-c.Done()
 		log.Info().Msg("服务器已优雅地关闭")
 	})
 }
