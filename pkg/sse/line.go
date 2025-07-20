@@ -33,7 +33,9 @@ type Line struct {
 }
 
 func (ln *Line) start(c *gin.Context) {
-	ln.hub.registeredChanInternal <- ln
+	if ln.hub.isClosed.Load() {
+		return
+	}
 
 	// 创建定时器用于心跳检测
 	ticker := time.NewTicker(ln.hub.liveCheckDuration)

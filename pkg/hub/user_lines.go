@@ -46,7 +46,7 @@ func (u *UserLines) remove(lineId string) {
 // 关闭指定连接：切记，此处只发关闭命令，不处理其他逻辑
 func (u *UserLines) Close(lineId string) {
 	for _, v := range u.lines {
-		if v.id == lineId {
+		if v.id == lineId && v.closeChan != nil {
 			v.closeChan <- core.Empty{}
 		}
 	}
@@ -92,6 +92,9 @@ func (u *UserLines) ClosePlatforms(platforms ...core.Platform) {
 	defer u.RUnlock()
 
 	for _, line := range u.lines {
+		if line.isClosed.Load() || line.closeChan == nil {
+			continue
+		}
 		if slices.Contains(platforms, line.platform) {
 			line.closeChan <- core.Empty{}
 		}
@@ -108,6 +111,9 @@ func (u *UserLines) ClosePlatformsExcept(exceptPlatforms ...core.Platform) {
 	defer u.RUnlock()
 
 	for _, line := range u.lines {
+		if line.isClosed.Load() || line.closeChan == nil {
+			continue
+		}
 		if !slices.Contains(exceptPlatforms, line.platform) {
 			line.closeChan <- core.Empty{}
 		}
@@ -124,6 +130,9 @@ func (u *UserLines) CloseLines(lineIds ...string) {
 	defer u.RUnlock()
 
 	for _, line := range u.lines {
+		if line.isClosed.Load() || line.closeChan == nil {
+			continue
+		}
 		if slices.Contains(lineIds, line.id) {
 			line.closeChan <- core.Empty{}
 		}
@@ -141,6 +150,9 @@ func (u *UserLines) CloseLinesExcept(exceptLineIds ...string) {
 
 	for _, line := range u.lines {
 		if !slices.Contains(exceptLineIds, line.id) {
+			if line.isClosed.Load() || line.closeChan == nil {
+				continue
+			}
 			line.closeChan <- core.Empty{}
 		}
 	}
@@ -157,6 +169,9 @@ func (u *UserLines) closeInactiveLines(maxIdleSeconds int64) {
 
 	for _, line := range u.lines {
 		if time.Now().Unix()-line.lastActive > maxIdleSeconds {
+			if line.isClosed.Load() || line.closeChan == nil {
+				continue
+			}
 			line.closeChan <- core.Empty{}
 		}
 	}
@@ -168,6 +183,9 @@ func (u *UserLines) CloseAll() {
 	defer u.RUnlock()
 
 	for _, line := range u.lines {
+		if line.isClosed.Load() || line.closeChan == nil {
+			continue
+		}
 		line.closeChan <- core.Empty{}
 	}
 }
@@ -182,6 +200,9 @@ func (u *UserLines) PushMessage(data []byte) {
 	defer u.RUnlock()
 
 	for _, line := range u.lines {
+		if line.isClosed.Load() || line.hub.isClosed.Load() || line.writeChan == nil {
+			continue
+		}
 		line.writeChan <- data
 	}
 }
@@ -196,6 +217,9 @@ func (u *UserLines) PushMessageExceptPlatforms(data []byte, exceptPlatforms ...c
 	defer u.RUnlock()
 
 	for _, line := range u.lines {
+		if line.isClosed.Load() || line.hub.isClosed.Load() || line.writeChan == nil {
+			continue
+		}
 		if slices.Contains(exceptPlatforms, line.platform) {
 			continue
 		}
@@ -213,6 +237,9 @@ func (u *UserLines) PushMessageExceptLines(data []byte, exceptLineIds ...string)
 	defer u.RUnlock()
 
 	for _, line := range u.lines {
+		if line.isClosed.Load() || line.hub.isClosed.Load() || line.writeChan == nil {
+			continue
+		}
 		if slices.Contains(exceptLineIds, line.id) {
 			continue
 		}
@@ -230,6 +257,9 @@ func (u *UserLines) PushMessageToPlatforms(data []byte, platforms ...core.Platfo
 	defer u.RUnlock()
 
 	for _, line := range u.lines {
+		if line.isClosed.Load() || line.hub.isClosed.Load() || line.writeChan == nil {
+			continue
+		}
 		if slices.Contains(platforms, line.platform) {
 			line.writeChan <- data
 		}
@@ -246,6 +276,9 @@ func (u *UserLines) PushMessageToLines(data []byte, lineIds ...string) {
 	defer u.RUnlock()
 
 	for _, line := range u.lines {
+		if line.isClosed.Load() || line.hub.isClosed.Load() || line.writeChan == nil {
+			continue
+		}
 		if slices.Contains(lineIds, line.id) {
 			line.writeChan <- data
 		}

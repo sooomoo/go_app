@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"errors"
 	"fmt"
 	"goapp/pkg/core"
 	"io"
@@ -52,6 +53,10 @@ func (ln *Line) LastActive() int64 { return atomic.LoadInt64(&ln.lastActive) }
 func (ln *Line) Hub() *Hub { return ln.hub }
 
 func (ln *Line) start() error {
+	if ln.hub.isClosed.Load() {
+		return errors.New("hub closed")
+	}
+
 	err := ln.hub.pool.Submit(func() {
 		ln.conn.SetPingHandler(func(appData string) error {
 			atomic.StoreInt64(&ln.lastActive, time.Now().Unix())
@@ -159,7 +164,9 @@ func (ln *Line) start() error {
 		return err
 	}
 
-	ln.hub.registeredChanInternal <- ln
+	if !ln.hub.isClosed.Load() {
+		ln.hub.registeredChanInternal <- ln
+	}
 	return nil
 }
 

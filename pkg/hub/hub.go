@@ -132,8 +132,7 @@ func NewHub(
 			userLines.remove(ln.id)
 			h.connCount.Add(-1)
 			// 先删后关，防止在关闭之后，出现向通道意外发送的情况
-			close(ln.closeChan)
-			close(ln.writeChan)
+			h.closeLineChans(ln)
 
 			// 如果用户没有连接，则删除用户
 			if ok && userLines.Len() == 0 {
@@ -161,11 +160,31 @@ func (h *Hub) ErrorChan() <-chan *LineError { return h.errorChan }
 
 func (h *Hub) LiveCount() int { return int(h.connCount.Load()) }
 
+func (h *Hub) closeLineChans(ln *Line) {
+	if ln.closeChan != nil {
+		close(ln.closeChan)
+	}
+	if ln.writeChan != nil {
+		close(ln.writeChan)
+	}
+
+	ln.closeChan = nil
+	ln.writeChan = nil
+}
+
 func (h *Hub) Close(wait time.Duration) {
 	if h.isClosed.Load() {
 		return
 	}
 	h.isClosed.Store(true)
+
+	// 防止关闭时出现意外
+	defer func() {
+		r := recover()
+		if r != nil {
+			fmt.Println("close chan err")
+		}
+	}()
 
 	if h.liveTicker != nil {
 		h.liveTicker.Stop()
@@ -177,19 +196,16 @@ func (h *Hub) Close(wait time.Duration) {
 		return true
 	})
 	h.connections.Clear()
-	h.pool.Submit(func() {
-		for _, v := range uls {
-			v.CloseAll()
+	// 关闭所有连接，并释放资源
+	for _, v := range uls {
+		v.Lock()
+		defer v.Unlock()
+		for _, ln := range v.lines {
+			h.closeLineChans(ln)
 		}
-	})
-
-	time.Sleep(wait)
-	defer func() {
-		r := recover()
-		if r != nil {
-			fmt.Println("close chan err")
-		}
-	}()
+		v.lines = v.lines[:] // 清空
+		v.lineCount.Store(0)
+	}
 
 	close(h.messageChan)
 	close(h.registeredChanInternal)
@@ -237,6 +253,7 @@ func (h *Hub) CloseUserLines(userIds ...string) {
 	}
 }
 
+// 推送消息给指定用户的所有连接
 func (h *Hub) PushMessage(userIds []string, data []byte) {
 	if len(userIds) == 0 || len(data) == 0 {
 		return
@@ -252,6 +269,7 @@ func (h *Hub) PushMessage(userIds []string, data []byte) {
 	})
 }
 
+// 向用户指定的线路发送消息
 func (h *Hub) PushToUserLines(userId string, data []byte, lineIds ...string) error {
 	uls := h.GetUserLines(userId)
 	if uls == nil {
@@ -261,6 +279,7 @@ func (h *Hub) PushToUserLines(userId string, data []byte, lineIds ...string) err
 	return nil
 }
 
+// 广播消息
 func (h *Hub) BroadcastMessage(data []byte) {
 	if len(data) == 0 {
 		return
