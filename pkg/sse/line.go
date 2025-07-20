@@ -32,21 +32,28 @@ type Line struct {
 	isClosed atomic.Bool
 }
 
+func (ln *Line) push(msg string) error {
+	_, err := fmt.Fprintf(ln.writer, "id: %d\ndata: %s\n\n", time.Now().UnixMicro(), msg)
+	if err != nil {
+		return err
+	}
+	ln.writer.Flush()
+	return nil
+}
+
 func (ln *Line) start(c *gin.Context) {
 	if ln.hub.isClosed.Load() {
 		return
 	}
+
+	ln.hub.registeredChanInternal <- ln
 
 	// 创建定时器用于心跳检测
 	ticker := time.NewTicker(ln.hub.liveCheckDuration)
 	defer ticker.Stop()
 
 	// 发送初始连接确认
-	_, err := fmt.Fprintf(ln.writer, "id: %d\n\n", time.Now().Unix())
-	if err != nil {
-		ln.close(fmt.Errorf("send initial message error: %w", err))
-		return
-	}
+	ln.push("open")
 
 	// 主循环处理消息
 	for {
@@ -57,20 +64,10 @@ func (ln *Line) start(c *gin.Context) {
 		select {
 		case msg := <-ln.writeChan:
 			// 发送消息到客户端
-			_, err := fmt.Fprintf(ln.writer, "%s\n\n", msg)
-			if err != nil {
-				ln.close(fmt.Errorf("send message error: %w", err))
-				return
-			}
-			ln.writer.Flush()
+			ln.push(msg)
 		case <-ticker.C:
 			// 发送心跳保持连接
-			_, err := fmt.Fprintf(ln.writer, "id: %d\n\n", time.Now().Unix())
-			if err != nil {
-				// 如果发送失败，则关闭连接
-				ln.close(fmt.Errorf("send heartbeat message error: %w", err))
-				return
-			}
+			ln.push("ping")
 		case <-ln.closeChan:
 			// 服务端主动关闭连接
 			ln.isClosed.Store(true)

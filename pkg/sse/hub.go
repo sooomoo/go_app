@@ -94,7 +94,7 @@ func (h *Hub) Serve(c *gin.Context, userId string, platform core.Platform, lineI
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
+	// c.Header("Access-Control-Allow-Origin", "*")
 
 	// 存下该平台新的连接
 	ln := &Line{

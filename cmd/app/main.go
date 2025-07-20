@@ -6,6 +6,7 @@ import (
 	"goapp/internal/app/routes/api"
 	"goapp/internal/app/routes/hubs"
 	"goapp/internal/app/routes/middleware"
+	"goapp/internal/app/routes/sse"
 	"goapp/internal/app/routes/third"
 	"goapp/pkg/core"
 	"net/http"
@@ -61,6 +62,15 @@ func main() {
 	{
 		hubGroup.Use(middleware.AuthMiddleware())
 		hubs.RegisterHubs(hubGroup)
+	}
+
+	// SSE 相关配置
+	s := r.Group("/sse")
+	{
+		s.Use(middleware.GzipMiddleware())
+		// s.Use(middleware.ReplayMiddleware())
+		s.Use(middleware.AuthMiddleware())
+		sse.RegisterHubs(s)
 	}
 
 	// 普通 API 请求相关配置

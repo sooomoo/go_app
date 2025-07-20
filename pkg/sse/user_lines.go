@@ -42,15 +42,6 @@ func (u *UserLines) remove(lineId string) {
 	u.lineCount.Add(-1)
 }
 
-// 关闭指定连接：切记，此处只发关闭命令，不处理其他逻辑
-func (u *UserLines) Close(lineId string) {
-	for _, v := range u.lines {
-		if v.id == lineId && v.closeChan != nil {
-			v.closeChan <- core.Empty{}
-		}
-	}
-}
-
 // 获取指定连接
 func (u *UserLines) Get(lineId string) *Line {
 	u.RLock()
@@ -119,7 +110,7 @@ func (u *UserLines) ClosePlatformsExcept(exceptPlatforms ...core.Platform) {
 	}
 }
 
-// 关闭指定连接
+// 关闭指定连接：切记，此处只发关闭命令，不处理其他逻辑
 func (u *UserLines) CloseLines(lineIds ...string) {
 	if len(lineIds) == 0 {
 		return
