@@ -61,7 +61,9 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 		panic(err)
 	}
 
-	g.db, err = core.InitDB(g.appConfig.Database.ConnectString, 10*time.Second)
+	dbMaster := g.appConfig.Database.ConnectString
+	dbSlaves := []string{g.appConfig.Database.ConnectString}
+	g.db, err = core.InitReplicasDB(dbMaster, dbSlaves, 10*time.Second)
 	if err != nil {
 		panic(err)
 	}
