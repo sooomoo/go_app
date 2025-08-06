@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"goapp/internal/app"
+	"goapp/internal/app/global"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -10,12 +10,12 @@ import (
 
 func CorsMiddleware() gin.HandlerFunc {
 	return cors.New(cors.Config{
-		AllowOrigins:     app.GetGlobal().GetAppConfig().Cors.AllowOrigins,
-		AllowMethods:     app.GetGlobal().GetAppConfig().Cors.AllowMethods,
-		AllowHeaders:     app.GetGlobal().GetAppConfig().Cors.AllowHeaders,
-		ExposeHeaders:    app.GetGlobal().GetAppConfig().Cors.ExposeHeaders,
-		AllowCredentials: app.GetGlobal().GetAppConfig().Cors.AllowCredentials,
-		MaxAge:           time.Duration(app.GetGlobal().GetAppConfig().Cors.MaxAge) * time.Minute,
-		AllowWebSockets:  app.GetGlobal().GetAppConfig().Cors.AllowWebSockets,
+		AllowOrigins:     global.GetAppConfig().Cors.AllowOrigins,
+		AllowMethods:     global.GetAppConfig().Cors.AllowMethods,
+		AllowHeaders:     global.GetAppConfig().Cors.AllowHeaders,
+		ExposeHeaders:    global.GetAppConfig().Cors.ExposeHeaders,
+		AllowCredentials: global.GetAppConfig().Cors.AllowCredentials,
+		MaxAge:           time.Duration(global.GetAppConfig().Cors.MaxAge) * time.Minute,
+		AllowWebSockets:  global.GetAppConfig().Cors.AllowWebSockets,
 	})
 }

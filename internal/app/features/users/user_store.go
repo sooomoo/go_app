@@ -2,9 +2,9 @@ package users
 
 import (
 	"context"
-	"goapp/internal/app"
 	"goapp/internal/app/dao/model"
 	"goapp/internal/app/dao/query"
+	"goapp/internal/app/global"
 	"goapp/pkg/cache"
 	"goapp/pkg/core"
 	"time"
@@ -32,7 +32,7 @@ type UserStore struct {
 
 func NewUserStore() *UserStore {
 	return &UserStore{
-		cache: app.GetGlobal().GetCache(),
+		cache: global.GetCache(),
 	}
 }
 

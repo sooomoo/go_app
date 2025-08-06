@@ -17,11 +17,3 @@ type ResponseDto[TData any] struct {
 	Msg  string   `json:"msg"`
 	Data TData    `json:"data"`
 }
-
-func NewResponseDtoNoData(code RespCode, msg string) *ResponseDto[any] {
-	return &ResponseDto[any]{Code: code, Msg: msg}
-}
-
-func NewResponseInvalidArgs(msg string) *ResponseDto[any] {
-	return &ResponseDto[any]{Code: RespCodeInvalidArgs, Msg: msg}
-}

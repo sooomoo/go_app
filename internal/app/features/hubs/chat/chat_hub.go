@@ -3,7 +3,7 @@ package chat
 import (
 	"errors"
 	"fmt"
-	"goapp/internal/app"
+	"goapp/internal/app/global"
 	"goapp/internal/app/shared/claims"
 	"goapp/internal/app/shared/headers"
 	"goapp/pkg/bytes"
@@ -34,15 +34,15 @@ type ChatHub struct {
 	*hub.Hub
 
 	pool   core.CoroutinePool
-	config *app.HubConfig
+	config *global.HubConfig
 
 	protooal *bytes.PacketProtocol
 }
 
 func NewChatHub() *ChatHub {
 	return &ChatHub{
-		pool:     app.GetGlobal().GetCoroutinePool(),
-		config:   &app.GetGlobal().GetAppConfig().Hub,
+		pool:     global.GetCoroutinePool(),
+		config:   &global.GetAppConfig().Hub,
 		protooal: bytes.NewMsgPackProtocol(nil, nil),
 	}
 }
@@ -59,7 +59,7 @@ func (h *ChatHub) Start(router *gin.RouterGroup, path string) {
 		h.config.EnableCompression,
 		func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
-			return slices.Contains(app.GetGlobal().GetAppConfig().Cors.AllowOrigins, origin)
+			return slices.Contains(global.GetAppConfig().Cors.AllowOrigins, origin)
 		},
 	)
 	if err != nil {

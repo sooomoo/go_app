@@ -3,7 +3,7 @@ package sse
 import (
 	"errors"
 	"fmt"
-	"goapp/internal/app"
+	"goapp/internal/app/global"
 	"goapp/internal/app/shared/claims"
 	"goapp/internal/app/shared/headers"
 	"goapp/pkg/core"
@@ -21,7 +21,7 @@ type AIHub struct {
 }
 
 func NewAIHub() (*AIHub, error) {
-	pool := app.GetGlobal().GetCoroutinePool()
+	pool := global.GetCoroutinePool()
 	h, err := sse.NewHub(pool, 30*time.Second)
 	if err != nil {
 		panic(err)

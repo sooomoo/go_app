@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"errors"
-	"goapp/internal/app"
+	"goapp/internal/app/global"
 	"goapp/internal/app/shared/crypto"
 	"goapp/internal/app/shared/headers"
 	"io"
@@ -18,7 +18,7 @@ import (
 func CryptoMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get请求以及指定了不需要加密的路径放行
-		cryptoEnabled := app.GetGlobal().GetAuthConfig().EnableCrypto
+		cryptoEnabled := global.GetAuthConfig().EnableCrypto
 		if !isPathNeedCrypto(c.Request.URL.Path) || !cryptoEnabled {
 			c.Next()
 			return
@@ -99,12 +99,12 @@ func CryptoMiddleware() gin.HandlerFunc {
 }
 
 func isPathNeedCrypto(path string) bool {
-	for _, p := range app.GetGlobal().GetAuthConfig().PathsNotCrypt {
+	for _, p := range global.GetAuthConfig().PathsNotCrypt {
 		if strings.Contains(p, "*") || strings.EqualFold(p, path) {
 			return false
 		}
 	}
-	for _, p := range app.GetGlobal().GetAuthConfig().PathsNeedCrypt {
+	for _, p := range global.GetAuthConfig().PathsNeedCrypt {
 		if strings.Contains(p, "*") {
 			return true
 		}

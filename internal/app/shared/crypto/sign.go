@@ -4,7 +4,7 @@ import (
 	"crypto/ed25519"
 	"encoding/base64"
 	"fmt"
-	"goapp/internal/app"
+	"goapp/internal/app/global"
 	"goapp/pkg/core"
 	"sort"
 )
@@ -95,8 +95,8 @@ func VerifySign(pubKey string, data []byte, signature string) (bool, error) {
 // priKey: 私钥
 // data: 待签名的数据
 func SignMap(mp map[string]string) (string, error) {
-	key := app.GetGlobal().GetAuthConfig().SignKeyPair.PrivateKey
-	pKey := app.GetGlobal().GetAuthConfig().SignKeyPair.PublicKey
+	key := global.GetAuthConfig().SignKeyPair.PrivateKey
+	pKey := global.GetAuthConfig().SignKeyPair.PublicKey
 	if len(key) == 0 {
 		panic("sign key is empty")
 	}

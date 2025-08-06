@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	"goapp/internal/app"
 	"goapp/internal/app/features"
 	"goapp/internal/app/features/hubs/chat"
 	"goapp/internal/app/features/hubs/sse"
 	"goapp/internal/app/features/third"
+	"goapp/internal/app/global"
 	"goapp/internal/app/middleware"
 	"goapp/pkg/core"
 	"net/http"
@@ -27,7 +27,7 @@ func main() {
 	env := os.Getenv("env")
 	log.Info().Msgf("server starting... runnint in [ %s ] mode", env)
 	ctx := context.Background()
-	app.GetGlobal().Init(ctx) // 初始化全局变量, 失败时会 panic
+	global.Init(ctx) // 初始化全局变量, 失败时会 panic
 
 	// 设置Gin模式
 	switch env {
@@ -85,7 +85,7 @@ func main() {
 	}
 
 	// 创建HTTP服务器
-	svr := &http.Server{Addr: app.GetGlobal().GetAppConfig().Addr, Handler: r}
+	svr := &http.Server{Addr: global.GetAppConfig().Addr, Handler: r}
 	// 优雅关闭
 	go func() {
 		if env == "dev" {
@@ -109,7 +109,7 @@ func main() {
 		}
 
 		// 释放资源
-		app.GetGlobal().Release()
+		global.Release()
 
 		log.Info().Msg("服务器已优雅地关闭")
 	})
