@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"goapp/internal/app"
-	"goapp/internal/app/routes/api"
-	"goapp/internal/app/routes/hubs"
-	"goapp/internal/app/routes/middleware"
-	"goapp/internal/app/routes/sse"
-	"goapp/internal/app/routes/third"
+	"goapp/internal/app/features"
+	"goapp/internal/app/features/hubs/chat"
+	"goapp/internal/app/features/hubs/sse"
+	"goapp/internal/app/features/third"
+	"goapp/internal/app/middleware"
 	"goapp/pkg/core"
 	"net/http"
 	"os"
@@ -61,7 +61,7 @@ func main() {
 	hubGroup := r.Group("/hub")
 	{
 		hubGroup.Use(middleware.AuthMiddleware())
-		hubs.RegisterHubs(hubGroup)
+		chat.RegisterHubs(hubGroup)
 	}
 
 	// SSE 相关配置
@@ -81,7 +81,7 @@ func main() {
 		v1.Use(middleware.AuthMiddleware())
 		v1.Use(middleware.SignMiddleware())
 		v1.Use(middleware.CryptoMiddleware())
-		api.RegisterRoutes(v1)
+		features.RegisterRoutes(v1)
 	}
 
 	// 创建HTTP服务器
