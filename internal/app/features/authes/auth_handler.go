@@ -7,10 +7,13 @@ import (
 )
 
 type AuthHandler struct {
+	*shared.RouteHandler
 }
 
 var (
-	authHandler *AuthHandler = &AuthHandler{}
+	authHandler *AuthHandler = &AuthHandler{
+		RouteHandler: &shared.RouteHandler{},
+	}
 )
 
 func GetAuthHandler() *AuthHandler {
@@ -43,7 +46,7 @@ func (h *AuthHandler) handleLoginPrepare(c *gin.Context) {
 func (h *AuthHandler) handleLoginDo(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(200, shared.NewResponseInvalidArgs(""))
+		c.JSON(200, h.NewResponseInvalidArgs(""))
 		return
 	}
 
