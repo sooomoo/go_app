@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"goapp/internal/app"
-	"goapp/internal/app/shared"
+	"goapp/internal/app/shared/claims"
 	"goapp/pkg/cache"
 	"time"
 
@@ -59,7 +59,7 @@ func (a *AuthStore) SaveHandledRequest(ctx context.Context, requestId string, ex
 	return exists, nil
 }
 
-func (a *AuthStore) SaveAccessToken(ctx context.Context, token string, ttl time.Duration, claims *shared.AuthorizedClaims) error {
+func (a *AuthStore) SaveAccessToken(ctx context.Context, token string, ttl time.Duration, claims *claims.AuthorizedClaims) error {
 	key := fmt.Sprintf("access_token:%s", token)
 	val, err := json.Marshal(claims)
 	if err != nil {
@@ -76,7 +76,7 @@ func (a *AuthStore) DeleteAccessToken(ctx context.Context, token string) error {
 	return err
 }
 
-func (a *AuthStore) GetAccessTokenClaims(ctx context.Context, token string) (*shared.AuthorizedClaims, error) {
+func (a *AuthStore) GetAccessTokenClaims(ctx context.Context, token string) (*claims.AuthorizedClaims, error) {
 	if len(token) == 0 {
 		return nil, redis.Nil
 	}
@@ -86,7 +86,7 @@ func (a *AuthStore) GetAccessTokenClaims(ctx context.Context, token string) (*sh
 		return nil, err
 	}
 
-	var dto shared.AuthorizedClaims
+	var dto claims.AuthorizedClaims
 	err = json.Unmarshal([]byte(val), &dto)
 	if err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (a *AuthStore) GetAccessTokenClaims(ctx context.Context, token string) (*sh
 	return &dto, nil
 }
 
-func (a *AuthStore) SaveRefreshToken(ctx context.Context, token string, credendials *shared.AuthorizedClaims, expire time.Duration) error {
+func (a *AuthStore) SaveRefreshToken(ctx context.Context, token string, credendials *claims.AuthorizedClaims, expire time.Duration) error {
 	key := fmt.Sprintf("refresh_token:%s", token)
 	val, err := json.Marshal(credendials)
 	if err != nil {
@@ -112,14 +112,14 @@ func (a *AuthStore) DeleteRefreshToken(ctx context.Context, token string) error 
 	return err
 }
 
-func (a *AuthStore) GetRefreshTokenCredential(ctx context.Context, token string) *shared.AuthorizedClaims {
+func (a *AuthStore) GetRefreshTokenCredential(ctx context.Context, token string) *claims.AuthorizedClaims {
 	key := fmt.Sprintf("refresh_token:%s", token)
 	jsonStr, err := a.cache.Get(ctx, key)
 	if err != nil {
 		return nil
 	}
 
-	var dto shared.AuthorizedClaims
+	var dto claims.AuthorizedClaims
 	err = json.Unmarshal([]byte(jsonStr), &dto)
 	if err != nil {
 		return nil

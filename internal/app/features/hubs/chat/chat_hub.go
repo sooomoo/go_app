@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"goapp/internal/app"
+	"goapp/internal/app/shared/claims"
 	"goapp/internal/app/shared/headers"
 	"goapp/pkg/bytes"
 	"goapp/pkg/core"
@@ -102,7 +103,7 @@ func (h *ChatHub) upgrade(c *gin.Context) {
 		panic(errors.New("chat hub is nil"))
 	}
 	// 解析Token
-	claims := headers.GetClaims(c)
+	claims := claims.GetClaims(c)
 	userId := fmt.Sprintf("%d", claims.UserId)
 
 	// clientId 全局唯一

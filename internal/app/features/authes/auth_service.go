@@ -7,6 +7,7 @@ import (
 	"goapp/internal/app"
 	"goapp/internal/app/features/users"
 	"goapp/internal/app/shared"
+	"goapp/internal/app/shared/claims"
 	"goapp/internal/app/shared/headers"
 	"goapp/pkg/core"
 	"goapp/pkg/strs"
@@ -228,7 +229,7 @@ func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, clientId, accessTo
 	ctx.SetCookie(headers.CookieKeyClientId, clientId, cliMaxAge, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
 }
 
-func (a *AuthService) IsClaimsValid(ctx *gin.Context, claims *shared.AuthorizedClaims) bool {
+func (a *AuthService) IsClaimsValid(ctx *gin.Context, claims *claims.AuthorizedClaims) bool {
 	if claims == nil {
 		return false
 	}
@@ -267,12 +268,12 @@ func (a *AuthService) GenerateTokenPair(ctx *gin.Context, userID int64) (string,
 	return accessToken, refreshToken, nil
 }
 
-func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID int64, clientId string, platform core.Platform) (string, *shared.AuthorizedClaims, error) {
+func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID int64, clientId string, platform core.Platform) (string, *claims.AuthorizedClaims, error) {
 	if len(clientId) == 0 || platform == core.Unspecify {
 		return "", nil, errors.New("invalid args")
 	}
 	token := core.NewUUID()
-	claims := shared.AuthorizedClaims{
+	claims := claims.AuthorizedClaims{
 		UserId:          userID,
 		Platform:        platform,
 		UserAgent:       headers.GetUserAgent(ctx),
@@ -287,7 +288,7 @@ func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID int64, client
 	return token, &claims, nil
 }
 
-func (a *AuthService) ParseAccessToken(ctx context.Context, tokenString string) (*shared.AuthorizedClaims, error) {
+func (a *AuthService) ParseAccessToken(ctx context.Context, tokenString string) (*claims.AuthorizedClaims, error) {
 	return a.authRepo.GetAccessTokenClaims(ctx, tokenString)
 }
 

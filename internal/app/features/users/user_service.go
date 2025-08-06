@@ -3,7 +3,7 @@ package users
 import (
 	"errors"
 	"goapp/internal/app/shared"
-	"goapp/internal/app/shared/headers"
+	"goapp/internal/app/shared/claims"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -29,11 +29,11 @@ type GetUserInfoResponse struct {
 type GetUserInfoResponseDto shared.ResponseDto[*GetUserInfoResponse]
 
 func (u *UserService) GetSelfInfo(c *gin.Context) (*GetUserInfoResponseDto, error) {
-	claims := headers.GetClaims(c)
-	if claims == nil {
+	cc := claims.GetClaims(c)
+	if cc == nil {
 		return nil, errors.New("not found")
 	}
-	user, err := u.userRepo.GetById(c, claims.UserId)
+	user, err := u.userRepo.GetById(c, cc.UserId)
 	if err == gorm.ErrRecordNotFound {
 		c.AbortWithStatus(401)
 		return nil, nil

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"goapp/internal/app"
+	"goapp/internal/app/shared/claims"
 	"goapp/internal/app/shared/headers"
 	"goapp/pkg/core"
 	"goapp/pkg/sse"
@@ -41,7 +42,7 @@ func (h *AIHub) Serve(c *gin.Context) {
 		return
 	}
 	// 解析Token
-	claims := headers.GetClaims(c)
+	claims := claims.GetClaims(c)
 	userId := fmt.Sprintf("%d", claims.UserId)
 
 	// 关闭旧的连接，客户端自动重连时会携带之前用过的 id

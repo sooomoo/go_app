@@ -4,6 +4,7 @@ import (
 	"errors"
 	"goapp/internal/app"
 	"goapp/internal/app/features/authes"
+	"goapp/internal/app/shared/claims"
 	"goapp/internal/app/shared/headers"
 	"strings"
 
@@ -17,10 +18,10 @@ func AuthMiddleware() gin.HandlerFunc {
 		// 解析客户端的Token（如果有）
 		token := headers.GetAccessToken(c)
 		// 解析Token
-		claims, err := svc.ParseAccessToken(c, token)
-		claimsValid := svc.IsClaimsValid(c, claims)
+		cc, err := svc.ParseAccessToken(c, token)
+		claimsValid := svc.IsClaimsValid(c, cc)
 		if claimsValid {
-			headers.SaveClaims(c, claims)
+			claims.SaveClaims(c, cc)
 		}
 		if isPathNeedAuth(c.Request.URL.Path) && !claimsValid {
 			if err != nil && err != redis.Nil {

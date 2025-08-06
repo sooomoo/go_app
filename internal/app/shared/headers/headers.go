@@ -3,7 +3,6 @@ package headers
 import (
 	"errors"
 	"goapp/internal/app"
-	"goapp/internal/app/shared"
 	"goapp/internal/app/shared/crypto"
 	"goapp/pkg/core"
 	"goapp/pkg/cryptos"
@@ -128,7 +127,6 @@ func GetCsrfToken(ctx *gin.Context) string {
 }
 
 const (
-	KeyClaims     = "claims"
 	KeyClientKeys = "client_keys"
 	KeyExtendData = "extend_data"
 )
@@ -238,23 +236,4 @@ func GetClientKeys(ctx *gin.Context) *SessionClientKeys {
 		return nil
 	}
 	return keys
-}
-
-func GetClaims(c *gin.Context) *shared.AuthorizedClaims {
-	val, exist := c.Get(KeyClaims)
-	if !exist {
-		return nil
-	}
-	claims, ok := val.(*shared.AuthorizedClaims)
-	if !ok {
-		return nil
-	}
-	return claims
-}
-
-func SaveClaims(ctx *gin.Context, claims *shared.AuthorizedClaims) {
-	if claims == nil {
-		return
-	}
-	ctx.Set(KeyClaims, claims)
 }
