@@ -74,6 +74,15 @@ func (j SqlJSON) Get(path string) any {
 	return nil
 }
 
+func (j SqlJSON) GetBool(path string) bool {
+	v := j.Get(path)
+	if vv, ok := v.(bool); ok {
+		return vv
+	}
+	val := j.GetInt64(path)
+	return val > 0
+}
+
 func (j SqlJSON) GetString(path string) string {
 	v := j.Get(path)
 	if vv, ok := v.(string); ok {
