@@ -1,9 +1,12 @@
 package pkg_test
 
-// func init() {
-// 	fmt.Println("init")
-// }
+import (
+	"fmt"
 
-// func TestMain(m *testing.M) {
-// 	os.Setenv("node_id", "2")
-// }
+	"github.com/google/uuid"
+)
+
+func init() {
+	uuid.EnableRandPool()
+	fmt.Println("init")
+}

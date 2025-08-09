@@ -8,6 +8,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 type Example struct {
@@ -286,4 +288,12 @@ func TestBigIDMarshalTest(t *testing.T) {
 		return
 	}
 	fmt.Printf("Unmarshaled BigID: %v\n", out)
+}
+
+func BenchmarkUUID(b *testing.B) {
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			uuid.NewV7()
+		}
+	})
 }
