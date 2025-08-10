@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"fmt"
+	"goapp/pkg/core"
 	"strings"
 	"testing"
 
@@ -125,4 +126,26 @@ func TestGenDaoPostgreSQL(t *testing.T) {
 	)
 	// Generate the code
 	g.Execute()
+
+	dev := Devable{
+		ID:   core.NewUID(),
+		Name: "abc",
+	}
+	gormdb.Model(&dev).Create(&dev)
+	var dev2 Devable
+	gormdb.Table("devable").Find(&dev2)
+	fmt.Println(dev2)
+}
+
+const TableNameDevable = "devable"
+
+// Devable mapped from table <devable>
+type Devable struct {
+	ID   core.UID `gorm:"column:id;primaryKey" json:"id"`
+	Name string   `gorm:"column:name;not null" json:"name"`
+}
+
+// TableName Devable's table name
+func (*Devable) TableName() string {
+	return TableNameDevable
 }
