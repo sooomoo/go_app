@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gen"
 	"gorm.io/gorm"
 )
@@ -72,6 +73,47 @@ func TestGenDao(t *testing.T) {
 			name := strings.ToLower(columnType.Name())
 			dataType = "uint8"
 			fmt.Println(name)
+			return
+		},
+	})
+
+	// Generate basic type-safe DAO API for struct `model.User` following conventions
+	g.ApplyBasic(
+		// Generate structs from all tables of current database
+		g.GenerateAllTable()...,
+	)
+	// Generate the code
+	g.Execute()
+}
+
+func TestGenDaoPostgreSQL(t *testing.T) {
+	g := gen.NewGenerator(gen.Config{
+		OutPath:      "./dao_postgre/query",
+		ModelPkgPath: "./dao_postgre/model",
+
+		Mode: gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface, // generate mode
+	})
+	dsn := "host=localhost user=postgres password=abc12345 " +
+		"dbname=dev_db port=5432 sslmode=disable TimeZone=Asia/Shanghai "
+
+	// 建立连接
+	gormdb, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		panic("连接失败: " + err.Error())
+	}
+	g.UseDB(gormdb) // reuse your gorm db
+	g.WithJSONTagNameStrategy(underScoreToCamelCase)
+	g.WithDataTypeMap(map[string]func(columnType gorm.ColumnType) (dataType string){
+		"json": func(columnType gorm.ColumnType) (dataType string) {
+			name := strings.ToLower(columnType.Name())
+			dataType = "core.SqlJSON"
+			fmt.Println(name)
+			return
+		},
+		"uuid": func(columnType gorm.ColumnType) (dataType string) {
+			name := strings.ToLower(columnType.Name())
+			fmt.Println(name)
+			dataType = "core.UID"
 			return
 		},
 	})

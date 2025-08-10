@@ -1,0 +1,217 @@
+package core
+
+import (
+	"database/sql/driver"
+	"encoding"
+	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"log"
+
+	"github.com/google/uuid"
+)
+
+type UID [16]byte
+
+var NilUID UID
+
+var _ encoding.TextMarshaler = (*UID)(nil)
+var _ encoding.TextUnmarshaler = (*UID)(nil)
+var _ json.Marshaler = (*UID)(nil)
+var _ json.Unmarshaler = (*UID)(nil)
+
+var uidFailCallback func(err error)
+
+// 设置一个 uid 生成失败时的回调函数
+func SetUIDFailCallback(f func(err error)) {
+	uidFailCallback = f
+}
+
+// 生成一个全局唯一 ID, 使用 uuidv7 生成
+func NewUID() UID {
+	uuid, err := uuid.NewV7()
+	if err != nil {
+		if uidFailCallback != nil {
+			uidFailCallback(fmt.Errorf("failed to generate UUIDv7: %w", err))
+		} else {
+			log.Printf("failed to generate UUIDv7: %v", err)
+			return NilUID
+		}
+	}
+	return UID(uuid)
+}
+
+// 从 16 进制字符串生成 UID
+func NewUIDFromHex(s string) UID {
+	if len(s) != 32 {
+		return NilUID
+	}
+
+	var oid UID
+	if _, err := hex.Decode(oid[:], []byte(s)); err != nil {
+		return NilUID
+	}
+
+	return oid
+}
+
+// 如果所有字节都为 0，则为 NilUID
+func (id UID) IsNil() bool {
+	return id == NilUID
+}
+
+// 从数据库读取时反序列化
+func (u *UID) Scan(value any) error {
+	switch src := value.(type) {
+	case nil:
+		return nil
+
+	case string:
+		// if an empty UUID comes from a table, we return a null UUID
+		if src == "" {
+			return nil
+		}
+
+		// see Parse for required string format
+		uid, err := uuid.Parse(src)
+		if err != nil {
+			return fmt.Errorf("Scan: %v", err)
+		}
+
+		*u = UID(uid)
+	case []byte:
+		// if an empty UUID comes from a table, we return a null UUID
+		if len(src) == 0 {
+			return nil
+		}
+
+		// assumes a simple slice of bytes if 16 bytes
+		// otherwise attempts to parse
+		if len(src) != 16 {
+			return u.Scan(string(src))
+		} else {
+			copy((*u)[:], src)
+		}
+	default:
+		return fmt.Errorf("Scan: unable to scan type %T into UUID", src)
+	}
+
+	return nil
+}
+
+// 写入数据库时序列化
+func (u UID) Value() (driver.Value, error) {
+	return u[:], nil
+}
+
+func (u UID) String() string {
+	return hex.EncodeToString(u[:])
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (u UID) MarshalText() ([]byte, error) {
+	val := hex.EncodeToString(u[:])
+	return []byte(val), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (u *UID) UnmarshalText(data []byte) error {
+	id, err := uuid.ParseBytes(data)
+	if err != nil {
+		return err
+	}
+	*u = UID(id)
+	return nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (u UID) MarshalBinary() ([]byte, error) {
+	return u[:], nil
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (u *UID) UnmarshalBinary(data []byte) error {
+	if len(data) != 16 {
+		return fmt.Errorf("invalid UID (got %d bytes)", len(data))
+	}
+	copy(u[:], data)
+	return nil
+}
+
+func (id UID) MarshalJSON() ([]byte, error) {
+	var buf [34]byte
+	buf[0] = '"'
+	hex.Encode(buf[1:33], id[:])
+	buf[33] = '"'
+	return buf[:], nil
+}
+
+func (id *UID) UnmarshalJSON(b []byte) error {
+	// Ignore "null" to keep parity with the standard library. Decoding a JSON
+	// null into a non-pointer SeqID field will leave the field unchanged.
+	// For pointer values, encoding/json will set the pointer to nil and will
+	// not enter the UnmarshalJSON hook.
+	if string(b) == "null" || string(b) == "NULL" {
+		return nil
+	}
+
+	// Handle string
+	if len(b) >= 2 && b[0] == '"' {
+		return id.UnmarshalText(b[1 : len(b)-1])
+	}
+	if len(b) == 16 {
+		copy(id[:], b)
+		if id.Version() != uuid.Version(7) {
+			return fmt.Errorf("invalid UUID format")
+		}
+		return nil
+	}
+
+	return fmt.Errorf("invalid UID format")
+}
+
+// Variant returns the variant encoded in uuid.
+func (id UID) Variant() uuid.Variant {
+	switch {
+	case (id[8] & 0xc0) == 0x80:
+		return uuid.RFC4122
+	case (id[8] & 0xe0) == 0xc0:
+		return uuid.Microsoft
+	case (id[8] & 0xe0) == 0xe0:
+		return uuid.Future
+	default:
+		return uuid.Reserved
+	}
+}
+
+// Version returns the version of uuid.
+func (id UID) Version() uuid.Version {
+	return uuid.Version(id[6] >> 4)
+}
+
+func (id UID) ToUUID() uuid.UUID {
+	var ret uuid.UUID
+	copy(ret[:], id[:])
+	return ret
+}
+
+// ID 生成的时间，单位是 milliseconds；如果无法解码返回 -1
+func (id UID) TimeUnixMills() int64 {
+	switch id.Version() {
+	case 7:
+		time := binary.BigEndian.Uint64(id[:8])
+		return int64(time)
+	}
+	return -1
+}
+
+// ID 生成的时间，单位是 seconds；如果无法解码返回 -1
+func (id UID) TimeUnixSeconds() int64 {
+	switch id.Version() {
+	case 7:
+		time := binary.BigEndian.Uint64(id[:8])
+		return int64(time) / 1e3
+	}
+	return -1
+}

@@ -1,10 +1,12 @@
 package pkg_test
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"goapp/pkg/core"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -57,6 +59,10 @@ func TestID(t *testing.T) {
 	var nilSeq core.SeqID
 	fmt.Printf("Nil SeqEq: %v\n", nilSeq == core.NilSeqID)
 
+	uidv7, _ := uuid.NewV7()
+	fmt.Printf("New UUID: %s\n", strings.ReplaceAll(uidv7.String(), "-", ""))
+	fmt.Printf("New UUID Base64: %s\n", base64.RawURLEncoding.EncodeToString(uidv7[:]))
+
 	var bigID core.BigID
 	fmt.Printf("New BigEQ: %v\n", bigID == core.NilBigID)
 
@@ -96,14 +102,6 @@ func TestSeqId(t *testing.T) {
 	}
 	wg.Wait()
 	fmt.Printf("Set size after adding %d SeqIDs: %d\n", cnt, 0)
-}
-
-func BenchmarkSeqID(b *testing.B) {
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			core.NewSeqID()
-		}
-	})
 }
 
 type SeqIDExample struct {
@@ -172,6 +170,14 @@ func TestSeqIDMarshalTest(t *testing.T) {
 		return
 	}
 	fmt.Printf("Unmarshaled SeqID: %v\n", out)
+}
+
+func BenchmarkSeqID(b *testing.B) {
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			core.NewSeqID()
+		}
+	})
 }
 
 func TestNewID(t *testing.T) {
@@ -290,10 +296,130 @@ func TestBigIDMarshalTest(t *testing.T) {
 	fmt.Printf("Unmarshaled BigID: %v\n", out)
 }
 
-func BenchmarkUUID(b *testing.B) {
+type UIDExample struct {
+	ID  core.UID   `json:"id"`
+	Arr []core.UID `json:"arr"`
+	Age int        `json:"age"`
+}
+
+func TestUIDMarshalJsonExp(t *testing.T) {
+	exp := UIDExample{
+		ID: core.NewUID(),
+		Arr: []core.UID{
+			core.NewUID(),
+			core.NewUID(),
+			core.NewUID(),
+		},
+		Age: 30,
+	}
+	data, err := json.Marshal(exp)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	fmt.Printf("Marshaled UIDExample: %v\n", string(data))
+
+	var out UIDExample
+	err = json.Unmarshal(data, &out)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	fmt.Printf("Unmarshaled UIDExample: %v\n", out)
+}
+
+func TestUIDMarshalJson(t *testing.T) {
+	id := core.NewUID()
+	data, err := json.Marshal(id)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	fmt.Printf("Marshaled UID: %s\n", data)
+
+	var out core.UID
+	err = json.Unmarshal(data, &out)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	fmt.Printf("Unmarshaled UID: %v\n", out)
+}
+
+func TestUIDMarshalTest(t *testing.T) {
+	id := core.NewUID()
+	data, err := id.MarshalText()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	fmt.Printf("Marshaled UID: %s\n", string(data))
+
+	id2 := core.NewUIDFromHex(string(data))
+	fmt.Printf("UID: %v \n", id2)
+
+	var out core.UID
+	err = out.UnmarshalText(data)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	fmt.Printf("Unmarshaled UID: %v\n", out)
+}
+
+func BenchmarkUID(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			uuid.NewV7()
+			core.NewUID()
 		}
 	})
+}
+
+func TestMarshalJson(t *testing.T) {
+	exp := UIDExample{
+		ID: core.NewUID(),
+		Arr: []core.UID{
+			core.NewUID(),
+			core.NewUID(),
+			core.NewUID(),
+		},
+		Age: 30,
+	}
+	data, err := json.Marshal(exp)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	fmt.Printf("Marshaled UIDExample: %v\n", string(data))
+
+	seqIDexp := SeqIDExample{
+		ID: core.NewSeqID(),
+		Arr: []core.SeqID{
+			core.NewSeqID(),
+			core.NewSeqID(),
+			core.NewSeqID(),
+		},
+		Age: 30,
+	}
+	seqdata, err := json.Marshal(seqIDexp)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	fmt.Printf("Marshaled SeqIDExample: %v\n", string(seqdata))
+	bigexp := BigIDExample{
+		ID: int64(core.NewBigID()),
+		Arr: []int64{
+			int64(core.NewBigID()),
+			int64(core.NewBigID()),
+			int64(core.NewBigID()),
+		},
+		Age: 30,
+	}
+	bigdata, err := json.Marshal(bigexp)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	fmt.Printf("Marshaled BigIDExample: %v\n", string(bigdata))
 }
