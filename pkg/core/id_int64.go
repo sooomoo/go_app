@@ -17,11 +17,11 @@ var snowNodeId int64
 const (
 	// timestamp(ms): 42bit
 	snowNodeIDBits     = 8  // 最多 256 节点
-	snowCounterBits    = 13 // 一个节点每毫秒可生成 8192 个 ID
+	snowCounterBits    = 12 // 一个节点每毫秒可生成 8192 个 ID
 	snowTimestampShift = snowNodeIDBits + snowCounterBits
 	snowMaxSequence    = int64(-1 ^ (-1 << snowCounterBits))
 	snowIDEpoch        = int64(1735660800000) // 2025-01-01 00:00:00 UTC
-	snowIDMin          = 15980274272700000    // 生成的 ID 不应该小于此值
+	snowIDMin          = 40303604944347136    // 生成的 ID 不应该小于此值
 	snowIDMinLen       = 17
 )
 
@@ -42,9 +42,46 @@ func init() {
 	snowNodeId = id
 }
 
+var snowIDClockBackwardCallback func(time int64)
+
+// 设置时钟回拨时的回调函数
+func IDClockBackwardCallback(cb func(time int64)) {
+	snowIDClockBackwardCallback = cb
+}
+
+var snowIDClockRestoreCallback func()
+
+// 设置时钟恢复时的回调函数
+func IDClockRestoreCallback(cb func()) {
+	snowIDClockRestoreCallback = cb
+}
+
+// 在应用启动时设置，此方法主要防止以下情况：
+// 在回拨过程中，服务器挂了。
+// 这种情况好像也不用考虑，重启一般都需要几秒甚至更久，而回拨一般不会超过几百毫秒，所以影响不大
+func IDClockBackwardPoint(timePoint int64) {
+	snowIDMutex.Lock()
+	defer snowIDMutex.Unlock()
+	snowIDTimeBackPoint = timePoint
+}
+
 var snowIDSeq int64
 var snowIDMutex sync.Mutex
 var snowIDTimestamp int64
+var snowIDTimeBackPoint int64
+
+var snowIDNowMillisFunc func() int64
+
+func SetSnowIDNowMillisFunc(fn func() int64) {
+	snowIDNowMillisFunc = fn
+}
+
+func snowIDNowMillis() int64 {
+	if snowIDNowMillisFunc != nil {
+		return snowIDNowMillisFunc()
+	}
+	return time.Now().UnixMilli()
+}
 
 // 生成一个全局唯一 ID (雪花算法的自定义实现，精度毫秒级)
 //
@@ -52,12 +89,27 @@ var snowIDTimestamp int64
 //
 // nodeID: 8 位，即最多支持 256 个节点 (节点的值会在 init 函数自动从环境变量中获取， key 为 'node_id')
 //
-// counter: 13 位，即每毫秒最多可生成 8192 个 ID
+// time back: 1位，表示这个 ID 是在时钟回拨时生成的
+//
+// counter: 12 位，即每毫秒最多可生成 4096 个 ID
 func NewID() int64 {
 	snowIDMutex.Lock()
 	defer snowIDMutex.Unlock()
 
-	now := time.Now().UnixMilli()
+	now := snowIDNowMillis()
+	if now > snowIDTimeBackPoint { // 时钟回拨已经追赶上了，重置回拨时间点；或者没有产生回拨
+		if snowIDTimeBackPoint > 0 {
+			snowIDTimeBackPoint = 0
+			if snowIDClockRestoreCallback != nil {
+				snowIDClockRestoreCallback()
+			}
+		}
+	} else {
+		// now == snowIDTimeBackPoint: 时间虽然已经追赶上，但还不能重置状态，因为回拨时，可能已经用了一些序列号了
+		// now < snowIDTimeBackPoint: 仍然处于回拨状态
+		now = snowIDTimestamp
+	}
+
 	if now == snowIDTimestamp {
 		// 当同一时间戳（精度：毫秒）下多次生成id会增加序列号
 		snowIDSeq = (snowIDSeq + 1) & snowMaxSequence
@@ -65,32 +117,59 @@ func NewID() int64 {
 			// 当前序列 Id 已经使用完，则需要等待下一秒
 			for now <= snowIDTimestamp {
 				time.Sleep(time.Microsecond * 10)
-				now = time.Now().UnixMilli()
+				now = snowIDNowMillis()
+				if now < snowIDTimestamp {
+					// 产生了回拨
+					if snowIDTimeBackPoint > 0 {
+						// 回拨过程中，又产生了回拨，这种情况出现概率极低，直接 panic
+						panic("core: unexpected time back occurred")
+					}
+					snowIDTimeBackPoint = snowIDTimestamp
+					if snowIDClockBackwardCallback != nil {
+						snowIDClockBackwardCallback(snowIDTimestamp)
+					}
+					break
+				}
 			}
 		}
-	} else {
-		// 如果时钟回拨：等待到下一个时间戳
-		for now < snowIDTimestamp {
-			time.Sleep(time.Microsecond * 10)
-			now = time.Now().UnixMilli()
+	} else if now > snowIDTimestamp { // 下一个时间戳了，序列号需要从0开始
+		snowIDSeq = 0
+	} else { // 时钟回拨
+		if snowIDTimeBackPoint > 0 {
+			// 回拨过程中，又产生了回拨，这种情况出现概率极低，直接 panic
+			panic("core: unexpected time back occurred")
+		}
+		snowIDTimeBackPoint = snowIDTimestamp
+		if snowIDClockBackwardCallback != nil {
+			snowIDClockBackwardCallback(snowIDTimestamp)
 		}
 		// 不同时间戳（精度：毫秒）下直接使用序列号：0
 		snowIDSeq = 0
 	}
 
 	snowIDTimestamp = now
-	return ((now - snowIDEpoch) << 23) | (snowNodeId << 15) | int64(snowIDSeq)
+	if snowIDTimeBackPoint > 0 {
+		// 时钟有回拨
+		return ((now - snowIDEpoch) << 21) | (snowNodeId << 13) | int64(1)<<12 | int64(snowIDSeq)
+	} else {
+		// 没有时钟回拨
+		return ((now - snowIDEpoch) << 21) | (snowNodeId << 13) | int64(0)<<12 | int64(snowIDSeq)
+	}
 }
 
 // 获取 NewID 生成的 ID 的时间戳
 func IDTimestamp(snowId int64) time.Time {
-	sec := snowId >> 23
+	sec := snowId >> 21
 	return time.UnixMilli(sec + snowIDEpoch).UTC()
 }
 
 // 获取 NewID 生成的 ID 的节点 ID
 func IDNodeID(snowId int64) int64 {
-	return (snowId >> 15) & 0xFF
+	return (snowId >> 13) & 0xF
+}
+
+func IDTimeIsBack(snowId int64) bool {
+	return (snowId>>12)&0b1 > 0
 }
 
 // 支持自定义序列化的 int64 ID
@@ -123,11 +202,15 @@ func (id BigID) ToInt64() int64 {
 }
 
 func (id BigID) Timestamp() time.Time {
-	return IDTimestamp(id.ToInt64())
+	return IDTimestamp(int64(id))
 }
 
 func (id BigID) NodeID() int64 {
-	return IDNodeID(id.ToInt64())
+	return IDNodeID(int64(id))
+}
+
+func (id BigID) TimeIsBack() bool {
+	return IDTimeIsBack(int64(id))
 }
 
 func (id BigID) String() string {

@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -50,7 +51,7 @@ func TestInt64String(t *testing.T) {
 func TestID(t *testing.T) {
 	id := core.NewID()
 	fmt.Printf("New ID: %v\n", id)
-	fmt.Printf("ID Time: %v, nodeid:%v\n", core.IDTimestamp(id), core.IDNodeID(id))
+	fmt.Printf("ID Time: %v, nodeid:%v, time is back:%v\n", core.IDTimestamp(id), core.IDNodeID(id), core.IDTimeIsBack(id))
 	seqID := core.NewSeqID()
 	fmt.Printf("New SeqID: %v\n", seqID)
 	fmt.Printf("SeqID Hex: %s\n", seqID.Hex())
@@ -183,6 +184,12 @@ func BenchmarkSeqID(b *testing.B) {
 func TestNewID(t *testing.T) {
 	id := core.NewID()
 	fmt.Printf("New BigID: %d\n", id)
+	core.IDClockRestoreCallback(func() {
+		fmt.Println("clock backward restored to current time.")
+	})
+	core.IDClockBackwardCallback(func(snowIDTime int64) {
+		fmt.Printf("clock backward happened, time:%v\n", time.UnixMilli(snowIDTime))
+	})
 
 	mp := sync.Map{}
 	cnt := 10000
@@ -197,9 +204,20 @@ func TestNewID(t *testing.T) {
 					t.Errorf("Duplicate ID found: %v", id)
 					return
 				}
+				if core.IDTimeIsBack(id) {
+					fmt.Printf("New ID:%d, time is back:%v\n", id, core.IDTimeIsBack(id))
+				}
 			}
 		}()
 	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		time.Sleep(2 * time.Second)
+		core.SetSnowIDNowMillisFunc(func() int64 {
+			return time.Now().UnixMilli() - 15
+		})
+	}()
 	wg.Wait()
 	fmt.Printf("Set size after adding %d BigIDs: %d\n", cnt, 0)
 }
