@@ -70,20 +70,20 @@ var snowIDMutex sync.Mutex
 var snowIDTimestamp int64
 var snowIDTimeBackPoint int64
 
-var snowIDNowMillisFunc func() int64
+// var snowIDNowMillisFunc func() int64
 
-// TEST only
-func SetSnowIDNowMillisFunc(fn func() int64) {
-	snowIDNowMillisFunc = fn
-}
+// // TEST only
+// func SetSnowIDNowMillisFunc(fn func() int64) {
+// 	snowIDNowMillisFunc = fn
+// }
 
-// TEST only：可以使用此函数模拟时钟回退
-func snowIDNowMillis() int64 {
-	if snowIDNowMillisFunc != nil {
-		return snowIDNowMillisFunc()
-	}
-	return time.Now().UnixMilli()
-}
+// // TEST only：可以使用此函数模拟时钟回退
+// func snowIDNowMillis() int64 {
+// 	if snowIDNowMillisFunc != nil {
+// 		return snowIDNowMillisFunc()
+// 	}
+// 	return time.Now().UnixMilli()
+// }
 
 // 生成一个全局唯一 ID (雪花算法的自定义实现，精度毫秒级)
 //
