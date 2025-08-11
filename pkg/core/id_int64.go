@@ -72,10 +72,12 @@ var snowIDTimeBackPoint int64
 
 var snowIDNowMillisFunc func() int64
 
+// TEST only
 func SetSnowIDNowMillisFunc(fn func() int64) {
 	snowIDNowMillisFunc = fn
 }
 
+// TEST only：可以使用此函数模拟时钟回退
 func snowIDNowMillis() int64 {
 	if snowIDNowMillisFunc != nil {
 		return snowIDNowMillisFunc()
@@ -96,7 +98,7 @@ func NewID() int64 {
 	snowIDMutex.Lock()
 	defer snowIDMutex.Unlock()
 
-	now := snowIDNowMillis()
+	now := time.Now().UnixMilli()
 	if now > snowIDTimeBackPoint { // 时钟回拨已经追赶上了，重置回拨时间点；或者没有产生回拨
 		if snowIDTimeBackPoint > 0 {
 			snowIDTimeBackPoint = 0
@@ -117,7 +119,7 @@ func NewID() int64 {
 			// 当前序列 Id 已经使用完，则需要等待下一秒
 			for now <= snowIDTimestamp {
 				time.Sleep(time.Microsecond * 10)
-				now = snowIDNowMillis()
+				now = time.Now().UnixMilli()
 				if now < snowIDTimestamp {
 					// 产生了回拨
 					if snowIDTimeBackPoint > 0 {
