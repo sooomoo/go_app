@@ -7,8 +7,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 var snowNodeId int64
@@ -49,7 +47,7 @@ func IDSetNodeID(nodeID int64) error {
 }
 
 var snowIDSeq int64
-var snowIDMutex sync.RWMutex
+var snowIDMutex sync.Mutex
 var snowIDTimestamp int64
 var snowIDTimeBackPoint int64
 
@@ -90,7 +88,7 @@ func NewID() int64 {
 	if now > snowIDTimeBackPoint { // 时钟回拨已经追赶上了，重置回拨时间点；或者没有产生回拨
 		if snowIDTimeBackPoint > 0 {
 			snowIDTimeBackPoint = 0
-			log.Info().Msg("clock has been back to normal")
+			// log.Info().Msg("clock has been back to normal")
 		}
 	} else {
 		// now == snowIDTimeBackPoint: 时间虽然已经追赶上，但还不能重置状态，因为回拨时，可能已经用了一些序列号了
@@ -110,11 +108,11 @@ func NewID() int64 {
 					// 产生了回拨
 					if snowIDTimeBackPoint > 0 {
 						// 回拨过程中，又产生了回拨，这种情况出现概率极低，直接 panic
-						log.Fatal().Msgf("unexpected clock back occurred when waiting for next millisecond. original back time: %d", snowIDTimestamp)
+						// log.Fatal().Msgf("unexpected clock back occurred when waiting for next millisecond. original back time: %d", snowIDTimestamp)
 						panic("ids: unexpected time back occurred")
 					}
 					snowIDTimeBackPoint = snowIDTimestamp
-					log.Warn().Msgf("clock back happened at %d, new now time %d", snowIDTimestamp, now)
+					// log.Warn().Msgf("clock back happened at %d, new now time %d", snowIDTimestamp, now)
 					break
 				}
 			}
@@ -124,11 +122,11 @@ func NewID() int64 {
 	} else { // 时钟回拨
 		if snowIDTimeBackPoint > 0 {
 			// 回拨过程中，又产生了回拨，这种情况出现概率极低，直接 panic
-			log.Fatal().Msgf("unexpected clock back occurred when waiting for next millisecond. original back time: %d", snowIDTimestamp)
+			// log.Fatal().Msgf("unexpected clock back occurred when waiting for next millisecond. original back time: %d", snowIDTimestamp)
 			panic("ids: unexpected time back occurred")
 		}
 		snowIDTimeBackPoint = snowIDTimestamp
-		log.Warn().Msgf("clock back happened at %d, new now time %d.\n", snowIDTimestamp, now)
+		// log.Warn().Msgf("clock back happened at %d, new now time %d.\n", snowIDTimestamp, now)
 		// 不同时间戳（精度：毫秒）下直接使用序列号：0
 		snowIDSeq = 0
 	}
