@@ -17,6 +17,9 @@ func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 
+	// 初始化雪花算法的节点 ID
+	core.IDSetNodeIDFromEnv("node_id")
+
 	env := os.Getenv("env")
 	log.Info().Msgf("【worker】【searcher】 starting... runnint in [ %s ] mode", env)
 	ctx := context.Background()

@@ -19,27 +19,32 @@ const (
 	snowClockBackBits  = 1  // 使用 1 bit 标识时钟是否回拨
 	snowCounterBits    = 13 // 一个节点每毫秒可生成 8192 个 ID
 	snowTimestampShift = snowNodeIDBits + snowCounterBits
+	nodeIdMax          = int64(-1 ^ (-1 << snowNodeIDBits))
 	snowMaxSequence    = int64(-1 ^ (-1 << snowCounterBits))
 	snowIDEpoch        = int64(1735660800000) // 2025-01-01 00:00:00 UTC
 	snowIDMin          = 40303604944347136    // 生成的 ID 不应该小于此值
 	snowIDMinLen       = 17
 )
 
-func init() {
-	idstr := strings.TrimSpace(os.Getenv("node_id"))
+// 从环境变量中初始化节点 ID
+func IDSetNodeIDFromEnv(key string) {
+	idstr := strings.TrimSpace(os.Getenv(key))
 	if len(idstr) == 0 {
-		panic("cannot find 'node_id' in env varibles")
+		panic(fmt.Errorf("cannot find '%s' in env varibles", key))
 	}
 	id, err := strconv.ParseInt(idstr, 10, 64)
 	if err != nil {
-		panic(fmt.Sprintf("'node_id' parse error: %s", err))
+		panic(fmt.Sprintf("'%s' parse error: %v", key, err))
 	}
-	nodeIdMax := int64(-1 ^ (-1 << snowNodeIDBits))
-	if id < 0 || id >= nodeIdMax {
-		panic(fmt.Sprintf("workerid must be in range [0,%d)", nodeIdMax))
-	}
+	IDSetNodeID(id)
+}
 
-	snowNodeId = id
+// 设置节点ID
+func IDSetNodeID(nodeID int64) {
+	if nodeID < 0 || nodeID >= nodeIdMax {
+		panic(fmt.Sprintf("nodeID must be in range [0,%d)", nodeIdMax))
+	}
+	snowNodeId = nodeID
 }
 
 var snowIDClockBackwardCallback func(time int64)
@@ -77,7 +82,7 @@ func SetSnowIDNowMillisFunc(fn func() int64) {
 	snowIDNowMillisFunc = fn
 }
 
-// TEST only：可以使用此函数模拟时钟回退
+// 可以使用此函数模拟时钟回退
 func snowIDNowMillis() int64 {
 	if snowIDNowMillisFunc != nil {
 		return snowIDNowMillisFunc()

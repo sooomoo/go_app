@@ -36,8 +36,8 @@ func NewUID() UID {
 			uidFailCallback(fmt.Errorf("failed to generate UUIDv7: %w", err))
 		} else {
 			log.Printf("failed to generate UUIDv7: %v", err)
-			return NilUID
 		}
+		return NilUID
 	}
 	return UID(uuid)
 }
@@ -58,6 +58,7 @@ func NewUIDFromHex(s string) UID {
 
 // 如果所有字节都为 0，则为 NilUID
 func (id UID) IsNil() bool {
+	// 由于 [16]byte是固定长度的数组（非切片），其类型本身支持 ==操作符。比较时会逐字节检查每个元素的值​：
 	return id == NilUID
 }
 
