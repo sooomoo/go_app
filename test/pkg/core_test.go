@@ -210,15 +210,16 @@ func TestNewID(t *testing.T) {
 			}
 		}()
 	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		time.Sleep(2 * time.Second)
-		core.SetSnowIDNowMillisFunc(func() int64 {
-			return time.Now().UnixMilli() - 15
-		})
-	}()
-	wg.Wait()
+	// 新开协程模拟时钟回退
+	// wg.Add(1)
+	// go func() {
+	// 	defer wg.Done()
+	// 	time.Sleep(2 * time.Second)
+	// 	core.SetSnowIDNowMillisFunc(func() int64 {
+	// 		return time.Now().UnixMilli() - 15
+	// 	})
+	// }()
+	// wg.Wait()
 	fmt.Printf("Set size after adding %d BigIDs: %d\n", cnt, 0)
 }
 

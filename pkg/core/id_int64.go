@@ -15,9 +15,9 @@ import (
 var snowNodeId int64
 
 const (
-	// timestamp(ms): 42bit
 	snowNodeIDBits     = 8  // 最多 256 节点
-	snowCounterBits    = 12 // 一个节点每毫秒可生成 8192 个 ID
+	snowClockBackBits  = 1  // 使用 1 bit 标识时钟是否回拨
+	snowCounterBits    = 13 // 一个节点每毫秒可生成 8192 个 ID
 	snowTimestampShift = snowNodeIDBits + snowCounterBits
 	snowMaxSequence    = int64(-1 ^ (-1 << snowCounterBits))
 	snowIDEpoch        = int64(1735660800000) // 2025-01-01 00:00:00 UTC
@@ -70,30 +70,32 @@ var snowIDMutex sync.Mutex
 var snowIDTimestamp int64
 var snowIDTimeBackPoint int64
 
-// var snowIDNowMillisFunc func() int64
+var snowIDNowMillisFunc func() int64
 
-// // TEST only
-// func SetSnowIDNowMillisFunc(fn func() int64) {
-// 	snowIDNowMillisFunc = fn
-// }
+// TEST only
+func SetSnowIDNowMillisFunc(fn func() int64) {
+	snowIDNowMillisFunc = fn
+}
 
-// // TEST only：可以使用此函数模拟时钟回退
-// func snowIDNowMillis() int64 {
-// 	if snowIDNowMillisFunc != nil {
-// 		return snowIDNowMillisFunc()
-// 	}
-// 	return time.Now().UnixMilli()
-// }
+// TEST only：可以使用此函数模拟时钟回退
+func snowIDNowMillis() int64 {
+	if snowIDNowMillisFunc != nil {
+		return snowIDNowMillisFunc()
+	}
+	return time.Now().UnixMilli()
+}
 
 // 生成一个全局唯一 ID (雪花算法的自定义实现，精度毫秒级)
 //
-// 规则: 63 位(第1位不用), 42位时间戳(2^42 毫秒可以表示 138 年), 8 位节点 ID, 13 位序列号
+// 规则: 63 位(第1位不用),
+//
+// timestamp: 41位, (2^41 毫秒可以表示 69 年)
 //
 // nodeID: 8 位，即最多支持 256 个节点 (节点的值会在 init 函数自动从环境变量中获取， key 为 'node_id')
 //
 // time back: 1位，表示这个 ID 是在时钟回拨时生成的
 //
-// counter: 12 位，即每毫秒最多可生成 4096 个 ID
+// counter: 13 位，即每毫秒最多可生成 8192 个 ID
 func NewID() int64 {
 	snowIDMutex.Lock()
 	defer snowIDMutex.Unlock()
@@ -150,28 +152,32 @@ func NewID() int64 {
 	}
 
 	snowIDTimestamp = now
+	nodeOffset := snowClockBackBits + snowCounterBits
+	timeOffset := snowNodeIDBits + nodeOffset
+	clockFlag := int64(0) // 默认没有时钟回拨
 	if snowIDTimeBackPoint > 0 {
 		// 时钟有回拨
-		return ((now - snowIDEpoch) << 21) | (snowNodeId << 13) | int64(1)<<12 | int64(snowIDSeq)
-	} else {
-		// 没有时钟回拨
-		return ((now - snowIDEpoch) << 21) | (snowNodeId << 13) | int64(0)<<12 | int64(snowIDSeq)
+		clockFlag = 1
 	}
+	return ((now - snowIDEpoch) << timeOffset) | (snowNodeId << nodeOffset) | (clockFlag << snowCounterBits) | int64(snowIDSeq)
 }
 
 // 获取 NewID 生成的 ID 的时间戳
 func IDTimestamp(snowId int64) time.Time {
-	sec := snowId >> 21
+	nodeOffset := snowClockBackBits + snowCounterBits
+	timeOffset := snowNodeIDBits + nodeOffset
+	sec := snowId >> timeOffset
 	return time.UnixMilli(sec + snowIDEpoch).UTC()
 }
 
 // 获取 NewID 生成的 ID 的节点 ID
 func IDNodeID(snowId int64) int64 {
-	return (snowId >> 13) & 0xF
+	nodeOffset := snowClockBackBits + snowCounterBits
+	return (snowId >> nodeOffset) & 0xF
 }
 
 func IDTimeIsBack(snowId int64) bool {
-	return (snowId>>12)&0b1 > 0
+	return (snowId>>snowCounterBits)&0b1 > 0
 }
 
 // 支持自定义序列化的 int64 ID
