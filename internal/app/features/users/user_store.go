@@ -7,6 +7,7 @@ import (
 	"goapp/internal/app/global"
 	"goapp/pkg/cache"
 	"goapp/pkg/core"
+	"goapp/pkg/ids"
 	"time"
 
 	"gorm.io/datatypes"
@@ -44,7 +45,7 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 		_, err := tx.User.WithContext(ctx).Where(tx.User.Phone.Eq(phone)).Take()
 		if err == gorm.ErrRecordNotFound {
 			// 添加
-			userId := core.NewID()
+			userId := ids.NewID()
 			err = tx.User.WithContext(ctx).Create(&model.User{
 				ID:     userId,
 				Phone:  phone,

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"goapp/pkg/core"
+	"goapp/pkg/ids"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -173,7 +174,7 @@ func (c *Queue) Push(data []byte, options ...optionFunc) error {
 		optionFunc(option)
 	}
 	if len(option.msgID) == 0 {
-		option.msgID = core.NewSeqID().Hex()
+		option.msgID = ids.NewUUID()
 	}
 	if option.retryTimes < 1 {
 		option.retryTimes = 1

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"goapp/pkg/core"
+	"goapp/pkg/ids"
 	"strconv"
 	"strings"
 	"sync"
@@ -49,29 +50,29 @@ func TestInt64String(t *testing.T) {
 }
 
 func TestID(t *testing.T) {
-	id := core.NewID()
+	id := ids.NewID()
 	fmt.Printf("New ID: %v\n", id)
-	fmt.Printf("ID Time: %v, nodeid:%v, time is back:%v\n", core.IDTimestamp(id), core.IDNodeID(id), core.IDTimeIsBack(id))
-	seqID := core.NewSeqID()
+	fmt.Printf("ID Time: %v, nodeid:%v, time is back:%v\n", ids.IDGetTimestamp(id), ids.IDGetNodeID(id), ids.IDHasClockBackward(id))
+	seqID := ids.NewSeqID()
 	fmt.Printf("New SeqID: %v\n", seqID)
-	fmt.Printf("SeqID Hex: %s\n", seqID.Hex())
+	fmt.Printf("SeqID Hex: %s\n", seqID)
 	fmt.Printf("SeqID B64: %s\n", seqID.Base64())
 	fmt.Printf("SeqID Time: %v\n", seqID.Timestamp())
-	var nilSeq core.SeqID
-	fmt.Printf("Nil SeqEq: %v\n", nilSeq == core.NilSeqID)
+	var nilSeq ids.SeqID
+	fmt.Printf("Nil SeqEq: %v\n", nilSeq == ids.NilSeqID)
 
 	uidv7, _ := uuid.NewV7()
 	fmt.Printf("New UUID: %s\n", strings.ReplaceAll(uidv7.String(), "-", ""))
 	fmt.Printf("New UUID Base64: %s\n", base64.RawURLEncoding.EncodeToString(uidv7[:]))
 
-	var bigID core.BigID
-	fmt.Printf("New BigEQ: %v\n", bigID == core.NilBigID)
+	var bigID ids.BigID
+	fmt.Printf("New BigEQ: %v\n", bigID == ids.NilBigID)
 
 	var seqIDCounter uint32 = 0xffffffff
 	seq := atomic.AddUint32(&seqIDCounter, 20)
 	fmt.Println(seq)
 
-	fmt.Println(seqID.Hex())
+	fmt.Println(seqID)
 	r := core.NewCustomRadix34()
 	fmt.Println(id, len(strconv.FormatInt(id, 10)))
 	fmt.Println(r.Encode(int(id)))
@@ -79,9 +80,9 @@ func TestID(t *testing.T) {
 }
 
 func TestSeqId(t *testing.T) {
-	id := core.NewSeqID()
+	id := ids.NewSeqID()
 	fmt.Printf("New SeqID: %v\n", id)
-	fmt.Printf("SeqID Hex: %s\n", id.Hex())
+	fmt.Printf("SeqID Hex: %s\n", id)
 	fmt.Printf("SeqID B64: %s\n", id.Base64())
 	fmt.Printf("SeqID Time: %v\n", id.Timestamp())
 
@@ -93,7 +94,7 @@ func TestSeqId(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range 10000 {
-				id := core.NewSeqID()
+				id := ids.NewSeqID()
 				if _, loaded := mp.LoadOrStore(id, core.Empty{}); loaded {
 					t.Errorf("Duplicate SeqID found: %v", id)
 					return
@@ -106,18 +107,18 @@ func TestSeqId(t *testing.T) {
 }
 
 type SeqIDExample struct {
-	ID  core.SeqID   `json:"id"`
-	Arr []core.SeqID `json:"arr"`
-	Age int          `json:"age"`
+	ID  ids.SeqID   `json:"id"`
+	Arr []ids.SeqID `json:"arr"`
+	Age int         `json:"age"`
 }
 
 func TestSeqIDMarshalJsonExp(t *testing.T) {
 	exp := SeqIDExample{
-		ID: core.NewSeqID(),
-		Arr: []core.SeqID{
-			core.NewSeqID(),
-			core.NewSeqID(),
-			core.NewSeqID(),
+		ID: ids.NewSeqID(),
+		Arr: []ids.SeqID{
+			ids.NewSeqID(),
+			ids.NewSeqID(),
+			ids.NewSeqID(),
 		},
 		Age: 30,
 	}
@@ -138,7 +139,7 @@ func TestSeqIDMarshalJsonExp(t *testing.T) {
 }
 
 func TestSeqIDMarshalJson(t *testing.T) {
-	id := core.NewSeqID()
+	id := ids.NewSeqID()
 	data, err := json.Marshal(id)
 	if err != nil {
 		t.Error(err)
@@ -146,7 +147,7 @@ func TestSeqIDMarshalJson(t *testing.T) {
 	}
 	fmt.Printf("Marshaled SeqID: %s\n", data)
 
-	var out core.SeqID
+	var out ids.SeqID
 	err = json.Unmarshal(data, &out)
 	if err != nil {
 		t.Error(err)
@@ -156,7 +157,7 @@ func TestSeqIDMarshalJson(t *testing.T) {
 }
 
 func TestSeqIDMarshalTest(t *testing.T) {
-	id := core.NewSeqID()
+	id := ids.NewSeqID()
 	data, err := id.MarshalText()
 	if err != nil {
 		t.Error(err)
@@ -164,7 +165,7 @@ func TestSeqIDMarshalTest(t *testing.T) {
 	}
 	fmt.Printf("Marshaled SeqID: %s\n", string(data))
 
-	var out core.SeqID
+	var out ids.SeqID
 	err = out.UnmarshalText(data)
 	if err != nil {
 		t.Error(err)
@@ -176,20 +177,14 @@ func TestSeqIDMarshalTest(t *testing.T) {
 func BenchmarkSeqID(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			core.NewSeqID()
+			ids.NewSeqID()
 		}
 	})
 }
 
 func TestNewID(t *testing.T) {
-	id := core.NewID()
-	fmt.Printf("New BigID: %d\n", id)
-	core.IDClockRestoreCallback(func() {
-		fmt.Println("clock backward restored to current time.")
-	})
-	core.IDClockBackwardCallback(func(snowIDTime int64) {
-		fmt.Printf("clock backward happened, time:%v\n", time.UnixMilli(snowIDTime))
-	})
+	id := ids.NewID()
+	fmt.Printf("New ID: %d\n", id)
 
 	mp := sync.Map{}
 	cnt := 10000
@@ -199,50 +194,50 @@ func TestNewID(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range 10000 {
-				id := core.NewID()
+				id := ids.NewID()
 				if _, loaded := mp.LoadOrStore(id, core.Empty{}); loaded {
 					t.Errorf("Duplicate ID found: %v", id)
 					return
 				}
-				if core.IDTimeIsBack(id) {
-					fmt.Printf("New ID:%d, time is back:%v\n", id, core.IDTimeIsBack(id))
+				if ids.IDHasClockBackward(id) {
+					fmt.Printf("New ID:%d, time is back:%v\n", id, ids.IDHasClockBackward(id))
 				}
 			}
 		}()
 	}
 	// 新开协程模拟时钟回退
-	// wg.Add(1)
-	// go func() {
-	// 	defer wg.Done()
-	// 	time.Sleep(2 * time.Second)
-	// 	core.SetSnowIDNowMillisFunc(func() int64 {
-	// 		return time.Now().UnixMilli() - 15
-	// 	})
-	// }()
-	// wg.Wait()
-	fmt.Printf("Set size after adding %d BigIDs: %d\n", cnt, 0)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		time.Sleep(2 * time.Second)
+		ids.SetSnowIDNowMillisFunc(func() int64 {
+			return time.Now().UnixMilli() - 15
+		})
+	}()
+	wg.Wait()
+	fmt.Printf("Set size after adding %d IDs: %d\n", cnt, 0)
 }
 
 func TestIDMany(t *testing.T) {
 	for range 10 {
-		id := core.NewID()
-		fmt.Printf("New RawID: %d, time: %v\n", id, core.IDTimestamp(id))
+		id := ids.NewID()
+		fmt.Printf("New RawID: %d, time: %v\n", id, ids.IDGetTimestamp(id))
 	}
 	for range 10 {
-		id := core.NewBigID()
+		id := ids.NewBigID()
 		fmt.Printf("New BigID: %d, time: %v\n", id, id.Timestamp())
 	}
 
 	for range 10 {
-		id := core.NewSeqID()
-		fmt.Printf("New SeqID: %s, time: %v\n", id.Hex(), id.Timestamp())
+		id := ids.NewSeqID()
+		fmt.Printf("New SeqID: %s, time: %v\n", id, id.Timestamp())
 	}
 }
 
 func BenchmarkBigID(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			core.NewID()
+			ids.NewID()
 		}
 	})
 }
@@ -255,11 +250,11 @@ type BigIDExample struct {
 
 func TestBigIDMarshalJsonExp(t *testing.T) {
 	exp := BigIDExample{
-		ID: int64(core.NewBigID()),
+		ID: int64(ids.NewBigID()),
 		Arr: []int64{
-			int64(core.NewBigID()),
-			int64(core.NewBigID()),
-			int64(core.NewBigID()),
+			int64(ids.NewBigID()),
+			int64(ids.NewBigID()),
+			int64(ids.NewBigID()),
 		},
 		Age: 30,
 	}
@@ -280,7 +275,7 @@ func TestBigIDMarshalJsonExp(t *testing.T) {
 }
 
 func TestBigIDMarshalJson(t *testing.T) {
-	id := core.NewBigID()
+	id := ids.NewBigID()
 	data, err := json.Marshal(id)
 	if err != nil {
 		t.Error(err)
@@ -288,7 +283,7 @@ func TestBigIDMarshalJson(t *testing.T) {
 	}
 	fmt.Printf("Marshaled BigID: %s\n", data)
 
-	var out core.BigID
+	var out ids.BigID
 	err = json.Unmarshal(data, &out)
 	if err != nil {
 		t.Error(err)
@@ -298,7 +293,7 @@ func TestBigIDMarshalJson(t *testing.T) {
 }
 
 func TestBigIDMarshalTest(t *testing.T) {
-	id := core.NewBigID()
+	id := ids.NewBigID()
 	data, err := id.MarshalText()
 	if err != nil {
 		t.Error(err)
@@ -306,7 +301,7 @@ func TestBigIDMarshalTest(t *testing.T) {
 	}
 	fmt.Printf("Marshaled BigID: %s\n", string(data))
 
-	var out core.BigID
+	var out ids.BigID
 	err = out.UnmarshalText(data)
 	if err != nil {
 		t.Error(err)
@@ -316,18 +311,18 @@ func TestBigIDMarshalTest(t *testing.T) {
 }
 
 type UIDExample struct {
-	ID  core.UID   `json:"id"`
-	Arr []core.UID `json:"arr"`
-	Age int        `json:"age"`
+	ID  ids.UID   `json:"id"`
+	Arr []ids.UID `json:"arr"`
+	Age int       `json:"age"`
 }
 
 func TestUIDMarshalJsonExp(t *testing.T) {
 	exp := UIDExample{
-		ID: core.NewUID(),
-		Arr: []core.UID{
-			core.NewUID(),
-			core.NewUID(),
-			core.NewUID(),
+		ID: ids.NewUID(),
+		Arr: []ids.UID{
+			ids.NewUID(),
+			ids.NewUID(),
+			ids.NewUID(),
 		},
 		Age: 30,
 	}
@@ -348,7 +343,7 @@ func TestUIDMarshalJsonExp(t *testing.T) {
 }
 
 func TestUIDMarshalJson(t *testing.T) {
-	id := core.NewUID()
+	id := ids.NewUID()
 	data, err := json.Marshal(id)
 	if err != nil {
 		t.Error(err)
@@ -356,7 +351,7 @@ func TestUIDMarshalJson(t *testing.T) {
 	}
 	fmt.Printf("Marshaled UID: %s\n", data)
 
-	var out core.UID
+	var out ids.UID
 	err = json.Unmarshal(data, &out)
 	if err != nil {
 		t.Error(err)
@@ -366,7 +361,7 @@ func TestUIDMarshalJson(t *testing.T) {
 }
 
 func TestUIDMarshalTest(t *testing.T) {
-	id := core.NewUID()
+	id := ids.NewUID()
 	data, err := id.MarshalText()
 	if err != nil {
 		t.Error(err)
@@ -374,10 +369,10 @@ func TestUIDMarshalTest(t *testing.T) {
 	}
 	fmt.Printf("Marshaled UID: %s\n", string(data))
 
-	id2 := core.NewUIDFromHex(string(data))
+	id2 := ids.NewUIDFromHex(string(data))
 	fmt.Printf("UID: %v \n", id2)
 
-	var out core.UID
+	var out ids.UID
 	err = out.UnmarshalText(data)
 	if err != nil {
 		t.Error(err)
@@ -389,18 +384,18 @@ func TestUIDMarshalTest(t *testing.T) {
 func BenchmarkUID(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			core.NewUID()
+			ids.NewUID()
 		}
 	})
 }
 
 func TestMarshalJson(t *testing.T) {
 	exp := UIDExample{
-		ID: core.NewUID(),
-		Arr: []core.UID{
-			core.NewUID(),
-			core.NewUID(),
-			core.NewUID(),
+		ID: ids.NewUID(),
+		Arr: []ids.UID{
+			ids.NewUID(),
+			ids.NewUID(),
+			ids.NewUID(),
 		},
 		Age: 30,
 	}
@@ -412,11 +407,11 @@ func TestMarshalJson(t *testing.T) {
 	fmt.Printf("Marshaled UIDExample: %v\n", string(data))
 
 	seqIDexp := SeqIDExample{
-		ID: core.NewSeqID(),
-		Arr: []core.SeqID{
-			core.NewSeqID(),
-			core.NewSeqID(),
-			core.NewSeqID(),
+		ID: ids.NewSeqID(),
+		Arr: []ids.SeqID{
+			ids.NewSeqID(),
+			ids.NewSeqID(),
+			ids.NewSeqID(),
 		},
 		Age: 30,
 	}
@@ -427,11 +422,11 @@ func TestMarshalJson(t *testing.T) {
 	}
 	fmt.Printf("Marshaled SeqIDExample: %v\n", string(seqdata))
 	bigexp := BigIDExample{
-		ID: int64(core.NewBigID()),
+		ID: int64(ids.NewBigID()),
 		Arr: []int64{
-			int64(core.NewBigID()),
-			int64(core.NewBigID()),
-			int64(core.NewBigID()),
+			int64(ids.NewBigID()),
+			int64(ids.NewBigID()),
+			int64(ids.NewBigID()),
 		},
 		Age: 30,
 	}

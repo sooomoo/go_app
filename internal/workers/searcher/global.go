@@ -7,6 +7,7 @@ import (
 	"goapp/pkg/cache"
 	"goapp/pkg/core"
 	"goapp/pkg/distribute"
+	"goapp/pkg/ids"
 	"goapp/pkg/rmq"
 	"os"
 	"sync"
@@ -62,7 +63,7 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 		panic(err)
 	}
 
-	g.config.Id = core.NewSeqID().Hex()
+	g.config.Id = ids.NewUUID()
 
 	g.pool, err = ants.NewPool(500000, ants.WithExpiryDuration(5*time.Minute))
 	if err != nil {

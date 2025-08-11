@@ -4,14 +4,14 @@
 
 package model
 
-import "goapp/pkg/core"
+import "goapp/pkg/ids"
 
 const TableNameDevable = "devable"
 
 // Devable mapped from table <devable>
 type Devable struct {
-	ID   core.UID `gorm:"column:id;primaryKey" json:"id"`
-	Name string   `gorm:"column:name;not null" json:"name"`
+	ID   ids.UID `gorm:"column:id;primaryKey" json:"id"`
+	Name string  `gorm:"column:name;not null" json:"name"`
 }
 
 // TableName Devable's table name

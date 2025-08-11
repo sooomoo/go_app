@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"goapp/pkg/core"
+	"goapp/pkg/ids"
 	"strconv"
 	"strings"
 	"sync"
@@ -142,7 +143,7 @@ func (l *Locker) Lock(ctx context.Context, resource string, options ...LockOptio
 	}
 	opt.Owner = strings.TrimSpace(opt.Owner)
 	if len(opt.Owner) == 0 {
-		opt.Owner = core.NewSeqID().Hex()
+		opt.Owner = ids.NewUUID()
 	}
 	return l.lockWithOptions(ctx, opt)
 }

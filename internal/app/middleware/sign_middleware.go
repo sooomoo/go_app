@@ -7,6 +7,7 @@ import (
 	"goapp/internal/app/shared/headers"
 	"goapp/pkg/core"
 	"goapp/pkg/httpex"
+	"goapp/pkg/ids"
 	"io"
 	"net/http"
 	"net/url"
@@ -90,7 +91,7 @@ func SignMiddleware() gin.HandlerFunc {
 		// 签名响应体
 		responseBody := bodyWriter.GetBytes()
 		respTimestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
-		respNonce := core.NewUUID()
+		respNonce := ids.NewUUID()
 		dataToSign := map[string]string{
 			"session":   extendData.SessionId,
 			"nonce":     respNonce,

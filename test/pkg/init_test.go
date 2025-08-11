@@ -2,7 +2,7 @@ package pkg_test
 
 import (
 	"fmt"
-	"goapp/pkg/core"
+	"goapp/pkg/ids"
 
 	"github.com/google/uuid"
 )
@@ -10,6 +10,6 @@ import (
 func init() {
 	uuid.EnableRandPool()
 
-	core.IDSetNodeID(1)
+	ids.IDSetNodeID(1)
 	fmt.Println("init")
 }

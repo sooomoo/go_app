@@ -1,9 +1,6 @@
-package core
+package ids
 
 import (
-	"database/sql/driver"
-	"encoding"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -47,29 +44,6 @@ func IDSetNodeID(nodeID int64) {
 	snowNodeId = nodeID
 }
 
-var snowIDClockBackwardCallback func(time int64)
-
-// 设置时钟回拨时的回调函数
-func IDClockBackwardCallback(cb func(time int64)) {
-	snowIDClockBackwardCallback = cb
-}
-
-var snowIDClockRestoreCallback func()
-
-// 设置时钟恢复时的回调函数
-func IDClockRestoreCallback(cb func()) {
-	snowIDClockRestoreCallback = cb
-}
-
-// 在应用启动时设置，此方法主要防止以下情况：
-// 在回拨过程中，服务器挂了。
-// 这种情况好像也不用考虑，重启一般都需要几秒甚至更久，而回拨一般不会超过几百毫秒，所以影响不大
-func IDClockBackwardPoint(timePoint int64) {
-	snowIDMutex.Lock()
-	defer snowIDMutex.Unlock()
-	snowIDTimeBackPoint = timePoint
-}
-
 var snowIDSeq int64
 var snowIDMutex sync.Mutex
 var snowIDTimestamp int64
@@ -101,17 +75,18 @@ func snowIDNowMillis() int64 {
 // time back: 1位，表示这个 ID 是在时钟回拨时生成的
 //
 // counter: 13 位，即每毫秒最多可生成 8192 个 ID
+//
+// 以下情况可能不需要考虑：
+// 在回拨过程中，服务器挂了：因为重启一般都需要几秒甚至更久，而回拨一般不会超过几百毫秒，所以影响不大
 func NewID() int64 {
 	snowIDMutex.Lock()
 	defer snowIDMutex.Unlock()
 
-	now := time.Now().UnixMilli()
+	now := snowIDNowMillis()
 	if now > snowIDTimeBackPoint { // 时钟回拨已经追赶上了，重置回拨时间点；或者没有产生回拨
 		if snowIDTimeBackPoint > 0 {
 			snowIDTimeBackPoint = 0
-			if snowIDClockRestoreCallback != nil {
-				snowIDClockRestoreCallback()
-			}
+			fmt.Println("clock has been back to normal")
 		}
 	} else {
 		// now == snowIDTimeBackPoint: 时间虽然已经追赶上，但还不能重置状态，因为回拨时，可能已经用了一些序列号了
@@ -126,7 +101,7 @@ func NewID() int64 {
 			// 当前序列 Id 已经使用完，则需要等待下一秒
 			for now <= snowIDTimestamp {
 				time.Sleep(time.Microsecond * 10)
-				now = time.Now().UnixMilli()
+				now = snowIDNowMillis()
 				if now < snowIDTimestamp {
 					// 产生了回拨
 					if snowIDTimeBackPoint > 0 {
@@ -134,9 +109,7 @@ func NewID() int64 {
 						panic("core: unexpected time back occurred")
 					}
 					snowIDTimeBackPoint = snowIDTimestamp
-					if snowIDClockBackwardCallback != nil {
-						snowIDClockBackwardCallback(snowIDTimestamp)
-					}
+					fmt.Printf("clock back happened at %d, new now time %d.\n", snowIDTimestamp, now)
 					break
 				}
 			}
@@ -149,9 +122,7 @@ func NewID() int64 {
 			panic("core: unexpected time back occurred")
 		}
 		snowIDTimeBackPoint = snowIDTimestamp
-		if snowIDClockBackwardCallback != nil {
-			snowIDClockBackwardCallback(snowIDTimestamp)
-		}
+		fmt.Printf("clock back happened at %d, new now time %d.\n", snowIDTimestamp, now)
 		// 不同时间戳（精度：毫秒）下直接使用序列号：0
 		snowIDSeq = 0
 	}
@@ -168,7 +139,7 @@ func NewID() int64 {
 }
 
 // 获取 NewID 生成的 ID 的时间戳
-func IDTimestamp(snowId int64) time.Time {
+func IDGetTimestamp(snowId int64) time.Time {
 	nodeOffset := snowClockBackBits + snowCounterBits
 	timeOffset := snowNodeIDBits + nodeOffset
 	sec := snowId >> timeOffset
@@ -176,111 +147,12 @@ func IDTimestamp(snowId int64) time.Time {
 }
 
 // 获取 NewID 生成的 ID 的节点 ID
-func IDNodeID(snowId int64) int64 {
+func IDGetNodeID(snowId int64) int64 {
 	nodeOffset := snowClockBackBits + snowCounterBits
 	return (snowId >> nodeOffset) & 0xF
 }
 
-func IDTimeIsBack(snowId int64) bool {
+// 获取 NewID 生成的 ID 是否经历了时钟回拨
+func IDHasClockBackward(snowId int64) bool {
 	return (snowId>>snowCounterBits)&0b1 > 0
-}
-
-// 支持自定义序列化的 int64 ID
-// 用于支持需要将 ID 序列化为字符串的场景
-type BigID int64
-
-var NilBigID BigID
-var _ encoding.TextMarshaler = (*BigID)(nil)
-var _ encoding.TextUnmarshaler = (*BigID)(nil)
-var _ json.Marshaler = (*BigID)(nil)
-var _ json.Unmarshaler = (*BigID)(nil)
-
-func NewBigID() BigID {
-	return BigID(NewID())
-}
-
-func NewBigIDFromString(str string) BigID {
-	if len(str) < snowIDMinLen {
-		return NilBigID
-	}
-	v, err := strconv.ParseInt(str, 10, 64)
-	if err != nil || v < snowIDMin {
-		return NilBigID
-	}
-	return BigID(v)
-}
-
-func (id BigID) ToInt64() int64 {
-	return int64(id)
-}
-
-func (id BigID) Timestamp() time.Time {
-	return IDTimestamp(int64(id))
-}
-
-func (id BigID) NodeID() int64 {
-	return IDNodeID(int64(id))
-}
-
-func (id BigID) TimeIsBack() bool {
-	return IDTimeIsBack(int64(id))
-}
-
-func (id BigID) String() string {
-	return fmt.Sprintf("BigID(%d)", id)
-}
-
-// 从数据库读取时反序列化
-func (u *BigID) Scan(value any) error {
-	*u, _ = value.(BigID)
-	return nil
-}
-
-// 写入数据库时序列化
-func (id BigID) Value() (driver.Value, error) {
-	return int64(id), nil
-}
-
-func (id BigID) IsNil() bool {
-	return id == NilBigID
-}
-
-func (id BigID) MarshalText() ([]byte, error) {
-	return []byte(strconv.FormatInt(int64(id), 10)), nil
-}
-
-func (id *BigID) UnmarshalText(b []byte) error {
-	// NB(charlie): The json package will use UnmarshalText instead of
-	// UnmarshalJSON if the value is a string.
-
-	// An empty string is not a valid ObjectID, but we treat it as a
-	// special value that decodes as NilObjectID.
-	if len(b) == 0 {
-		return nil
-	}
-	oid := NewBigIDFromString(string(b))
-	*id = oid
-	return nil
-}
-
-func (id BigID) MarshalJSON() ([]byte, error) {
-	return fmt.Appendf(nil, `"%d"`, id), nil
-}
-
-func (id *BigID) UnmarshalJSON(b []byte) error {
-	// Ignore "null" to keep parity with the standard library. Decoding a JSON
-	// null into a non-pointer ObjectID field will leave the field unchanged.
-	// For pointer values, encoding/json will set the pointer to nil and will
-	// not enter the UnmarshalJSON hook.
-	if string(b) == "null" {
-		return nil
-	}
-
-	// Handle string
-	if len(b) >= 2 && b[0] == '"' {
-		// TODO: fails because of error
-		return id.UnmarshalText(b[1 : len(b)-1])
-	}
-
-	return ErrInvalidID
 }

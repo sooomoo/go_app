@@ -1,4 +1,4 @@
-package core
+package ids
 
 import (
 	"crypto/rand"
@@ -34,7 +34,7 @@ func init() {
 	seqIDCounter = (uint32(b[0]) << 0) | (uint32(b[1]) << 8) | (uint32(b[2]) << 16) | (uint32(b[3]) << 24)
 }
 
-// 生成没有短横线的UUID字符串
+// 生成没有短横线的UUID字符串: 使用 uuidv7
 func NewUUID() string {
 	val, err := uuid.NewV7()
 	if err != nil {
@@ -122,17 +122,13 @@ func (id SeqID) Timestamp() time.Time {
 	return time.Unix(int64(unixSecs), 0).UTC()
 }
 
-func (id SeqID) Hex() string {
-	return hex.EncodeToString(id[:])
-}
-
 func (id SeqID) Base64() string {
 	// 使用 base64.RawURLEncoding 编码，去掉 padding
 	return base64.RawURLEncoding.EncodeToString(id[:])
 }
 
 func (id SeqID) String() string {
-	return `SeqID("` + id.Hex() + `")`
+	return hex.EncodeToString(id[:])
 }
 
 // 如果所有字节都为 0，则为 NilSeqID

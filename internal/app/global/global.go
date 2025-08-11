@@ -7,6 +7,7 @@ import (
 	"goapp/pkg/cache"
 	"goapp/pkg/core"
 	"goapp/pkg/distribute"
+	"goapp/pkg/ids"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -43,7 +44,7 @@ func Init(ctx context.Context) {
 	if err != nil {
 		panic(err)
 	}
-	appConfig.Id = core.NewSeqID().Hex()
+	appConfig.Id = ids.NewUUID()
 
 	pool, err = ants.NewPool(500000, ants.WithExpiryDuration(5*time.Minute))
 	if err != nil {

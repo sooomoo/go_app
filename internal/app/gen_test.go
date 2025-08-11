@@ -2,7 +2,7 @@ package app_test
 
 import (
 	"fmt"
-	"goapp/pkg/core"
+	"goapp/pkg/ids"
 	"log"
 	"os"
 	"strconv"
@@ -129,7 +129,7 @@ func TestGenDaoPostgreSQL(t *testing.T) {
 		"uuid": func(columnType gorm.ColumnType) (dataType string) {
 			name := strings.ToLower(columnType.Name())
 			fmt.Println(name)
-			dataType = "core.UID"
+			dataType = "ids.UID"
 			return
 		},
 	})
@@ -143,7 +143,7 @@ func TestGenDaoPostgreSQL(t *testing.T) {
 	g.Execute()
 
 	dev := Devable{
-		ID:   core.NewUID(),
+		ID:   ids.NewUID(),
 		Name: "abc " + strconv.FormatInt(time.Now().Unix(), 10),
 	}
 	gormdb.Model(&dev).Create(&dev)
@@ -156,8 +156,8 @@ const TableNameDevable = "devable"
 
 // Devable mapped from table <devable>
 type Devable struct {
-	ID   core.UID `gorm:"column:id;primaryKey" json:"id"`
-	Name string   `gorm:"column:name;not null" json:"name"`
+	ID   ids.UID `gorm:"column:id;primaryKey" json:"id"`
+	Name string  `gorm:"column:name;not null" json:"name"`
 }
 
 // TableName Devable's table name
