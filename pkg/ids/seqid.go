@@ -10,16 +10,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"sync/atomic"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 func init() {
-	uuid.EnableRandPool()
-
 	_, err := rand.Read(seqIDProcessUnique[:])
 	if err != nil {
 		panic(fmt.Errorf("cannot initialize SeqID package with crypto.rand.Reader: %w", err))
@@ -32,22 +27,6 @@ func init() {
 	}
 
 	seqIDCounter = (uint32(b[0]) << 0) | (uint32(b[1]) << 8) | (uint32(b[2]) << 16) | (uint32(b[3]) << 24)
-}
-
-// 生成没有短横线的UUID字符串: 使用 uuidv7
-func NewUUID() string {
-	val, err := uuid.NewV7()
-	if err != nil {
-		return ""
-	}
-	uid := val.String()
-	return strings.ReplaceAll(uid, "-", "")
-}
-
-// 是否是合法的 UUID
-func IsUUIDValid(s string) bool {
-	err := uuid.Validate(s)
-	return err == nil
 }
 
 var (

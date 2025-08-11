@@ -33,9 +33,9 @@ func NewUID() UID {
 	uuid, err := uuid.NewV7()
 	if err != nil {
 		if uidFailCallback != nil {
-			uidFailCallback(fmt.Errorf("failed to generate UUIDv7: %w", err))
+			uidFailCallback(fmt.Errorf("failed to generate UID: %w", err))
 		} else {
-			log.Printf("failed to generate UUIDv7: %v", err)
+			log.Printf("failed to generate UID: %v", err)
 		}
 		return NilUID
 	}
@@ -186,7 +186,7 @@ func (id UID) Variant() uuid.Variant {
 	}
 }
 
-// Version returns the version of uuid.
+// 此处应该为 7
 func (id UID) Version() uuid.Version {
 	return uuid.Version(id[6] >> 4)
 }
