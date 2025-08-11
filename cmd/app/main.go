@@ -26,7 +26,10 @@ func main() {
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 
 	// 初始化雪花算法的节点 ID
-	ids.IDSetNodeIDFromEnv("node_id")
+	err := ids.IDSetNodeIDFromEnv("node_id")
+	if err != nil {
+		panic("无法设置节点 ID")
+	}
 
 	env := os.Getenv("env")
 	log.Info().Msgf("server starting... runnint in [ %s ] mode", env)
