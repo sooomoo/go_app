@@ -3,13 +3,18 @@ package app_test
 import (
 	"fmt"
 	"goapp/pkg/core"
+	"log"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gen"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func underScoreToCamelCase(name string) string {
@@ -96,9 +101,19 @@ func TestGenDaoPostgreSQL(t *testing.T) {
 	})
 	dsn := "host=localhost user=postgres password=abc12345 " +
 		"dbname=dev_db port=5432 sslmode=disable TimeZone=Asia/Shanghai "
-
+	newLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // 输出到控制台
+		logger.Config{
+			SlowThreshold:             time.Millisecond * 200, // 慢查询阈值（超过200毫秒标记）
+			LogLevel:                  logger.Info,            // 输出所有SQL（包括参数、耗时）
+			Colorful:                  true,                   // 彩色输出
+			IgnoreRecordNotFoundError: true,                   // 忽略"未找到记录"错误
+		},
+	)
 	// 建立连接
-	gormdb, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	gormdb, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: newLogger,
+	})
 	if err != nil {
 		panic("连接失败: " + err.Error())
 	}
@@ -129,10 +144,10 @@ func TestGenDaoPostgreSQL(t *testing.T) {
 
 	dev := Devable{
 		ID:   core.NewUID(),
-		Name: "abc",
+		Name: "abc " + strconv.FormatInt(time.Now().Unix(), 10),
 	}
 	gormdb.Model(&dev).Create(&dev)
-	var dev2 Devable
+	var dev2 []Devable
 	gormdb.Table("devable").Find(&dev2)
 	fmt.Println(dev2)
 }
