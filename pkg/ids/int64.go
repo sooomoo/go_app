@@ -42,6 +42,8 @@ func IDSetNodeID(nodeID int64) error {
 	if nodeID < 0 || nodeID >= snowNodeIDMax {
 		return fmt.Errorf("nodeID must be in range [0,%d)", snowNodeIDMax)
 	}
+	snowIDMutex.Lock()
+	defer snowIDMutex.Unlock()
 	snowNodeId = nodeID
 	return nil
 }
@@ -102,7 +104,7 @@ func NewID() int64 {
 		if snowIDSeq == 0 {
 			// 当前序列 Id 已经使用完，则需要等待下一秒
 			for now <= snowIDTimestamp {
-				time.Sleep(time.Microsecond * 100)
+				time.Sleep(100 * time.Microsecond)
 				now = time.Now().UnixMilli()
 				if now < snowIDTimestamp {
 					// 产生了回拨
@@ -153,7 +155,7 @@ func IDGetTimestamp(snowId int64) time.Time {
 // 获取 NewID 生成的 ID 的节点 ID
 func IDGetNodeID(snowId int64) int64 {
 	nodeOffset := snowClockBackBits + snowCounterBits
-	return (snowId >> nodeOffset) & 0xF
+	return (snowId >> nodeOffset) & snowNodeIDMax
 }
 
 // 获取 NewID 生成的 ID 是否经历了时钟回拨
