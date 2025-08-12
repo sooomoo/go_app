@@ -52,7 +52,7 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 				Name:   phone[3:6] + "****" + phone[10:],
 				Role:   int32(RoleNormal),
 				Status: UserStatusNormal,
-				IP: core.SqlJSON{
+				IP: core.DBJSON{
 					"init":   ip,
 					"latest": ip,
 				},

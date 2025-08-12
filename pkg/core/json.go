@@ -16,14 +16,15 @@ import (
 	"gorm.io/gorm/schema"
 )
 
-type SqlJSON map[string]any
+// 用于表示数据库中 json、jsonb 类型
+type DBJSON map[string]any
 
-var _ json.Marshaler = (*SqlJSON)(nil)
-var _ json.Unmarshaler = (*SqlJSON)(nil)
+var _ json.Marshaler = (*DBJSON)(nil)
+var _ json.Unmarshaler = (*DBJSON)(nil)
 
-var EmptySqlJSON = SqlJSON{}
+var EmptyDBJSON = DBJSON{}
 
-func GetSqlJSONValue[T any](sqljson SqlJSON, path string) T {
+func GetSqlJSONValue[T any](sqljson DBJSON, path string) T {
 	v := sqljson.Get(path)
 	if vv, ok := v.(T); ok {
 		return vv
@@ -32,7 +33,7 @@ func GetSqlJSONValue[T any](sqljson SqlJSON, path string) T {
 	return t
 }
 
-func (j SqlJSON) GetValue(key string) any {
+func (j DBJSON) GetValue(key string) any {
 	if len(j) == 0 {
 		return nil
 	}
@@ -43,7 +44,7 @@ func (j SqlJSON) GetValue(key string) any {
 }
 
 // 支持按路径获取值, 例如: a.b.c
-func (j SqlJSON) Get(path string) any {
+func (j DBJSON) Get(path string) any {
 	if len(j) == 0 {
 		return nil
 	}
@@ -74,7 +75,7 @@ func (j SqlJSON) Get(path string) any {
 	return nil
 }
 
-func (j SqlJSON) GetBool(path string) bool {
+func (j DBJSON) GetBool(path string) bool {
 	v := j.Get(path)
 	if vv, ok := v.(bool); ok {
 		return vv
@@ -83,7 +84,7 @@ func (j SqlJSON) GetBool(path string) bool {
 	return val > 0
 }
 
-func (j SqlJSON) GetString(path string) string {
+func (j DBJSON) GetString(path string) string {
 	v := j.Get(path)
 	if vv, ok := v.(string); ok {
 		return vv
@@ -91,7 +92,7 @@ func (j SqlJSON) GetString(path string) string {
 	return ""
 }
 
-func (j SqlJSON) GetInt64(path string) int64 {
+func (j DBJSON) GetInt64(path string) int64 {
 	v := j.Get(path)
 	if vv, ok := v.(int64); ok {
 		return vv
@@ -108,7 +109,7 @@ func (j SqlJSON) GetInt64(path string) int64 {
 	return 0
 }
 
-func (j SqlJSON) GetInt(path string) int {
+func (j DBJSON) GetInt(path string) int {
 	v := j.Get(path)
 	if vv, ok := v.(int); ok {
 		return vv
@@ -125,7 +126,7 @@ func (j SqlJSON) GetInt(path string) int {
 	return 0
 }
 
-func (j SqlJSON) GetInt32(path string) int32 {
+func (j DBJSON) GetInt32(path string) int32 {
 	v := j.Get(path)
 	if vv, ok := v.(int); ok {
 		return int32(vv)
@@ -143,7 +144,7 @@ func (j SqlJSON) GetInt32(path string) int32 {
 }
 
 // Value return json value, implement driver.Valuer interface
-func (m SqlJSON) Value() (driver.Value, error) {
+func (m DBJSON) Value() (driver.Value, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -152,9 +153,9 @@ func (m SqlJSON) Value() (driver.Value, error) {
 }
 
 // Scan scan value into Jsonb, implements sql.Scanner interface
-func (m *SqlJSON) Scan(val any) error {
+func (m *DBJSON) Scan(val any) error {
 	if val == nil {
-		*m = make(SqlJSON)
+		*m = make(DBJSON)
 		return nil
 	}
 	var ba []byte
@@ -176,7 +177,7 @@ func (m *SqlJSON) Scan(val any) error {
 }
 
 // MarshalJSON to output non base64 encoded []byte
-func (m SqlJSON) MarshalJSON() ([]byte, error) {
+func (m DBJSON) MarshalJSON() ([]byte, error) {
 	if m == nil {
 		return []byte("null"), nil
 	}
@@ -185,20 +186,20 @@ func (m SqlJSON) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON to deserialize []byte
-func (m *SqlJSON) UnmarshalJSON(b []byte) error {
+func (m *DBJSON) UnmarshalJSON(b []byte) error {
 	t := map[string]any{}
 	err := json.Unmarshal(b, &t)
-	*m = SqlJSON(t)
+	*m = DBJSON(t)
 	return err
 }
 
 // GormDataType gorm common data type
-func (m SqlJSON) GormDataType() string {
+func (m DBJSON) GormDataType() string {
 	return "jsonmap"
 }
 
 // GormDBDataType gorm db data type
-func (SqlJSON) GormDBDataType(db *gorm.DB, field *schema.Field) string {
+func (DBJSON) GormDBDataType(db *gorm.DB, field *schema.Field) string {
 	switch db.Dialector.Name() {
 	case "sqlite":
 		return "JSON"
@@ -212,7 +213,7 @@ func (SqlJSON) GormDBDataType(db *gorm.DB, field *schema.Field) string {
 	return ""
 }
 
-func (jm SqlJSON) GormValue(ctx context.Context, db *gorm.DB) clause.Expr {
+func (jm DBJSON) GormValue(ctx context.Context, db *gorm.DB) clause.Expr {
 	data, _ := jm.MarshalJSON()
 	switch db.Dialector.Name() {
 	case "mysql":

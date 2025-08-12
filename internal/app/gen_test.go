@@ -71,7 +71,7 @@ func TestGenDao(t *testing.T) {
 		// },
 		"json": func(columnType gorm.ColumnType) (dataType string) {
 			name := strings.ToLower(columnType.Name())
-			dataType = "core.SqlJSON"
+			dataType = "core.DBJSON"
 			fmt.Println(name)
 			return
 		},
@@ -122,13 +122,13 @@ func TestGenDaoPostgreSQL(t *testing.T) {
 	g.WithDataTypeMap(map[string]func(columnType gorm.ColumnType) (dataType string){
 		"json": func(columnType gorm.ColumnType) (dataType string) {
 			name := strings.ToLower(columnType.Name())
-			dataType = "core.SqlJSON"
+			dataType = "core.DBJSON"
 			fmt.Println(name)
 			return
 		},
 		"jsonb": func(columnType gorm.ColumnType) (dataType string) {
 			name := strings.ToLower(columnType.Name())
-			dataType = "core.SqlJSON"
+			dataType = "core.DBJSON"
 			fmt.Println(name)
 			return
 		},
