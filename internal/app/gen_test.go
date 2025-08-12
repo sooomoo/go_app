@@ -126,6 +126,12 @@ func TestGenDaoPostgreSQL(t *testing.T) {
 			fmt.Println(name)
 			return
 		},
+		"jsonb": func(columnType gorm.ColumnType) (dataType string) {
+			name := strings.ToLower(columnType.Name())
+			dataType = "core.SqlJSON"
+			fmt.Println(name)
+			return
+		},
 		"uuid": func(columnType gorm.ColumnType) (dataType string) {
 			name := strings.ToLower(columnType.Name())
 			fmt.Println(name)

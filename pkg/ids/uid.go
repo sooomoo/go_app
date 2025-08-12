@@ -14,7 +14,7 @@ import (
 
 type UID [16]byte
 
-var NilUID UID
+var ZeroUID UID
 
 var _ encoding.TextMarshaler = (*UID)(nil)
 var _ encoding.TextUnmarshaler = (*UID)(nil)
@@ -37,7 +37,7 @@ func NewUID() UID {
 		} else {
 			log.Printf("failed to generate UID: %v", err)
 		}
-		return NilUID
+		return ZeroUID
 	}
 	return UID(uuid)
 }
@@ -45,21 +45,21 @@ func NewUID() UID {
 // 从 16 进制字符串生成 UID
 func NewUIDFromHex(s string) UID {
 	if len(s) != 32 {
-		return NilUID
+		return ZeroUID
 	}
 
 	var oid UID
 	if _, err := hex.Decode(oid[:], []byte(s)); err != nil {
-		return NilUID
+		return ZeroUID
 	}
 
 	return oid
 }
 
-// 如果所有字节都为 0，则为 NilUID
-func (id UID) IsNil() bool {
+// 如果所有字节都为 0，则为 ZeroUID
+func (id UID) IsZero() bool {
 	// 由于 [16]byte是固定长度的数组（非切片），其类型本身支持 ==操作符。比较时会逐字节检查每个元素的值​：
-	return id == NilUID
+	return id == ZeroUID
 }
 
 // 从数据库读取时反序列化
