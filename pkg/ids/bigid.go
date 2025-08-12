@@ -46,8 +46,8 @@ func (id BigID) NodeID() int64 {
 	return IDGetNodeID(int64(id))
 }
 
-func (id BigID) TimeIsBack() bool {
-	return IDHasClockBackward(int64(id))
+func (id BigID) ClockBackTimes() int64 {
+	return IDGetClockBackwardTimes(int64(id))
 }
 
 func (id BigID) String() string {

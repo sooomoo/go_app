@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -51,7 +52,7 @@ func TestInt64String(t *testing.T) {
 func TestID(t *testing.T) {
 	id := ids.NewID()
 	fmt.Printf("New ID: %v\n", id)
-	fmt.Printf("ID Time: %v, nodeid:%v, time is back:%v\n", ids.IDGetTimestamp(id), ids.IDGetNodeID(id), ids.IDHasClockBackward(id))
+	fmt.Printf("ID Time: %v, nodeid:%v, time back times:%v\n", ids.IDGetTimestamp(id), ids.IDGetNodeID(id), ids.IDGetClockBackwardTimes(id))
 	seqID := ids.NewSeqID()
 	fmt.Printf("New SeqID: %v\n", seqID)
 	fmt.Printf("SeqID Hex: %s\n", seqID)
@@ -198,22 +199,26 @@ func TestNewID(t *testing.T) {
 					t.Errorf("Duplicate ID found: %v", id)
 					return
 				}
-				if ids.IDHasClockBackward(id) {
-					fmt.Printf("New ID:%d, time is back:%v\n", id, ids.IDHasClockBackward(id))
+				times := ids.IDGetClockBackwardTimes(id)
+				if times > 0 {
+					fmt.Printf("New ID:%d, Clock back times:%v\n", id, times)
 				}
 			}
 		}()
 	}
-	// // 新开协程模拟时钟回退
-	// wg.Add(1)
-	// go func() {
-	// 	defer wg.Done()
-	// 	time.Sleep(2 * time.Second)
-	// 	ids.SetSnowIDNowMillisFunc(func() int64 {
-	// 		return time.Now().UnixMilli() - 15
-	// 	})
-	// }()
-	// wg.Wait()
+	// 新开协程模拟时钟回退
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		time.Sleep(2 * time.Second)
+		delta := int64(15)
+		ids.SetSnowIDNowMillisFunc(func() int64 {
+			return time.Now().UnixMilli() - delta
+		})
+		time.Sleep(5 * time.Millisecond)
+		delta = int64(30)
+	}()
+	wg.Wait()
 	fmt.Printf("Set size after adding %d IDs: %d\n", cnt, 0)
 }
 
