@@ -32,7 +32,7 @@ func newTaskWebSearch(db *gorm.DB, opts ...gen.DOOption) taskWebSearch {
 	_taskWebSearch.Keywords = field.NewString(tableName, "keywords")
 	_taskWebSearch.TraceID = field.NewField(tableName, "trace_id")
 	_taskWebSearch.Progress = field.NewFloat32(tableName, "progress")
-	_taskWebSearch.Status = field.NewInt32(tableName, "status")
+	_taskWebSearch.Status = field.NewInt16(tableName, "status")
 	_taskWebSearch.StatusText = field.NewString(tableName, "status_text")
 	_taskWebSearch.Result = field.NewField(tableName, "result")
 	_taskWebSearch.CreatedAt = field.NewInt64(tableName, "created_at")
@@ -53,7 +53,7 @@ type taskWebSearch struct {
 	Keywords   field.String
 	TraceID    field.Field
 	Progress   field.Float32
-	Status     field.Int32
+	Status     field.Int16
 	StatusText field.String
 	Result     field.Field
 	CreatedAt  field.Int64
@@ -80,7 +80,7 @@ func (t *taskWebSearch) updateTableName(table string) *taskWebSearch {
 	t.Keywords = field.NewString(table, "keywords")
 	t.TraceID = field.NewField(table, "trace_id")
 	t.Progress = field.NewFloat32(table, "progress")
-	t.Status = field.NewInt32(table, "status")
+	t.Status = field.NewInt16(table, "status")
 	t.StatusText = field.NewString(table, "status_text")
 	t.Result = field.NewField(table, "result")
 	t.CreatedAt = field.NewInt64(table, "created_at")

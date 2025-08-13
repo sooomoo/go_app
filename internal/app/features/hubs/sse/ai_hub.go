@@ -53,7 +53,7 @@ func (h *AIHub) Serve(c *gin.Context) {
 
 	clientKeys := headers.GetClientKeys(c)
 	extraData := core.MapX{}
-	extraData.Set(headers.KeyClientKeys, clientKeys)
+	extraData.SetValue(headers.KeyClientKeys, clientKeys)
 	h.hub.Serve(c, userId, claims.Platform, lineID, extraData)
 }
 

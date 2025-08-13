@@ -77,7 +77,7 @@ func (k *KeywordTask) handle(ctx context.Context, msg amqp.Delivery) {
 		return // log error
 	}
 
-	recordID := mp.GetInt64("record_id")
+	recordID := mp.GetInt64("record_id", 0)
 	fmt.Println(recordID)
 	// 找到记录
 	se := query.Q.TaskWebSearch

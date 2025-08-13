@@ -22,7 +22,7 @@ type User struct {
 	Profiles  db.JSON `gorm:"column:profiles" json:"profiles"`
 	Invite    db.JSON `gorm:"column:invite" json:"invite"`
 	IP        db.JSON `gorm:"column:ip" json:"ip"`
-	Status    int32   `gorm:"column:status;not null" json:"status"`
+	Status    int16   `gorm:"column:status;not null" json:"status"`
 	CreatedAt int64   `gorm:"column:created_at;not null" json:"createdAt"`
 	UpdatedAt int64   `gorm:"column:updated_at;not null" json:"updatedAt"`
 }

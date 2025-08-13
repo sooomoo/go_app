@@ -37,7 +37,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Profiles = field.NewField(tableName, "profiles")
 	_user.Invite = field.NewField(tableName, "invite")
 	_user.IP = field.NewField(tableName, "ip")
-	_user.Status = field.NewInt32(tableName, "status")
+	_user.Status = field.NewInt16(tableName, "status")
 	_user.CreatedAt = field.NewInt64(tableName, "created_at")
 	_user.UpdatedAt = field.NewInt64(tableName, "updated_at")
 
@@ -59,7 +59,7 @@ type user struct {
 	Profiles  field.Field
 	Invite    field.Field
 	IP        field.Field
-	Status    field.Int32
+	Status    field.Int16
 	CreatedAt field.Int64
 	UpdatedAt field.Int64
 
@@ -87,7 +87,7 @@ func (u *user) updateTableName(table string) *user {
 	u.Profiles = field.NewField(table, "profiles")
 	u.Invite = field.NewField(table, "invite")
 	u.IP = field.NewField(table, "ip")
-	u.Status = field.NewInt32(table, "status")
+	u.Status = field.NewInt16(table, "status")
 	u.CreatedAt = field.NewInt64(table, "created_at")
 	u.UpdatedAt = field.NewInt64(table, "updated_at")
 

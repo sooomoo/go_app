@@ -49,9 +49,9 @@ func (u *UserService) GetSelfInfo(c *gin.Context) (*GetUserInfoResponseDto, erro
 		Data: &GetUserInfoResponse{
 			Id:        user.ID,
 			Name:      user.Name,
-			AvatarUrl: user.Profiles.GetString("avatar"),
+			AvatarUrl: user.Profiles.GetString("avatar", ""),
 			Role:      user.Role,
-			IpLatest:  user.IP.GetString("latest"),
+			IpLatest:  user.IP.GetString("latest", ""),
 		},
 	}, nil
 }

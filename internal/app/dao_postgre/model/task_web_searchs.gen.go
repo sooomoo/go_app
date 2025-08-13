@@ -17,7 +17,7 @@ type TaskWebSearch struct {
 	Keywords   string  `gorm:"column:keywords;not null" json:"keywords"`
 	TraceID    ids.UID `gorm:"column:trace_id;not null" json:"traceId"`
 	Progress   float32 `gorm:"column:progress;not null" json:"progress"`
-	Status     int32   `gorm:"column:status" json:"status"`
+	Status     int16   `gorm:"column:status" json:"status"`
 	StatusText string  `gorm:"column:status_text;not null" json:"statusText"`
 	Result     db.JSON `gorm:"column:result" json:"result"`
 	CreatedAt  int64   `gorm:"column:created_at;not null" json:"createdAt"`

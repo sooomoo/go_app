@@ -122,7 +122,7 @@ func (h *ChatHub) upgrade(c *gin.Context) {
 
 	clientKeys := headers.GetClientKeys(c)
 	extraData := core.MapX{}
-	extraData.Set(headers.KeyClientKeys, clientKeys)
+	extraData.SetValue(headers.KeyClientKeys, clientKeys)
 
 	err := h.UpgradeWebSocket(userId, claims.Platform, clientId, extraData, c.Writer, c.Request)
 	if err != nil {

@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"goapp/pkg/strs"
+	"goapp/pkg/core"
 	"strings"
 
 	"gorm.io/driver/mysql"
@@ -22,130 +22,63 @@ type JSON map[string]any
 var _ json.Marshaler = (*JSON)(nil)
 var _ json.Unmarshaler = (*JSON)(nil)
 
-func (j JSON) GetValue(key string) any {
-	if len(j) == 0 {
-		return nil
-	}
-	if v, ok := j[key]; ok {
-		return v
-	}
-	return nil
+func (j JSON) GetValue(path string) (any, bool) {
+	return core.MapX(j).GetValue(path)
 }
 
-// 支持按路径获取值, 例如: a.b.c
-func (j JSON) Get(path string) any {
-	if len(j) == 0 {
-		return nil
-	}
-
-	iterFn := func(key string, target map[string]any) any {
-		if v, ok := target[key]; ok {
-			return v
-		}
-		return nil
-	}
-	pathSpl := strs.Split(path, ".")
-	if len(pathSpl) == 1 {
-		return iterFn(pathSpl[0], j)
-	}
-
-	currentTarget := (map[string]any)(j)
-	count := len(pathSpl)
-	for i, seg := range pathSpl {
-		val := iterFn(seg, currentTarget)
-		if val == nil || i == count-1 {
-			return val
-		}
-		if t, ok := val.(map[string]any); ok {
-			currentTarget = t
-			continue
-		}
-		return val
-	}
-	return nil
+func (j JSON) GetBool(path string, def bool) bool {
+	return core.MapX(j).GetBool(path, def)
 }
 
-func (j JSON) GetBool(path string) bool {
-	v := j.Get(path)
-	if vv, ok := v.(bool); ok {
-		return vv
-	}
-	val := j.GetInt64(path)
-	return val > 0
+func (j JSON) GetString(path string, def string) string {
+	return core.MapX(j).GetString(path, def)
 }
 
-func (j JSON) GetString(path string) string {
-	v := j.Get(path)
-	if vv, ok := v.(string); ok {
-		return vv
-	}
-	return ""
+func (j JSON) GetInt64(path string, def int64) int64 {
+	return core.MapX(j).GetInt64(path, def)
 }
 
-func (j JSON) GetInt64(path string) int64 {
-	v := j.Get(path)
-	if vv, ok := v.(int64); ok {
-		return vv
-	}
-	if vv, ok := v.(int); ok {
-		return int64(vv)
-	}
-	if vv, ok := v.(int32); ok {
-		return int64(vv)
-	}
-	if vv, ok := v.(int8); ok {
-		return int64(vv)
-	}
-	return 0
+func (j JSON) GetInt(path string, def int) int {
+	return core.MapX(j).GetInt(path, def)
 }
 
-func (j JSON) GetInt(path string) int {
-	v := j.Get(path)
-	if vv, ok := v.(int); ok {
-		return vv
-	}
-	if vv, ok := v.(int32); ok {
-		return int(vv)
-	}
-	if vv, ok := v.(int64); ok {
-		return int(vv)
-	}
-	if vv, ok := v.(int8); ok {
-		return int(vv)
-	}
-	return 0
+func (j JSON) GetInt32(path string, def int32) int32 {
+	return core.MapX(j).GetInt32(path, def)
 }
 
-func (j JSON) GetInt32(path string) int32 {
-	v := j.Get(path)
-	if vv, ok := v.(int); ok {
-		return int32(vv)
-	}
-	if vv, ok := v.(int32); ok {
-		return vv
-	}
-	if vv, ok := v.(int64); ok {
-		return int32(vv)
-	}
-	if vv, ok := v.(int8); ok {
-		return int32(vv)
-	}
-	return 0
+func (j JSON) SetValue(path string, value any) error {
+	return core.MapX(j).SetValue(path, value)
+}
+
+func (j JSON) Delete(key string) {
+	delete(j, key)
+}
+
+func (j JSON) Clear() {
+	clear(j)
+}
+
+func (j JSON) Len() int {
+	return len(j)
+}
+
+func (j JSON) IsEmpty() bool {
+	return len(j) == 0
 }
 
 // Value return json value, implement driver.Valuer interface
-func (m JSON) Value() (driver.Value, error) {
-	if m == nil {
+func (j JSON) Value() (driver.Value, error) {
+	if j == nil {
 		return nil, nil
 	}
-	ba, err := m.MarshalJSON()
+	ba, err := j.MarshalJSON()
 	return string(ba), err
 }
 
 // Scan scan value into Jsonb, implements sql.Scanner interface
-func (m *JSON) Scan(val any) error {
+func (j *JSON) Scan(val any) error {
 	if val == nil {
-		*m = make(JSON)
+		*j = make(JSON)
 		return nil
 	}
 	var ba []byte
@@ -162,29 +95,29 @@ func (m *JSON) Scan(val any) error {
 	decoder := json.NewDecoder(rd)
 	decoder.UseNumber()
 	err := decoder.Decode(&t)
-	*m = t
+	*j = t
 	return err
 }
 
 // MarshalJSON to output non base64 encoded []byte
-func (m JSON) MarshalJSON() ([]byte, error) {
-	if m == nil {
-		return []byte("null"), nil
+func (j JSON) MarshalJSON() ([]byte, error) {
+	if j == nil {
+		return nil, nil
 	}
-	t := (map[string]any)(m)
+	t := (map[string]any)(j)
 	return json.Marshal(t)
 }
 
 // UnmarshalJSON to deserialize []byte
-func (m *JSON) UnmarshalJSON(b []byte) error {
+func (j *JSON) UnmarshalJSON(b []byte) error {
 	t := map[string]any{}
 	err := json.Unmarshal(b, &t)
-	*m = JSON(t)
+	*j = JSON(t)
 	return err
 }
 
 // GormDataType gorm common data type
-func (m JSON) GormDataType() string {
+func (j JSON) GormDataType() string {
 	return "jsonmap"
 }
 
