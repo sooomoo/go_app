@@ -4,24 +4,24 @@
 
 package model
 
-import "goapp/pkg/core"
+import "goapp/pkg/db"
 
 const TableNameUser = "users"
 
 // User mapped from table <users>
 type User struct {
-	ID        int64       `gorm:"column:id;primaryKey" json:"id"`
-	Phone     string      `gorm:"column:phone;not null;comment:如08615900001111" json:"phone"` // 如08615900001111
-	Name      string      `gorm:"column:name;not null" json:"name"`
-	Password  string      `gorm:"column:password;not null;comment:hash之后的密码" json:"password"` // hash之后的密码
-	ThirdAuth core.DBJSON `gorm:"column:third_auth" json:"thirdAuth"`
-	Role      int32       `gorm:"column:role;not null" json:"role"`
-	Profiles  core.DBJSON `gorm:"column:profiles" json:"profiles"`
-	Invite    core.DBJSON `gorm:"column:invite" json:"invite"`
-	IP        core.DBJSON `gorm:"column:ip;not null" json:"ip"`
-	Status    int32       `gorm:"column:status;not null" json:"status"`
-	CreatedAt int64       `gorm:"column:created_at;not null" json:"createdAt"`
-	UpdatedAt int64       `gorm:"column:updated_at;not null" json:"updatedAt"`
+	ID        int64   `gorm:"column:id;primaryKey" json:"id"`
+	Phone     string  `gorm:"column:phone;not null;comment:如08615900001111" json:"phone"` // 如08615900001111
+	Name      string  `gorm:"column:name;not null" json:"name"`
+	Password  string  `gorm:"column:password;not null;comment:hash之后的密码" json:"password"` // hash之后的密码
+	ThirdAuth db.JSON `gorm:"column:third_auth" json:"thirdAuth"`
+	Role      int32   `gorm:"column:role;not null" json:"role"`
+	Profiles  db.JSON `gorm:"column:profiles" json:"profiles"`
+	Invite    db.JSON `gorm:"column:invite" json:"invite"`
+	IP        db.JSON `gorm:"column:ip;not null" json:"ip"`
+	Status    int32   `gorm:"column:status;not null" json:"status"`
+	CreatedAt int64   `gorm:"column:created_at;not null" json:"createdAt"`
+	UpdatedAt int64   `gorm:"column:updated_at;not null" json:"updatedAt"`
 }
 
 // TableName User's table name

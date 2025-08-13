@@ -6,6 +6,7 @@ import (
 	"goapp/internal/app/dao/query"
 	"goapp/pkg/cache"
 	"goapp/pkg/core"
+	"goapp/pkg/db"
 	"goapp/pkg/distribute"
 	"goapp/pkg/ids"
 	"os"
@@ -28,7 +29,7 @@ var cach *cache.Cache
 var locker *distribute.Locker
 var queue distribute.MessageQueue
 var appConfig *AppConfig
-var db *gorm.DB
+var ormdb *gorm.DB
 
 func Init(ctx context.Context) {
 	mut.Lock()
@@ -53,12 +54,12 @@ func Init(ctx context.Context) {
 
 	dbMaster := appConfig.Database.ConnectString
 	dbSlaves := []string{appConfig.Database.ConnectString}
-	db, err = core.InitReplicasDB(dbMaster, dbSlaves, 10*time.Second)
+	ormdb, err = db.InitReplicasDB(dbMaster, dbSlaves, 10*time.Second)
 	if err != nil {
 		panic(err)
 	}
 	// 设置默认的 Db 连接
-	query.SetDefault(db)
+	query.SetDefault(ormdb)
 
 	cach, err = cache.NewCache(ctx, appConfig.Cache.GetRedisOption(), nil)
 	if err != nil {
@@ -119,7 +120,7 @@ func Release() {
 	}
 	defer released.Store(true)
 
-	if sqlDB, err := db.DB(); err == nil {
+	if sqlDB, err := ormdb.DB(); err == nil {
 		_ = sqlDB.Close()
 	}
 
@@ -130,7 +131,7 @@ func Release() {
 }
 
 func GetDB() *gorm.DB {
-	return db
+	return ormdb
 }
 func GetCoroutinePool() core.CoroutinePool {
 	return pool

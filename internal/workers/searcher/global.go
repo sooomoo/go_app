@@ -6,6 +6,7 @@ import (
 	"goapp/internal/workers/searcher/stores/dao/query"
 	"goapp/pkg/cache"
 	"goapp/pkg/core"
+	"goapp/pkg/db"
 	"goapp/pkg/distribute"
 	"goapp/pkg/ids"
 	"goapp/pkg/rmq"
@@ -70,7 +71,7 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 		panic(err)
 	}
 
-	g.db, err = core.InitDB(g.config.Database.ConnectString, 10*time.Second)
+	g.db, err = db.InitDB(g.config.Database.ConnectString, 10*time.Second)
 	if err != nil {
 		panic(err)
 	}

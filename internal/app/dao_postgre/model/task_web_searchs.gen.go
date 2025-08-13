@@ -5,7 +5,7 @@
 package model
 
 import (
-	"goapp/pkg/core"
+	"goapp/pkg/db"
 	"goapp/pkg/ids"
 )
 
@@ -13,17 +13,17 @@ const TableNameTaskWebSearch = "task_web_searchs"
 
 // TaskWebSearch mapped from table <task_web_searchs>
 type TaskWebSearch struct {
-	ID         ids.UID     `gorm:"column:id;primaryKey" json:"id"`
-	Keywords   string      `gorm:"column:keywords;not null" json:"keywords"`
-	TraceID    ids.UID     `gorm:"column:trace_id;not null" json:"traceId"`
-	Progress   float32     `gorm:"column:progress;not null" json:"progress"`
-	Status     int32       `gorm:"column:status" json:"status"`
-	StatusText string      `gorm:"column:status_text;not null" json:"statusText"`
-	Result     core.DBJSON `gorm:"column:result" json:"result"`
-	CreatedAt  int64       `gorm:"column:created_at;not null" json:"createdAt"`
-	UpdatedAt  int64       `gorm:"column:updated_at;not null" json:"updatedAt"`
-	SearchAt   int64       `gorm:"column:search_at;not null" json:"searchAt"`
-	FinishAt   int64       `gorm:"column:finish_at;not null" json:"finishAt"`
+	ID         ids.UID `gorm:"column:id;primaryKey" json:"id"`
+	Keywords   string  `gorm:"column:keywords;not null" json:"keywords"`
+	TraceID    ids.UID `gorm:"column:trace_id;not null" json:"traceId"`
+	Progress   float32 `gorm:"column:progress;not null" json:"progress"`
+	Status     int32   `gorm:"column:status" json:"status"`
+	StatusText string  `gorm:"column:status_text;not null" json:"statusText"`
+	Result     db.JSON `gorm:"column:result" json:"result"`
+	CreatedAt  int64   `gorm:"column:created_at;not null" json:"createdAt"`
+	UpdatedAt  int64   `gorm:"column:updated_at;not null" json:"updatedAt"`
+	SearchAt   int64   `gorm:"column:search_at;not null" json:"searchAt"`
+	FinishAt   int64   `gorm:"column:finish_at;not null" json:"finishAt"`
 }
 
 // TableName TaskWebSearch's table name

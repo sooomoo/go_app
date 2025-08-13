@@ -7,7 +7,7 @@ import (
 	"goapp/internal/pkg"
 	"goapp/internal/workers/searcher/stores/dao/model"
 	"goapp/internal/workers/searcher/stores/dao/query"
-	"goapp/pkg/core"
+	"goapp/pkg/db"
 	"goapp/pkg/rmq"
 	"sync"
 	"time"
@@ -71,7 +71,7 @@ func (k *KeywordTask) handle(ctx context.Context, msg amqp.Delivery) {
 	if len(msg.Body) == 0 || msg.Type != "search_keyword" {
 		return
 	}
-	var mp core.DBJSON
+	var mp db.JSON
 	if err := json.Unmarshal(msg.Body, &mp); err != nil {
 		fmt.Println(err)
 		return // log error

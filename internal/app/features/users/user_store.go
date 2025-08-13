@@ -6,7 +6,7 @@ import (
 	"goapp/internal/app/dao/query"
 	"goapp/internal/app/global"
 	"goapp/pkg/cache"
-	"goapp/pkg/core"
+	"goapp/pkg/db"
 	"goapp/pkg/ids"
 	"time"
 
@@ -52,7 +52,7 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 				Name:   phone[3:6] + "****" + phone[10:],
 				Role:   int32(RoleNormal),
 				Status: UserStatusNormal,
-				IP: core.DBJSON{
+				IP: db.JSON{
 					"init":   ip,
 					"latest": ip,
 				},
