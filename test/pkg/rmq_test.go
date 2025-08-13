@@ -21,6 +21,11 @@ func TestMain(m *testing.M) {
 			panic(err)
 		}
 		mqQueue, err = mqClient.NewQueue("queue_test")
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		fmt.Println("已经初始化过连接")
 	}
 	m.Run()
 }
