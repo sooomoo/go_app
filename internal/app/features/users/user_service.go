@@ -4,6 +4,7 @@ import (
 	"errors"
 	"goapp/internal/app/shared"
 	"goapp/internal/app/shared/claims"
+	"goapp/pkg/ids"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -20,11 +21,11 @@ func NewUserService() *UserService {
 }
 
 type GetUserInfoResponse struct {
-	Id        int64  `json:"id"`
-	Name      string `json:"name"`
-	AvatarUrl string `json:"avatarUrl"`
-	Role      int32  `json:"role"`
-	IpLatest  string `json:"ipLatest"`
+	Id        ids.UID `json:"id"`
+	Name      string  `json:"name"`
+	AvatarUrl string  `json:"avatarUrl"`
+	Role      int32   `json:"role"`
+	IpLatest  string  `json:"ipLatest"`
 }
 type GetUserInfoResponseDto shared.ResponseDto[*GetUserInfoResponse]
 

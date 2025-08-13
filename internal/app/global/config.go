@@ -1,6 +1,8 @@
 package global
 
 import (
+	"goapp/pkg/db"
+
 	"github.com/redis/go-redis/v9"
 )
 
@@ -19,7 +21,8 @@ type AppConfig struct {
 }
 
 type DatabaseConfig struct {
-	ConnectString string `mapstructure:"connect_string"`
+	ConnectString string    `mapstructure:"connect_string"`
+	Driver        db.Driver `mapstructure:"driver"`
 }
 
 type CacheConfig struct {

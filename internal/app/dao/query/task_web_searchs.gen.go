@@ -28,11 +28,11 @@ func newTaskWebSearch(db *gorm.DB, opts ...gen.DOOption) taskWebSearch {
 
 	tableName := _taskWebSearch.taskWebSearchDo.TableName()
 	_taskWebSearch.ALL = field.NewAsterisk(tableName)
-	_taskWebSearch.ID = field.NewInt64(tableName, "id")
+	_taskWebSearch.ID = field.NewField(tableName, "id")
 	_taskWebSearch.Keywords = field.NewString(tableName, "keywords")
-	_taskWebSearch.TraceID = field.NewString(tableName, "trace_id")
+	_taskWebSearch.TraceID = field.NewField(tableName, "trace_id")
 	_taskWebSearch.Progress = field.NewFloat32(tableName, "progress")
-	_taskWebSearch.Status = field.NewUint8(tableName, "status")
+	_taskWebSearch.Status = field.NewInt16(tableName, "status")
 	_taskWebSearch.StatusText = field.NewString(tableName, "status_text")
 	_taskWebSearch.Result = field.NewField(tableName, "result")
 	_taskWebSearch.CreatedAt = field.NewInt64(tableName, "created_at")
@@ -45,22 +45,21 @@ func newTaskWebSearch(db *gorm.DB, opts ...gen.DOOption) taskWebSearch {
 	return _taskWebSearch
 }
 
-// taskWebSearch 搜索任务
 type taskWebSearch struct {
 	taskWebSearchDo
 
 	ALL        field.Asterisk
-	ID         field.Int64
-	Keywords   field.String // 搜索词，多个搜索词以逗号分隔
-	TraceID    field.String // 多个 ID 以逗号分隔
+	ID         field.Field
+	Keywords   field.String
+	TraceID    field.Field
 	Progress   field.Float32
-	Status     field.Uint8
+	Status     field.Int16
 	StatusText field.String
 	Result     field.Field
-	CreatedAt  field.Int64 // 由 app 创建
+	CreatedAt  field.Int64
 	UpdatedAt  field.Int64
-	SearchAt   field.Int64 // 什么时候开始的搜索：由 searcher 更新
-	FinishAt   field.Int64 // 什么时候结束的搜索：由 searcher 更新
+	SearchAt   field.Int64
+	FinishAt   field.Int64
 
 	fieldMap map[string]field.Expr
 }
@@ -77,11 +76,11 @@ func (t taskWebSearch) As(alias string) *taskWebSearch {
 
 func (t *taskWebSearch) updateTableName(table string) *taskWebSearch {
 	t.ALL = field.NewAsterisk(table)
-	t.ID = field.NewInt64(table, "id")
+	t.ID = field.NewField(table, "id")
 	t.Keywords = field.NewString(table, "keywords")
-	t.TraceID = field.NewString(table, "trace_id")
+	t.TraceID = field.NewField(table, "trace_id")
 	t.Progress = field.NewFloat32(table, "progress")
-	t.Status = field.NewUint8(table, "status")
+	t.Status = field.NewInt16(table, "status")
 	t.StatusText = field.NewString(table, "status_text")
 	t.Result = field.NewField(table, "result")
 	t.CreatedAt = field.NewInt64(table, "created_at")

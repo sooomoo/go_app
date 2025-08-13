@@ -2,12 +2,13 @@ package claims
 
 import (
 	"goapp/pkg/core"
+	"goapp/pkg/ids"
 
 	"github.com/gin-gonic/gin"
 )
 
 type AuthorizedClaims struct {
-	UserId          int64         `json:"userId"`
+	UserId          ids.UID       `json:"userId"`
 	Platform        core.Platform `json:"platform"`
 	UserAgent       string        `json:"userAgent"`
 	UserAgentHashed string        `json:"userAgentHashed"`

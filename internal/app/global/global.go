@@ -54,7 +54,7 @@ func Init(ctx context.Context) {
 
 	dbMaster := appConfig.Database.ConnectString
 	dbSlaves := []string{appConfig.Database.ConnectString}
-	ormdb, err = db.InitReplicasDB(dbMaster, dbSlaves, 10*time.Second)
+	ormdb, err = db.InitReplicasDB(appConfig.Database.Driver, dbMaster, dbSlaves, 10*time.Second)
 	if err != nil {
 		panic(err)
 	}

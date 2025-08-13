@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	UserStatusNormal int32 = 0
-	UserStatusBlock  int32 = 1
+	UserStatusNormal int16 = 0
+	UserStatusBlock  int16 = 1
 )
 
 type Role int32
@@ -45,7 +45,7 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 		_, err := tx.User.WithContext(ctx).Where(tx.User.Phone.Eq(phone)).Take()
 		if err == gorm.ErrRecordNotFound {
 			// 添加
-			userId := ids.NewID()
+			userId := ids.NewUID()
 			err = tx.User.WithContext(ctx).Create(&model.User{
 				ID:     userId,
 				Phone:  phone,
@@ -94,6 +94,6 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 	return u.WithContext(ctx).Where(u.Phone.Eq(phone)).Take()
 }
 
-func (r *UserStore) GetById(ctx context.Context, userId int64) (*model.User, error) {
+func (r *UserStore) GetById(ctx context.Context, userId ids.UID) (*model.User, error) {
 	return query.User.WithContext(ctx).Where(query.User.ID.Eq(userId)).Take()
 }

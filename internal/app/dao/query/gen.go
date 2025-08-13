@@ -17,6 +17,7 @@ import (
 
 var (
 	Q                  = new(Query)
+	Devable            *devable
 	TaskWebSearch      *taskWebSearch
 	User               *user
 	UserAccountBinding *userAccountBinding
@@ -24,6 +25,7 @@ var (
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
+	Devable = &Q.Devable
 	TaskWebSearch = &Q.TaskWebSearch
 	User = &Q.User
 	UserAccountBinding = &Q.UserAccountBinding
@@ -32,6 +34,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:                 db,
+		Devable:            newDevable(db, opts...),
 		TaskWebSearch:      newTaskWebSearch(db, opts...),
 		User:               newUser(db, opts...),
 		UserAccountBinding: newUserAccountBinding(db, opts...),
@@ -41,6 +44,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 type Query struct {
 	db *gorm.DB
 
+	Devable            devable
 	TaskWebSearch      taskWebSearch
 	User               user
 	UserAccountBinding userAccountBinding
@@ -51,6 +55,7 @@ func (q *Query) Available() bool { return q.db != nil }
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:                 db,
+		Devable:            q.Devable.clone(db),
 		TaskWebSearch:      q.TaskWebSearch.clone(db),
 		User:               q.User.clone(db),
 		UserAccountBinding: q.UserAccountBinding.clone(db),
@@ -68,6 +73,7 @@ func (q *Query) WriteDB() *Query {
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:                 db,
+		Devable:            q.Devable.replaceDB(db),
 		TaskWebSearch:      q.TaskWebSearch.replaceDB(db),
 		User:               q.User.replaceDB(db),
 		UserAccountBinding: q.UserAccountBinding.replaceDB(db),
@@ -75,6 +81,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 }
 
 type queryCtx struct {
+	Devable            IDevableDo
 	TaskWebSearch      ITaskWebSearchDo
 	User               IUserDo
 	UserAccountBinding IUserAccountBindingDo
@@ -82,6 +89,7 @@ type queryCtx struct {
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
+		Devable:            q.Devable.WithContext(ctx),
 		TaskWebSearch:      q.TaskWebSearch.WithContext(ctx),
 		User:               q.User.WithContext(ctx),
 		UserAccountBinding: q.UserAccountBinding.WithContext(ctx),

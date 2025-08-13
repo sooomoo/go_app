@@ -5,12 +5,13 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/plugin/dbresolver"
 )
 
 type AutoReconnectDialector struct {
-	mysql.Dialector
+	gorm.Dialector
 	healthCheckInterval time.Duration
 }
 
@@ -43,17 +44,35 @@ func (dialector AutoReconnectDialector) checkConnection(db *gorm.DB) {
 	}
 }
 
-// 使用自定义Dialector初始化DB
-func InitDB(dsn string, healthCheckInterval time.Duration, opts ...gorm.Option) (*gorm.DB, error) {
+type Driver string
+
+const (
+	DriverMysql    Driver = "mysql"
+	DriverPostgres Driver = "postgres"
+)
+
+func getAutoReconnectDialector(driver Driver, dsn string, healthCheckInterval time.Duration) *AutoReconnectDialector {
 	dialector := AutoReconnectDialector{
-		Dialector: mysql.Dialector{
-			Config: &mysql.Config{
-				DSN: dsn,
-			},
-		},
 		healthCheckInterval: healthCheckInterval,
 	}
+	switch driver {
+	case DriverPostgres:
+		dialector.Dialector = postgres.New(postgres.Config{
+			DSN: dsn,
+		})
+	case DriverMysql:
+		dialector.Dialector = mysql.New(mysql.Config{
+			DSN: dsn,
+		})
+	default:
+		panic("invalid database driver " + string(driver))
+	}
+	return &dialector
+}
 
+// 使用自定义Dialector初始化DB
+func InitDB(driver Driver, dsn string, healthCheckInterval time.Duration, opts ...gorm.Option) (*gorm.DB, error) {
+	dialector := getAutoReconnectDialector(driver, dsn, healthCheckInterval)
 	db, err := gorm.Open(dialector, opts...)
 	if err != nil {
 		return nil, err
@@ -73,15 +92,8 @@ func InitDB(dsn string, healthCheckInterval time.Duration, opts ...gorm.Option) 
 	return db, nil
 }
 
-func InitReplicasDB(master string, replicas []string, healthCheckInterval time.Duration, opts ...gorm.Option) (*gorm.DB, error) {
-	dialector := AutoReconnectDialector{
-		Dialector: mysql.Dialector{
-			Config: &mysql.Config{
-				DSN: master,
-			},
-		},
-		healthCheckInterval: healthCheckInterval,
-	}
+func InitReplicasDB(driver Driver, master string, replicas []string, healthCheckInterval time.Duration, opts ...gorm.Option) (*gorm.DB, error) {
+	dialector := getAutoReconnectDialector(driver, master, healthCheckInterval)
 	// 初始化主库连接
 	db, err := gorm.Open(dialector, opts...)
 	if err != nil {
@@ -91,11 +103,7 @@ func InitReplicasDB(master string, replicas []string, healthCheckInterval time.D
 	rep := []gorm.Dialector{}
 	for _, replica := range replicas {
 		rep = append(rep, AutoReconnectDialector{
-			Dialector: mysql.Dialector{
-				Config: &mysql.Config{
-					DSN: replica,
-				},
-			},
+			Dialector:           getAutoReconnectDialector(driver, replica, healthCheckInterval),
 			healthCheckInterval: healthCheckInterval,
 		})
 	}

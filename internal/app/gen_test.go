@@ -94,8 +94,8 @@ func TestGenDao(t *testing.T) {
 
 func TestGenDaoPostgreSQL(t *testing.T) {
 	g := gen.NewGenerator(gen.Config{
-		OutPath:      "./dao_postgre/query",
-		ModelPkgPath: "./dao_postgre/model",
+		OutPath:      "./dao/query",
+		ModelPkgPath: "./dao/model",
 
 		Mode: gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface, // generate mode
 	})

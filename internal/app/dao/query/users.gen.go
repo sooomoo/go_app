@@ -28,7 +28,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 
 	tableName := _user.userDo.TableName()
 	_user.ALL = field.NewAsterisk(tableName)
-	_user.ID = field.NewInt64(tableName, "id")
+	_user.ID = field.NewField(tableName, "id")
 	_user.Phone = field.NewString(tableName, "phone")
 	_user.Name = field.NewString(tableName, "name")
 	_user.Password = field.NewString(tableName, "password")
@@ -37,7 +37,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Profiles = field.NewField(tableName, "profiles")
 	_user.Invite = field.NewField(tableName, "invite")
 	_user.IP = field.NewField(tableName, "ip")
-	_user.Status = field.NewInt32(tableName, "status")
+	_user.Status = field.NewInt16(tableName, "status")
 	_user.CreatedAt = field.NewInt64(tableName, "created_at")
 	_user.UpdatedAt = field.NewInt64(tableName, "updated_at")
 
@@ -50,7 +50,7 @@ type user struct {
 	userDo
 
 	ALL       field.Asterisk
-	ID        field.Int64
+	ID        field.Field
 	Phone     field.String // 如08615900001111
 	Name      field.String
 	Password  field.String // hash之后的密码
@@ -59,7 +59,7 @@ type user struct {
 	Profiles  field.Field
 	Invite    field.Field
 	IP        field.Field
-	Status    field.Int32
+	Status    field.Int16
 	CreatedAt field.Int64
 	UpdatedAt field.Int64
 
@@ -78,7 +78,7 @@ func (u user) As(alias string) *user {
 
 func (u *user) updateTableName(table string) *user {
 	u.ALL = field.NewAsterisk(table)
-	u.ID = field.NewInt64(table, "id")
+	u.ID = field.NewField(table, "id")
 	u.Phone = field.NewString(table, "phone")
 	u.Name = field.NewString(table, "name")
 	u.Password = field.NewString(table, "password")
@@ -87,7 +87,7 @@ func (u *user) updateTableName(table string) *user {
 	u.Profiles = field.NewField(table, "profiles")
 	u.Invite = field.NewField(table, "invite")
 	u.IP = field.NewField(table, "ip")
-	u.Status = field.NewInt32(table, "status")
+	u.Status = field.NewInt16(table, "status")
 	u.CreatedAt = field.NewInt64(table, "created_at")
 	u.UpdatedAt = field.NewInt64(table, "updated_at")
 

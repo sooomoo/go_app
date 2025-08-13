@@ -71,7 +71,7 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 		panic(err)
 	}
 
-	g.db, err = db.InitDB(g.config.Database.ConnectString, 10*time.Second)
+	g.db, err = db.InitReplicasDB(g.config.Database.Driver, g.config.Database.ConnectString, nil, 10*time.Second)
 	if err != nil {
 		panic(err)
 	}

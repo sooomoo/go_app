@@ -4,16 +4,20 @@
 
 package model
 
+import "goapp/pkg/ids"
+
 const TableNameUserAccountBinding = "user_account_bindings"
 
-// UserAccountBinding 账户绑定，如邮箱，微信等
+// UserAccountBinding mapped from table <user_account_bindings>
 type UserAccountBinding struct {
-	ID          int64  `gorm:"column: id;primaryKey" json:"id"`
-	AccountType uint8  `gorm:"column:account_type;not null;comment:账户类型：微信，邮箱等等" json:"accountType"` // 账户类型：微信，邮箱等等
-	Account     string `gorm:"column:account;not null;comment:具体账户：邮箱，微信 openid 等" json:"account"`   // 具体账户：邮箱，微信 openid 等
-	Status      uint8  `gorm:"column:status;comment:状态：正常，解绑等等" json:"status"`                       // 状态：正常，解绑等等
-	UserID      int64  `gorm:"column:user_id;not null;comment:绑定到哪个用户上的" json:"userId"`              // 绑定到哪个用户上的
-	BindAt      string `gorm:"column:bind_at;not null;comment:绑定时间" json:"bindAt"`                   // 绑定时间
+	ID          ids.UID `gorm:"column:id;primaryKey" json:"id"`
+	AccountType int32   `gorm:"column:account_type;not null" json:"accountType"`
+	Account     string  `gorm:"column:account;not null" json:"account"`
+	Status      int16   `gorm:"column:status" json:"status"`
+	StatusText  string  `gorm:"column:status_text;not null" json:"statusText"`
+	UserID      ids.UID `gorm:"column:user_id;not null" json:"userId"`
+	CreatedAt   int64   `gorm:"column:created_at;not null" json:"createdAt"`
+	UpdatedAt   int64   `gorm:"column:updated_at;not null" json:"updatedAt"`
 }
 
 // TableName UserAccountBinding's table name
