@@ -43,6 +43,8 @@ func (u *UserService) GetSelfInfo(c *gin.Context) (*GetUserInfoResponseDto, erro
 		return nil, err
 	}
 
+	ip := u.userRepo.GetLatestIP(c, user.ID)
+
 	// convert
 	return &GetUserInfoResponseDto{
 		Code: shared.RespCodeSucceed,
@@ -52,7 +54,7 @@ func (u *UserService) GetSelfInfo(c *gin.Context) (*GetUserInfoResponseDto, erro
 			Name:      user.Name,
 			AvatarUrl: user.Profiles.GetString("avatar", ""),
 			Role:      user.Role,
-			IpLatest:  user.IP.GetString("latest", ""),
+			IpLatest:  ip,
 		},
 	}, nil
 }

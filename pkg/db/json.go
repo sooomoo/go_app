@@ -17,7 +17,7 @@ import (
 )
 
 // 用于表示数据库中 json、jsonb 类型
-type JSON map[string]any
+type JSON core.MapX
 
 var _ json.Marshaler = (*JSON)(nil)
 var _ json.Unmarshaler = (*JSON)(nil)
@@ -72,7 +72,7 @@ func (j JSON) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	ba, err := j.MarshalJSON()
-	return string(ba), err
+	return ba, err
 }
 
 // Scan scan value into Jsonb, implements sql.Scanner interface
@@ -101,24 +101,20 @@ func (j *JSON) Scan(val any) error {
 
 // MarshalJSON to output non base64 encoded []byte
 func (j JSON) MarshalJSON() ([]byte, error) {
-	if j == nil {
-		return nil, nil
-	}
-	t := (map[string]any)(j)
-	return json.Marshal(t)
+	return core.MapX(j).MarshalJSON()
 }
 
 // UnmarshalJSON to deserialize []byte
 func (j *JSON) UnmarshalJSON(b []byte) error {
-	t := map[string]any{}
-	err := json.Unmarshal(b, &t)
-	*j = JSON(t)
-	return err
+	// t := map[string]any{}
+	// err := json.Unmarshal(b, &t)
+	// *j = JSON(t)
+	return (*core.MapX)(j).UnmarshalJSON(b)
 }
 
 // GormDataType gorm common data type
 func (j JSON) GormDataType() string {
-	return "jsonmap"
+	return "db.JSON"
 }
 
 // GormDBDataType gorm db data type
@@ -143,6 +139,8 @@ func (jm JSON) GormValue(ctx context.Context, db *gorm.DB) clause.Expr {
 		if v, ok := db.Dialector.(*mysql.Dialector); ok && !strings.Contains(v.ServerVersion, "MariaDB") {
 			return gorm.Expr("CAST(? AS JSON)", string(data))
 		}
+	case "postgres":
+		return gorm.Expr("?", data)
 	}
 	return gorm.Expr("?", string(data))
 }

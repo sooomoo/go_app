@@ -9,6 +9,7 @@ import (
 	"goapp/pkg/db"
 	"goapp/pkg/distribute"
 	"goapp/pkg/ids"
+	syslog "log"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -18,6 +19,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var mut sync.RWMutex
@@ -52,9 +54,24 @@ func Init(ctx context.Context) {
 		panic(err)
 	}
 
+	var newLogger logger.Interface
+	env := os.Getenv("env")
+	if env != "release" {
+		newLogger = logger.New(
+			syslog.New(os.Stdout, "\r\n", syslog.LstdFlags), // 输出到控制台
+			logger.Config{
+				SlowThreshold:             time.Millisecond * 200, // 慢查询阈值（超过200毫秒标记）
+				LogLevel:                  logger.Info,            // 输出所有SQL（包括参数、耗时）
+				Colorful:                  true,                   // 彩色输出
+				IgnoreRecordNotFoundError: true,                   // 忽略"未找到记录"错误
+			},
+		)
+	}
 	dbMaster := appConfig.Database.ConnectString
 	dbSlaves := []string{appConfig.Database.ConnectString}
-	ormdb, err = db.InitReplicasDB(appConfig.Database.Driver, dbMaster, dbSlaves, 10*time.Second)
+	ormdb, err = db.InitReplicasDB(appConfig.Database.Driver, dbMaster, dbSlaves, 10*time.Second, &gorm.Config{
+		Logger: newLogger,
+	})
 	if err != nil {
 		panic(err)
 	}

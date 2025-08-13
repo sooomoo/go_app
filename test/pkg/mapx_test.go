@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"goapp/pkg/core"
+	"goapp/pkg/db"
 	"testing"
 )
 
@@ -58,4 +59,28 @@ func TestMapXGetValue(t *testing.T) {
 
 	out, _ := json.MarshalIndent(data, "", "  ")
 	fmt.Println(string(out))
+}
+
+func TestJsonUnmarshal(t *testing.T) {
+	str := `
+	{
+  "id": "0198a33d77207111abbf7147bcc1046b",
+  "phone": "08613455555555",
+  "name": "134****5555",
+  "password": "",
+  "role": 0,
+  "profiles": null,
+  "invite": null,
+  "status": 0,
+  "createdAt": 1755085371,
+  "updatedAt": 1755085764
+}
+	`
+	var mp core.MapX
+	json.Unmarshal([]byte(str), &mp)
+	fmt.Printf("%v\n\n", mp)
+
+	var dbmp db.JSON
+	json.Unmarshal([]byte(str), &dbmp)
+	fmt.Printf("%v\n\n", dbmp)
 }

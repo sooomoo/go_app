@@ -21,6 +21,7 @@ var (
 	TaskWebSearch      *taskWebSearch
 	User               *user
 	UserAccountBinding *userAccountBinding
+	UserIP             *userIP
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
@@ -29,6 +30,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	TaskWebSearch = &Q.TaskWebSearch
 	User = &Q.User
 	UserAccountBinding = &Q.UserAccountBinding
+	UserIP = &Q.UserIP
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
@@ -38,6 +40,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		TaskWebSearch:      newTaskWebSearch(db, opts...),
 		User:               newUser(db, opts...),
 		UserAccountBinding: newUserAccountBinding(db, opts...),
+		UserIP:             newUserIP(db, opts...),
 	}
 }
 
@@ -48,6 +51,7 @@ type Query struct {
 	TaskWebSearch      taskWebSearch
 	User               user
 	UserAccountBinding userAccountBinding
+	UserIP             userIP
 }
 
 func (q *Query) Available() bool { return q.db != nil }
@@ -59,6 +63,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		TaskWebSearch:      q.TaskWebSearch.clone(db),
 		User:               q.User.clone(db),
 		UserAccountBinding: q.UserAccountBinding.clone(db),
+		UserIP:             q.UserIP.clone(db),
 	}
 }
 
@@ -77,6 +82,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		TaskWebSearch:      q.TaskWebSearch.replaceDB(db),
 		User:               q.User.replaceDB(db),
 		UserAccountBinding: q.UserAccountBinding.replaceDB(db),
+		UserIP:             q.UserIP.replaceDB(db),
 	}
 }
 
@@ -85,6 +91,7 @@ type queryCtx struct {
 	TaskWebSearch      ITaskWebSearchDo
 	User               IUserDo
 	UserAccountBinding IUserAccountBindingDo
+	UserIP             IUserIPDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
@@ -93,6 +100,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		TaskWebSearch:      q.TaskWebSearch.WithContext(ctx),
 		User:               q.User.WithContext(ctx),
 		UserAccountBinding: q.UserAccountBinding.WithContext(ctx),
+		UserIP:             q.UserIP.WithContext(ctx),
 	}
 }
 

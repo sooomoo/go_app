@@ -32,11 +32,9 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Phone = field.NewString(tableName, "phone")
 	_user.Name = field.NewString(tableName, "name")
 	_user.Password = field.NewString(tableName, "password")
-	_user.ThirdAuth = field.NewField(tableName, "third_auth")
 	_user.Role = field.NewInt32(tableName, "role")
 	_user.Profiles = field.NewField(tableName, "profiles")
 	_user.Invite = field.NewField(tableName, "invite")
-	_user.IP = field.NewField(tableName, "ip")
 	_user.Status = field.NewInt16(tableName, "status")
 	_user.CreatedAt = field.NewInt64(tableName, "created_at")
 	_user.UpdatedAt = field.NewInt64(tableName, "updated_at")
@@ -54,11 +52,9 @@ type user struct {
 	Phone     field.String // 如08615900001111
 	Name      field.String
 	Password  field.String // hash之后的密码
-	ThirdAuth field.Field
 	Role      field.Int32
 	Profiles  field.Field
 	Invite    field.Field
-	IP        field.Field
 	Status    field.Int16
 	CreatedAt field.Int64
 	UpdatedAt field.Int64
@@ -82,11 +78,9 @@ func (u *user) updateTableName(table string) *user {
 	u.Phone = field.NewString(table, "phone")
 	u.Name = field.NewString(table, "name")
 	u.Password = field.NewString(table, "password")
-	u.ThirdAuth = field.NewField(table, "third_auth")
 	u.Role = field.NewInt32(table, "role")
 	u.Profiles = field.NewField(table, "profiles")
 	u.Invite = field.NewField(table, "invite")
-	u.IP = field.NewField(table, "ip")
 	u.Status = field.NewInt16(table, "status")
 	u.CreatedAt = field.NewInt64(table, "created_at")
 	u.UpdatedAt = field.NewInt64(table, "updated_at")
@@ -106,16 +100,14 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 12)
+	u.fieldMap = make(map[string]field.Expr, 10)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["phone"] = u.Phone
 	u.fieldMap["name"] = u.Name
 	u.fieldMap["password"] = u.Password
-	u.fieldMap["third_auth"] = u.ThirdAuth
 	u.fieldMap["role"] = u.Role
 	u.fieldMap["profiles"] = u.Profiles
 	u.fieldMap["invite"] = u.Invite
-	u.fieldMap["ip"] = u.IP
 	u.fieldMap["status"] = u.Status
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt

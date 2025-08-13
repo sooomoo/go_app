@@ -1,7 +1,9 @@
 name: searcher 
 
 database:
-  connect_string: root:abc12345@tcp(127.0.0.1:3306)/niu?charset=utf8mb4&parseTime=True&loc=Local
+  # connect_string: root:abc12345@tcp(127.0.0.1:3306)/niu?charset=utf8mb4&parseTime=True&loc=Local
+  connect_string: host=localhost user=postgres password=abc12345 dbname=dev_db port=5432 sslmode=disable TimeZone=Asia/Shanghai 
+  driver: 'postgres'
 
 cache:
   addr: 127.0.0.1:6379
