@@ -69,7 +69,7 @@ func TestJsonUnmarshal(t *testing.T) {
   "name": "134****5555",
   "password": "",
   "role": 0,
-  "profiles": null,
+  "profiles": {"addr":"ddxxxxx"},
   "invite": null,
   "status": 0,
   "createdAt": 1755085371,
