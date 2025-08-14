@@ -1,4 +1,4 @@
-package core
+package codes
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 
 // 自定义34进制字符集（0-9, A-K, M-N, P-Z，共34个字符）
 // 不包含 O、L 这两个容易混淆的字符
-const customBase34Chars = "0123456789ABCDEFGHIJKMNPQRSTUVWXYZ"
+const customBase34Chars = "0123456789abcdefghijkmnpqrstuvwxyz"
 
 // 自定义进制
 type CustomRadix struct {

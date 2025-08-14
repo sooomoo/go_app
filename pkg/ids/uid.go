@@ -3,6 +3,7 @@ package ids
 import (
 	"database/sql/driver"
 	"encoding"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -43,17 +44,39 @@ func NewUID() UID {
 }
 
 // 从 16 进制字符串生成 UID
-func NewUIDFromHex(s string) UID {
-	if len(s) != 32 {
-		return ZeroUID
-	}
-
+func NewUIDFromHex(s string) (UID, error) {
 	var oid UID
-	if _, err := hex.Decode(oid[:], []byte(s)); err != nil {
-		return ZeroUID
+	id, err := uuid.ParseBytes([]byte(s))
+	if err != nil {
+		return oid, err
 	}
+	if id.Version() != uuid.Version(7) {
+		return oid, fmt.Errorf("invalid UUID version (expected %d, got %d)", uuid.Version(7), id.Version())
+	}
+	return UID(id), nil
+}
 
-	return oid
+// 从 base64 字符串生成 UID
+func NewUIDFromBase64(s string) (UID, error) {
+	out, err := base64.RawURLEncoding.DecodeString(s)
+	if err != nil {
+		var oid UID
+		return oid, err
+	}
+	if len(out) != 16 {
+		var oid UID
+		return oid, fmt.Errorf("invalid UUID length (expected 16 bytes, got %d bytes)", len(out))
+	}
+	return UID(out), nil
+}
+
+func (u UID) ToBase64() string {
+	// 使用 base64.RawURLEncoding 编码，去掉 padding
+	return base64.RawURLEncoding.EncodeToString(u[:])
+}
+
+func (u UID) String() string {
+	return hex.EncodeToString(u[:])
 }
 
 // 如果所有字节都为 0，则为 ZeroUID
@@ -104,10 +127,6 @@ func (u *UID) Scan(value any) error {
 // 写入数据库时序列化
 func (u UID) Value() (driver.Value, error) {
 	return u[:], nil
-}
-
-func (u UID) String() string {
-	return hex.EncodeToString(u[:])
 }
 
 // MarshalText implements encoding.TextMarshaler.

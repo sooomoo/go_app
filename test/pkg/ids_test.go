@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"goapp/pkg/core"
 	"goapp/pkg/ids"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -73,10 +72,6 @@ func TestID(t *testing.T) {
 	fmt.Println(seq)
 
 	fmt.Println(seqID)
-	r := core.NewCustomRadix34()
-	fmt.Println(id, len(strconv.FormatInt(id, 10)))
-	fmt.Println(r.Encode(int(id)))
-	fmt.Println(strconv.FormatInt(id, 16))
 }
 
 func TestSeqId(t *testing.T) {
@@ -366,6 +361,7 @@ func TestUIDMarshalJson(t *testing.T) {
 
 func TestUIDMarshalTest(t *testing.T) {
 	id := ids.NewUID()
+	fmt.Println(id)
 	data, err := id.MarshalText()
 	if err != nil {
 		t.Error(err)
@@ -373,7 +369,7 @@ func TestUIDMarshalTest(t *testing.T) {
 	}
 	fmt.Printf("Marshaled UID: %s\n", string(data))
 
-	id2 := ids.NewUIDFromHex(string(data))
+	id2, _ := ids.NewUIDFromHex(string(data))
 	fmt.Printf("UID: %v \n", id2)
 
 	var out ids.UID
@@ -383,6 +379,22 @@ func TestUIDMarshalTest(t *testing.T) {
 		return
 	}
 	fmt.Printf("Unmarshaled UID: %v\n", out)
+}
+
+func TestUIDBaseConvert(t *testing.T) {
+	id := ids.NewUID()
+	fmt.Printf("UID: %v, time: %v\n", id, id.TimeUnixMills())
+	b64 := id.ToBase64()
+	fmt.Printf("base:64, val: %s, len:%d\n", b64, len(b64))
+	fB64, err := ids.NewUIDFromBase64(b64)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	fmt.Printf("from b64 uid: %v, time: %v\n", fB64, fB64.TimeUnixMills())
+	if fB64 != id {
+		fmt.Println("wrong", fB64)
+	}
 }
 
 func BenchmarkUID(b *testing.B) {
