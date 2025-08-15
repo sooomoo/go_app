@@ -104,7 +104,7 @@ func (h *ChatHub) upgrade(c *gin.Context) {
 	}
 	// 解析Token
 	claims := claims.GetClaims(c)
-	userId := fmt.Sprintf("%d", claims.UserId)
+	userId := claims.UserId.String()
 
 	// clientId 全局唯一
 	clientId := headers.GetClientId(c)
