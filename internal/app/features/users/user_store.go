@@ -2,14 +2,11 @@ package users
 
 import (
 	"context"
-	"goapp/internal/app/dao/model"
-	"goapp/internal/app/dao/query"
 	"goapp/internal/app/global"
+	"goapp/internal/app/models"
 	"goapp/pkg/cache"
 	"goapp/pkg/ids"
 	"time"
-
-	"gorm.io/gorm/clause"
 )
 
 const (
@@ -40,43 +37,8 @@ func NewUserStore() *UserStore {
 	}
 }
 
-func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, error) {
-	u := query.User
-
-	// // 使用事务进行 upsert
-	// err := query.Q.Transaction(func(tx *query.Query) error {
-	// 	_, err := tx.User.WithContext(ctx).Where(tx.User.Phone.Eq(phone)).Take()
-	// 	if err == gorm.ErrRecordNotFound {
-	// 		// 添加
-	// 		userId := ids.NewUID()
-	// 		err = tx.User.WithContext(ctx).Create(&model.User{
-	// 			ID:     userId,
-	// 			Phone:  phone,
-	// 			Name:   phone[3:6] + "****" + phone[10:],
-	// 			Role:   int32(RoleNormal),
-	// 			Status: UserStatusNormal,
-	// 			IP: db.JSON{
-	// 				"init":   ip,
-	// 				"latest": ip,
-	// 			},
-	// 			CreatedAt: time.Now().Unix(),
-	// 			UpdatedAt: time.Now().Unix(),
-	// 		})
-	// 	} else {
-	// 		// 更新
-	// 		_, err = tx.User.WithContext(ctx).Where(tx.User.Phone.Eq(phone)).UpdateColumns(map[string]any{
-	// 			u.IP.ColumnName().String():        datatypes.JSONSet(u.IP.ColumnName().String()).Set("{latest}", ip),
-	// 			u.UpdatedAt.ColumnName().String(): time.Now().Unix(),
-	// 		})
-	// 	}
-
-	// 	return err
-	// })
-
-	err := u.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: u.Phone.ColumnName().String()}},
-		DoNothing: true,
-	}).Create(&model.User{
+func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*models.User, error) {
+	user := &models.User{
 		ID:        ids.NewUID(),
 		Phone:     phone,
 		Name:      phone[3:6] + "****" + phone[10:],
@@ -84,27 +46,26 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*model.User, 
 		Status:    UserStatusNormal,
 		CreatedAt: time.Now().Unix(),
 		UpdatedAt: time.Now().Unix(),
-	})
-	if err != nil {
-		return nil, err
 	}
-	user, err := u.WithContext(ctx).Where(u.Phone.Eq(phone)).Take()
+
+	_, err := global.DB().NewInsert().Model(user).Exec(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	r.cache.SetJson(ctx, CacheKeyPrefixUser+user.ID.String(), user, time.Hour)
-	r.UpsertLatestIP(ctx, user.ID, ip)
+	r.UpsertLatestIP(ctx, ids.UID(user.ID), ip)
 
 	return user, nil
 }
 
-func (r *UserStore) GetById(ctx context.Context, userId ids.UID) (*model.User, error) {
+func (r *UserStore) GetById(ctx context.Context, userId ids.UID) (*models.User, error) {
 	key := CacheKeyPrefixUser + userId.String()
-	var user model.User
+	var user models.User
 	err := r.cache.GetJson(ctx, key, &user)
 	if err != nil {
-		user, err := query.User.WithContext(ctx).Where(query.User.ID.Eq(userId)).Take()
+		user := new(models.User)
+		err := global.DB().NewSelect().Model(user).Where("id = ?", userId).Scan(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -115,20 +76,16 @@ func (r *UserStore) GetById(ctx context.Context, userId ids.UID) (*model.User, e
 }
 
 func (r *UserStore) UpsertLatestIP(ctx context.Context, userID ids.UID, ip string) error {
-	uip := query.UserIP
-	err := uip.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: uip.ID.ColumnName().String()}},
-		DoUpdates: clause.Assignments(map[string]any{
-			uip.UpdatedAt.ColumnName().String(): time.Now().Unix(),
-			uip.Latest.ColumnName().String():    ip,
-		}),
-	}).Create(&model.UserIP{
+	ipInfo := &models.UserIP{
 		ID:        userID,
 		Register:  ip,
 		Latest:    ip,
 		CreatedAt: time.Now().Unix(),
 		UpdatedAt: time.Now().Unix(),
-	})
+	}
+
+	_, err := global.DB().NewInsert().Model(ipInfo).On("CONFLICT (?) DO UPDATE", ipInfo.ID).Set("latest = ?, updated_at = ?", ip, time.Now().Unix()).Exec(ctx)
+
 	if err != nil {
 		r.cache.Set(ctx, CacheKeyPrefixLatestIP+userID.String(), ip, time.Hour)
 	}
@@ -142,10 +99,12 @@ func (r *UserStore) GetLatestIP(ctx context.Context, userId ids.UID) string {
 		return ip
 	}
 
-	uipv, err := query.UserIP.WithContext(ctx).Select(query.UserIP.Latest).Where(query.UserIP.ID.Eq(userId)).Take()
+	uipv := new(models.UserIP)
+	err := global.DB().NewSelect().Model(uipv).Where("id = ?", userId).Scan(ctx)
 	if err != nil {
 		return ""
 	}
+
 	r.cache.Set(ctx, key, uipv.Latest, time.Hour)
 	return uipv.Latest
 }

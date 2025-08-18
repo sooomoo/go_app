@@ -86,7 +86,7 @@ func (g *GlobalInstance) Init(ctx context.Context) {
 			},
 		)
 	}
-	g.db, err = db.InitReplicasDB(g.config.Database.Driver, g.config.Database.ConnectString, nil, 10*time.Second, &gorm.Config{
+	g.db, err = db.InitReplicasGormDB(g.config.Database.Driver, g.config.Database.ConnectString, nil, 10*time.Second, &gorm.Config{
 		Logger: newLogger,
 	})
 	if err != nil {

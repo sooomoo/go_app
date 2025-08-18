@@ -3,13 +3,11 @@ package global
 import (
 	"context"
 	"fmt"
-	"goapp/internal/app/dao/query"
 	"goapp/pkg/cache"
 	"goapp/pkg/core"
 	"goapp/pkg/db"
 	"goapp/pkg/distribute"
 	"goapp/pkg/ids"
-	syslog "log"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -18,8 +16,7 @@ import (
 	"github.com/panjf2000/ants/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	"github.com/uptrace/bun"
 )
 
 var mut sync.RWMutex
@@ -31,7 +28,7 @@ var cach *cache.Cache
 var locker *distribute.Locker
 var queue distribute.MessageQueue
 var appConfig *AppConfig
-var ormdb *gorm.DB
+var bunDB *bun.DB
 
 func Init(ctx context.Context) {
 	mut.Lock()
@@ -54,29 +51,35 @@ func Init(ctx context.Context) {
 		panic(err)
 	}
 
-	var newLogger logger.Interface
-	env := os.Getenv("env")
-	if env != "release" {
-		newLogger = logger.New(
-			syslog.New(os.Stdout, "\r\n", syslog.LstdFlags), // 输出到控制台
-			logger.Config{
-				SlowThreshold:             time.Millisecond * 200, // 慢查询阈值（超过200毫秒标记）
-				LogLevel:                  logger.Info,            // 输出所有SQL（包括参数、耗时）
-				Colorful:                  true,                   // 彩色输出
-				IgnoreRecordNotFoundError: true,                   // 忽略"未找到记录"错误
-			},
-		)
-	}
-	dbMaster := appConfig.Database.ConnectString
-	dbSlaves := []string{appConfig.Database.ConnectString}
-	ormdb, err = db.InitReplicasDB(appConfig.Database.Driver, dbMaster, dbSlaves, 10*time.Second, &gorm.Config{
-		Logger: newLogger,
-	})
+	// // for Mysql
+	// var newLogger logger.Interface
+	// env := os.Getenv("env")
+	// if env != "release" {
+	// 	newLogger = logger.New(
+	// 		syslog.New(os.Stdout, "\r\n", syslog.LstdFlags), // 输出到控制台
+	// 		logger.Config{
+	// 			SlowThreshold:             time.Millisecond * 200, // 慢查询阈值（超过200毫秒标记）
+	// 			LogLevel:                  logger.Info,            // 输出所有SQL（包括参数、耗时）
+	// 			Colorful:                  true,                   // 彩色输出
+	// 			IgnoreRecordNotFoundError: true,                   // 忽略"未找到记录"错误
+	// 		},
+	// 	)
+	// }
+	// dbMaster := appConfig.Database.ConnectString
+	// dbSlaves := []string{appConfig.Database.ConnectString}
+	// ormdb, err = db.InitReplicasGormDB(appConfig.Database.Driver, dbMaster, dbSlaves, 10*time.Second, &gorm.Config{
+	// 	Logger: newLogger,
+	// })
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// // 设置默认的 Db 连接
+	// query.SetDefault(ormdb)
+
+	bunDB, err = db.OpenDB(appConfig.Database.ConnectString, 10*time.Second)
 	if err != nil {
 		panic(err)
 	}
-	// 设置默认的 Db 连接
-	query.SetDefault(ormdb)
 
 	cach, err = cache.NewCache(ctx, appConfig.Cache.GetRedisOption(), nil)
 	if err != nil {
@@ -137,18 +140,18 @@ func Release() {
 	}
 	defer released.Store(true)
 
-	if sqlDB, err := ormdb.DB(); err == nil {
-		_ = sqlDB.Close()
-	}
-
+	bunDB.Close()
 	pool.Release()
 	cach.Close()
 	locker.Close()
 	queue.Close()
 }
 
-func GetDB() *gorm.DB {
-	return ormdb
+//	func DB() *gorm.DB {
+//		return ormdb
+//	}
+func DB() *bun.DB {
+	return bunDB
 }
 func GetCoroutinePool() core.CoroutinePool {
 	return pool

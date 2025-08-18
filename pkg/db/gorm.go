@@ -71,7 +71,7 @@ func getAutoReconnectDialector(driver Driver, dsn string, healthCheckInterval ti
 }
 
 // 使用自定义Dialector初始化DB
-func InitDB(driver Driver, dsn string, healthCheckInterval time.Duration, opts ...gorm.Option) (*gorm.DB, error) {
+func InitGormDB(driver Driver, dsn string, healthCheckInterval time.Duration, opts ...gorm.Option) (*gorm.DB, error) {
 	dialector := getAutoReconnectDialector(driver, dsn, healthCheckInterval)
 	db, err := gorm.Open(dialector, opts...)
 	if err != nil {
@@ -92,7 +92,7 @@ func InitDB(driver Driver, dsn string, healthCheckInterval time.Duration, opts .
 	return db, nil
 }
 
-func InitReplicasDB(driver Driver, master string, replicas []string, healthCheckInterval time.Duration, opts ...gorm.Option) (*gorm.DB, error) {
+func InitReplicasGormDB(driver Driver, master string, replicas []string, healthCheckInterval time.Duration, opts ...gorm.Option) (*gorm.DB, error) {
 	dialector := getAutoReconnectDialector(driver, master, healthCheckInterval)
 	// 初始化主库连接
 	db, err := gorm.Open(dialector, opts...)

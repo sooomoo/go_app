@@ -126,7 +126,7 @@ func (u *UID) Scan(value any) error {
 
 // 写入数据库时序列化
 func (u UID) Value() (driver.Value, error) {
-	return u[:], nil
+	return u.String(), nil
 }
 
 // MarshalText implements encoding.TextMarshaler.
