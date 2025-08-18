@@ -39,16 +39,21 @@ func NewUserStore() *UserStore {
 
 func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*models.User, error) {
 	user := &models.User{
-		ID:        ids.NewUID(),
-		Phone:     phone,
-		Name:      phone[3:6] + "****" + phone[10:],
-		Role:      int32(RoleNormal),
-		Status:    UserStatusNormal,
-		CreatedAt: time.Now().Unix(),
-		UpdatedAt: time.Now().Unix(),
+		ID:     ids.NewUID(),
+		Phone:  phone,
+		Name:   phone[3:6] + "****" + phone[10:],
+		Role:   int32(RoleNormal),
+		Status: UserStatusNormal,
 	}
 
-	_, err := global.DB().NewInsert().Model(user).Exec(ctx)
+	_, err := global.DB().NewInsert().Model(user).
+		On("CONFLICT (phone) DO NOTHING").
+		Exec(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = global.DB().NewSelect().Model(user).Where("phone = ?", phone).Scan(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -77,16 +82,14 @@ func (r *UserStore) GetById(ctx context.Context, userId ids.UID) (*models.User, 
 
 func (r *UserStore) UpsertLatestIP(ctx context.Context, userID ids.UID, ip string) error {
 	ipInfo := &models.UserIP{
-		ID:        userID,
-		Register:  ip,
-		Latest:    ip,
-		CreatedAt: time.Now().Unix(),
-		UpdatedAt: time.Now().Unix(),
+		ID:       userID,
+		Register: ip,
+		Latest:   ip,
 	}
-
-	_, err := global.DB().NewInsert().Model(ipInfo).On("CONFLICT (?) DO UPDATE", ipInfo.ID).Set("latest = ?, updated_at = ?", ip, time.Now().Unix()).Exec(ctx)
-
-	if err != nil {
+	_, err := global.DB().NewInsert().Model(ipInfo).
+		On("CONFLICT (id) DO UPDATE").
+		Set("latest = ?, updated_at = ?", ip, time.Now().Unix()).Exec(ctx)
+	if err == nil {
 		r.cache.Set(ctx, CacheKeyPrefixLatestIP+userID.String(), ip, time.Hour)
 	}
 	return err
