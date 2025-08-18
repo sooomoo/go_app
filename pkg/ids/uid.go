@@ -4,11 +4,11 @@ import (
 	"database/sql/driver"
 	"encoding"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -220,18 +220,24 @@ func (id UID) ToUUID() uuid.UUID {
 func (id UID) TimeUnixMills() int64 {
 	switch id.Version() {
 	case 7:
-		time := binary.BigEndian.Uint64(id[:8])
-		return int64(time)
+		// data := []byte{0, 0}
+		// data = append(data, id[:6]...)
+		// time := binary.BigEndian.Uint64(data)
+		time := int64(id[0])<<40 | int64(id[1])<<32 | int64(id[2])<<24 | int64(id[3])<<16 | int64(id[4])<<8 | int64(id[5])
+		return time
 	}
 	return -1
 }
 
 // ID 生成的时间，单位是 seconds；如果无法解码返回 -1
 func (id UID) TimeUnixSeconds() int64 {
-	switch id.Version() {
-	case 7:
-		time := binary.BigEndian.Uint64(id[:8])
-		return int64(time) / 1e3
+	time := id.TimeUnixMills()
+	if time == -1 {
+		return time
 	}
-	return -1
+	return id.TimeUnixMills() / 1e3
+}
+
+func (id UID) Time() time.Time {
+	return time.UnixMilli(id.TimeUnixMills())
 }

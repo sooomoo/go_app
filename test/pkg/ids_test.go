@@ -397,6 +397,19 @@ func TestUIDBaseConvert(t *testing.T) {
 	}
 }
 
+func TestUIDTimeParse(t *testing.T) {
+	id1, err := ids.NewUIDFromHex("0198bb52-b106-7cb9-ba1a-49731af0e27f")
+	id2, err := ids.NewUIDFromHex("0198bb5b-3509-7a19-94c2-a641d5490679")
+	fmt.Println(err)
+	ids := []ids.UID{
+		id1,
+		id2,
+	}
+	for _, i := range ids {
+		fmt.Printf("time: %v\n", i.Time())
+	}
+}
+
 func BenchmarkUID(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
