@@ -69,13 +69,12 @@ func (r *UserStore) GetById(ctx context.Context, userId ids.UID) (*models.User, 
 	var user models.User
 	err := r.cache.GetJson(ctx, key, &user)
 	if err != nil {
-		user := new(models.User)
-		err := global.DB().NewSelect().Model(user).Where("id = ?", userId).Scan(ctx)
+		err := global.DB().NewSelect().Model(&user).Where("id = ?", userId).Scan(ctx)
 		if err != nil {
 			return nil, err
 		}
 		r.cache.SetJson(ctx, key, user, time.Hour)
-		return user, nil
+		return &user, nil
 	}
 	return &user, nil
 }
@@ -103,7 +102,7 @@ func (r *UserStore) GetLatestIP(ctx context.Context, userId ids.UID) string {
 	}
 
 	uipv := new(models.UserIP)
-	err := global.DB().NewSelect().Model(uipv).Where("id = ?", userId).Scan(ctx)
+	err := global.DB().NewSelect().Model(uipv).Column("latest").Where("id = ?", userId).Scan(ctx)
 	if err != nil {
 		return ""
 	}
