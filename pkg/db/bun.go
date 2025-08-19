@@ -3,11 +3,13 @@ package db
 import (
 	"database/sql"
 	"log"
+	"os"
 	"time"
 
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
+	"github.com/uptrace/bun/extra/bundebug"
 )
 
 func OpenDB(dsn string, healthCheckInterval time.Duration, opts ...pgdriver.Option) (*bun.DB, error) {
@@ -27,6 +29,16 @@ func OpenDB(dsn string, healthCheckInterval time.Duration, opts ...pgdriver.Opti
 		return nil, err
 	}
 	db := bun.NewDB(sqlDB, pgdialect.New(), bun.WithDiscardUnknownColumns())
+	db.AddQueryHook(bundebug.NewQueryHook(
+		// // disable the hook
+		// bundebug.WithEnabled(false),
+
+		// // BUNDEBUG=1 logs failed queries
+		// // BUNDEBUG=2 logs all queries
+		// bundebug.FromEnv("BUNDEBUG"),
+		bundebug.WithVerbose(os.Getenv("env") == "dev"),
+		bundebug.WithWriter(log.New(os.Stdout, "\r\n", log.LstdFlags).Writer()),
+	))
 	// db.AddQueryHook()
 	return db, nil
 }

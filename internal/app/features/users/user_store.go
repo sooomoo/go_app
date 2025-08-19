@@ -64,7 +64,17 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*models.User,
 	return user, nil
 }
 
-func (r *UserStore) GetById(ctx context.Context, userId ids.UID) (*models.User, error) {
+func (r *UserStore) DeleteByID(ctx context.Context, userId ids.UID) error {
+	_, err := global.DB().NewDelete().Model((*models.User)(nil)).Where("id = ?", userId).Exec(ctx)
+	if err == nil {
+		key := CacheKeyPrefixUser + userId.String()
+		ipkey := CacheKeyPrefixLatestIP + userId.String()
+		r.cache.KeyDel(ctx, key, ipkey)
+	}
+	return err
+}
+
+func (r *UserStore) GetByID(ctx context.Context, userId ids.UID) (*models.User, error) {
 	key := CacheKeyPrefixUser + userId.String()
 	var user models.User
 	err := r.cache.GetJson(ctx, key, &user)

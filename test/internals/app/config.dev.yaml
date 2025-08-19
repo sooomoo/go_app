@@ -1,0 +1,106 @@
+name: niu-dev
+worker_id: 1
+addr: 127.0.0.1:8001
+
+database:
+  # connect_string: root:abc12345@tcp(127.0.0.1:3306)/niu?charset=utf8mb4&parseTime=True&loc=Local
+  # gorm 需要使用此格式 connect_string: host=localhost user=postgres password=abc12345 dbname=dev_db port=5432 sslmode=disable TimeZone=Asia/Shanghai 
+  connect_string: postgres://postgres:abc12345@localhost:5432/dev_db?sslmode=disable&timezone=Asia/Shanghai
+  driver: 'postgres'
+
+cache:
+  addr: 127.0.0.1:6379
+  db: 1
+
+locker:
+  addr: 127.0.0.1:6379
+  db: 2
+  ttl: 15 # 15秒
+  retry_strategy: linear # linear or exponential
+  backoff: 2 # 2秒
+  max_retry: 3
+
+queue:
+  addr: 127.0.0.1:6379
+  db: 3
+  xadd_maxlen: 1024 
+  batch_size: 100
+
+hub:
+  sub_protocols:
+    - niu-v1
+  live_check_duration: 120 # 120秒
+  conn_max_idle_time: 60   # 60秒
+  read_timeout: 30         # 30秒
+  write_timeout: 30        # 30秒
+  handshake_timeout: 10    # 10秒
+  enable_compression: false
+
+authenticator:
+  box_key_pair:
+    pri: WV6RiixviXRntro4x3y3J12ZFgOVw1jfaHBaRvuUD3k
+    pub: O6TL8sB1cDQZOEmRYscyPBurNk9Vgw6ezdqOlOTxnSI
+  sign_key_pair:
+    pri: bkZWXemlxFdUpqrUxYApS2sMbQ1hk1vcfRHMv3AtaJ4
+    pub: iO7IS_stxNgDl7m_2vpCY-WrLm-r4VQ7MtopUKNeuMA
+  enable_crypto: true
+  paths_need_crypt:
+    - "*"
+  paths_not_crypt:
+    - 
+  paths_need_auth: # 需要验证Token的路径
+    - "*"
+  paths_not_auth: # 不需要验证Token的路径
+    - /v1/auth/login/prepare
+    - /v1/auth/login/do
+    - /v1/auth/refresh
+  jwt:
+    issuer: niu
+    secret: 1234567890
+    access_ttl: 60 # 60分钟
+    refresh_ttl: 43200 # 30天
+    cookie_domain: 
+    cookie_secure: true
+    cookie_httponly: true
+    cookie_same_site_mode: 2 # 1: default , 2: lax, 3: strict, 4: none
+  replay_max_interval: 120 # 120秒
+  
+cors:
+  allow_origins:
+    - http://localhost:3000
+    - http://127.0.0.1:3000
+    - https://localhost:3000
+    - https://127.0.0.1:3000
+    - http://localhost:5173
+    - http://127.0.0.1:5173
+    - https://localhost:5173
+    - https://127.0.0.1:5173
+    - http://wails.localhost:34115
+    - http://wails.127.0.0.1:34115
+  allow_methods:
+    - GET
+    - POST
+    - OPTIONS
+  allow_headers:
+    - Content-Type
+    - Content-Length
+    - Authorization
+    - Origin
+    - Cookie
+    - X-Nonce
+    - X-Timestamp
+    - X-Signature
+    - X-Platform
+    - X-Session
+    - X-Client
+    - X-CSRF
+  expose_headers: 
+    - X-Nonce
+    - X-Timestamp
+    - X-Signature
+    - X-RawType
+    - Set-Cookie
+    - X-CSRF
+  allow_credentials: true
+  max_age: 120 # 120分钟
+  allow_web_sockets: true 
