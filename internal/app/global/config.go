@@ -21,8 +21,9 @@ type AppConfig struct {
 }
 
 type DatabaseConfig struct {
-	ConnectString string    `mapstructure:"connect_string"`
-	Driver        db.Driver `mapstructure:"driver"`
+	Master   string    `mapstructure:"master"`
+	Replicas []string  `mapstructure:"replicas"`
+	Driver   db.Driver `mapstructure:"driver"`
 }
 
 type CacheConfig struct {
