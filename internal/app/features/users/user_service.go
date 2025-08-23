@@ -1,13 +1,13 @@
 package users
 
 import (
+	"database/sql"
 	"errors"
 	"goapp/internal/app/shared"
 	"goapp/internal/app/shared/claims"
 	"goapp/pkg/ids"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 type UserService struct {
@@ -35,7 +35,7 @@ func (u *UserService) GetSelfInfo(c *gin.Context) (*GetUserInfoResponseDto, erro
 		return nil, errors.New("not found")
 	}
 	user, err := u.userRepo.GetByID(c, cc.UserId)
-	if err == gorm.ErrRecordNotFound {
+	if errors.Is(err, sql.ErrNoRows) {
 		c.AbortWithStatus(401)
 		return nil, nil
 	}
