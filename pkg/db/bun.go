@@ -54,11 +54,6 @@ func OpenDB(dsn string, replicas []string, healthCheckInterval time.Duration, op
 	}
 
 	db := bun.NewDB(sqlDB, pgdialect.New(), repdbOpts...)
-	db.SetConnMaxIdleTime(10 * time.Minute)
-	db.SetMaxIdleConns(10)                  // 空闲连接池中的最大连接数
-	db.SetMaxOpenConns(50)                  // 数据库打开的最大连接数
-	db.SetConnMaxLifetime(10 * time.Minute) // 连接可复用的最大时间
-	db.SetConnMaxIdleTime(10 * time.Minute) // 连接最大空闲时间
 	db.AddQueryHook(bundebug.NewQueryHook(
 		// // disable the hook
 		// bundebug.WithEnabled(false),
