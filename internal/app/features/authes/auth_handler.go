@@ -44,13 +44,13 @@ func (h *AuthHandler) handleLoginPrepare(c *gin.Context) {
 
 // 手机验证码登录
 func (h *AuthHandler) handleLoginDo(c *gin.Context) {
-	var req LoginRequest
+	var req MsgCodeLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(200, h.NewResponseInvalidArgs(""))
 		return
 	}
 
-	svr := NewAuthService()
+	svr := NewMsgCodeAuthService()
 	reply := svr.Authorize(c, &req)
 	if c.IsAborted() {
 		return
