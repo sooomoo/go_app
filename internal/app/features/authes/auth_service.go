@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"goapp/internal/app/features/users"
 	"goapp/internal/app/global"
+	"goapp/internal/app/models"
 	"goapp/internal/app/shared"
 	"goapp/internal/app/shared/claims"
 	"goapp/internal/app/shared/headers"
@@ -121,7 +122,7 @@ func (a *AuthService) Authorize(ctx *gin.Context, req *LoginRequest) *AuthRespon
 		return nil
 	}
 	// 该用户已被禁用
-	if user.Status == users.UserStatusBlock {
+	if user.Status == models.UserStatusBanned {
 		ctx.AbortWithStatus(403)
 		return nil
 	}

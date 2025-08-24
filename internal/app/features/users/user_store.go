@@ -5,21 +5,11 @@ import (
 	"goapp/internal/app/global"
 	"goapp/internal/app/models"
 	"goapp/pkg/cache"
+	"goapp/pkg/db"
 	"goapp/pkg/ids"
 	"time"
-)
 
-const (
-	UserStatusNormal int16 = 0
-	UserStatusBlock  int16 = 1
-)
-
-type Role int32
-
-const (
-	RoleNormal Role = 0b00000000 // 普通用户
-	RolePro    Role = 0b00000001 // 普通用户
-	RoleAdmin  Role = 0b10000000 // 管理员
+	"github.com/jackc/pgerrcode"
 )
 
 const (
@@ -42,16 +32,28 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*models.User,
 		ID:     ids.NewUID(),
 		Phone:  phone,
 		Name:   phone[3:6] + "****" + phone[10:],
-		Role:   int32(RoleNormal),
-		Status: UserStatusNormal,
+		Role:   models.UserRoleNormal,
+		Status: models.UserStatusNormal,
 	}
 
+	// 方式一：通过唯一索引的错误来判断是否存在
 	_, err := global.DB().NewInsert().Model(user).
-		On("CONFLICT (phone) DO NOTHING").
 		Exec(ctx)
-	if err != nil {
+	if err != nil && !db.IsPGErrorCode(err, pgerrcode.UniqueViolation) {
 		return nil, err
 	}
+
+	// // 方式二：通过约束来处理唯一索引冲突
+	// ALTER TABLE users DROP constraint if Exists users_unique;
+	// ALTER TABLE users
+	// ADD CONSTRAINT users_unique
+	// UNIQUE NULLS NOT DISTINCT (phone, deleted_at);
+	// _, err := global.DB().NewInsert().Model(user).
+	// 	On("CONFLICT on CONSTRAINT users_unique DO NOTHING").
+	// 	Exec(ctx)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	err = global.DB().NewSelect().Model(user).Where("phone = ?", phone).Scan(ctx)
 	if err != nil {
@@ -97,7 +99,7 @@ func (r *UserStore) UpsertLatestIP(ctx context.Context, userID ids.UID, ip strin
 	}
 	_, err := global.DB().NewInsert().Model(ipInfo).
 		On("CONFLICT (id) DO UPDATE").
-		Set("latest = ?, updated_at = ?", ip, time.Now().Unix()).Exec(ctx)
+		Set("latest = ?, updated_at = ?", ip, time.Now()).Exec(ctx)
 	if err == nil {
 		r.cache.Set(ctx, CacheKeyPrefixLatestIP+userID.String(), ip, time.Hour)
 	}

@@ -3,6 +3,7 @@ package users
 import (
 	"database/sql"
 	"errors"
+	"goapp/internal/app/models"
 	"goapp/internal/app/shared"
 	"goapp/internal/app/shared/claims"
 	"goapp/pkg/ids"
@@ -21,11 +22,11 @@ func NewUserService() *UserService {
 }
 
 type GetUserInfoResponse struct {
-	Id        ids.UID `json:"id"`
-	Name      string  `json:"name"`
-	AvatarUrl string  `json:"avatarUrl"`
-	Role      int32   `json:"role"`
-	IpLatest  string  `json:"ipLatest"`
+	Id        ids.UID         `json:"id"`
+	Name      string          `json:"name"`
+	AvatarUrl string          `json:"avatarUrl"`
+	Role      models.UserRole `json:"role"`
+	IpLatest  string          `json:"ipLatest"`
 }
 type GetUserInfoResponseDto shared.ResponseDto[*GetUserInfoResponse]
 

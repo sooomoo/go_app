@@ -78,8 +78,8 @@ func ToPGError(err error) (*pgdriver.Error, bool) {
 		return nil, false
 	}
 
-	pgErr, ok := err.(*pgdriver.Error)
-	return pgErr, ok
+	pgErr, ok := err.(pgdriver.Error)
+	return &pgErr, ok
 }
 
 // IsPGErrorCode reports whether the given error is a *pgdriver.Error
