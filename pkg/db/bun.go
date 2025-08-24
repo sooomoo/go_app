@@ -92,6 +92,6 @@ func IsPGErrorCode(err error, code string) bool {
 	return er.Field('C') == code
 }
 
-func IsPgInvalidTransactionState(err error) bool {
+func IsPGInvalidTransactionState(err error) bool {
 	return IsPGErrorCode(err, pgerrcode.InvalidTransactionState)
 }
