@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/jackc/pgerrcode"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
@@ -64,6 +65,33 @@ func OpenDB(dsn string, replicas []string, healthCheckInterval time.Duration, op
 		bundebug.WithVerbose(os.Getenv("env") == "dev"),
 		bundebug.WithWriter(log.New(os.Stdout, "\r\n", log.LstdFlags).Writer()),
 	))
+
 	// db.AddQueryHook()
 	return db, nil
+}
+
+// ToPGError tries to convert the given error to *pgdriver.Error.
+//
+// The second return value indicates whether the conversion was successful.
+func ToPGError(err error) (*pgdriver.Error, bool) {
+	if err == nil {
+		return nil, false
+	}
+
+	pgErr, ok := err.(*pgdriver.Error)
+	return pgErr, ok
+}
+
+// IsPGErrorCode reports whether the given error is a *pgdriver.Error
+// with the given PostgreSQL error code.
+func IsPGErrorCode(err error, code string) bool {
+	er, ok := ToPGError(err)
+	if !ok {
+		return false
+	}
+	return er.Field('C') == code
+}
+
+func IsPgInvalidTransactionState(err error) bool {
+	return IsPGErrorCode(err, pgerrcode.InvalidTransactionState)
 }
