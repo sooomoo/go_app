@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"goapp/internal/app/features/authes/authers"
+	"goapp/internal/app/features/authes/stores"
 	"goapp/internal/app/features/users"
 	"goapp/internal/app/global"
+	"goapp/internal/app/models"
 	"goapp/internal/app/shared"
 	"goapp/internal/app/shared/claims"
 	"goapp/internal/app/shared/headers"
@@ -20,15 +23,20 @@ import (
 )
 
 type AuthService struct {
-	authRepo *AuthStore
+	authRepo *stores.AuthStore
 	userRepo *users.UserStore
+	auther   authers.Auther
 }
 
 func NewAuthService() *AuthService {
 	return &AuthService{
-		authRepo: NewAuthStore(),
+		authRepo: stores.NewAuthStore(),
 		userRepo: users.NewUserStore(),
 	}
+}
+
+func (a *AuthService) SetAuther(auther authers.Auther) {
+	a.auther = auther
 }
 
 type PrepareLoginResponse struct {
@@ -74,6 +82,42 @@ type AuthResponse struct {
 }
 
 type AuthResponseDto = shared.ResponseDto[*AuthResponse]
+
+func (a *AuthService) Authorize(ctx *gin.Context, req authers.AuthRequest) *AuthResponseDto {
+	if a.auther == nil {
+		ctx.AbortWithStatus(500)
+		return nil
+	}
+	user := a.auther.Authorize(ctx, req)
+	if ctx.IsAborted() {
+		return nil
+	}
+
+	// 该用户已被禁用
+	if user.Status == models.UserStatusBanned {
+		ctx.AbortWithStatus(403)
+		return nil
+	}
+
+	// 生成token, 将这些Token与该用户绑定
+	accessToken, refreshToken, err := a.GenerateTokenPair(ctx, user.ID)
+	if err != nil {
+		ctx.AbortWithError(500, err)
+		return nil
+	}
+
+	jwtConfig := global.GetAuthConfig().Jwt
+	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
+	ctx.SetCookie(headers.CookieKeyCsrfToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
+
+	if headers.GetPlatform(ctx) == core.Web {
+		clientId := headers.GetClientId(ctx)
+		a.setupAuthorizedCookie(ctx, clientId, accessToken, refreshToken)
+		return &AuthResponseDto{Code: shared.RespCodeSucceed}
+	}
+
+	return &AuthResponseDto{Code: shared.RespCodeSucceed, Data: &AuthResponse{accessToken, refreshToken}}
+}
 
 type RefreshTokenRequest struct {
 	Token string `json:"token"`

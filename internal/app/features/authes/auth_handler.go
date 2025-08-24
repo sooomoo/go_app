@@ -1,6 +1,7 @@
 package authes
 
 import (
+	"goapp/internal/app/features/authes/authers"
 	"goapp/internal/app/shared"
 
 	"github.com/gin-gonic/gin"
@@ -44,13 +45,14 @@ func (h *AuthHandler) handleLoginPrepare(c *gin.Context) {
 
 // 手机验证码登录
 func (h *AuthHandler) handleLoginDo(c *gin.Context) {
-	var req MsgCodeLoginRequest
+	var req authers.MsgCodeLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(200, h.NewResponseInvalidArgs(""))
 		return
 	}
 
-	svr := NewMsgCodeAuthService()
+	svr := NewAuthService()
+	svr.SetAuther(authers.NewMsgCodeAuther())
 	reply := svr.Authorize(c, &req)
 	if c.IsAborted() {
 		return

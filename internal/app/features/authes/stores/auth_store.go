@@ -1,4 +1,4 @@
-package authes
+package stores
 
 import (
 	"context"
