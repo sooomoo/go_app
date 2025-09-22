@@ -5,9 +5,9 @@ addr: 127.0.0.1:8001
 database:
   # connect_string: root:abc12345@tcp(127.0.0.1:3306)/niu?charset=utf8mb4&parseTime=True&loc=Local
   # gorm 需要使用此格式 connect_string: host=localhost user=postgres password=abc12345 dbname=dev_db port=5432 sslmode=disable TimeZone=Asia/Shanghai 
-  master: postgres://postgres:abc12345@localhost:5432/dev_db?sslmode=disable&timezone=Asia/Shanghai
+  master: postgres://postgres:abc12345@localhost:5432/dev?sslmode=disable&timezone=Asia/Shanghai
   replicas:
-  - postgres://postgres:abc12345@localhost:5432/dev_db?sslmode=disable&timezone=Asia/Shanghai
+  - postgres://postgres:abc12345@localhost:5432/dev?sslmode=disable&timezone=Asia/Shanghai
   driver: 'postgres'
 
 cache:

@@ -97,7 +97,7 @@ func main() {
 	// 优雅关闭
 	go func() {
 		if env == "dev" {
-			if err := svr.ListenAndServeTLS("/Users/muro/work/certs/cert.pem", "/Users/muro/work/certs/key.pem"); err != nil && err != http.ErrServerClosed {
+			if err := svr.ListenAndServeTLS("E:\\experiment\\certs\\localhost+2.pem", "E:\\experiment\\certs\\localhost+2-key.pem"); err != nil && err != http.ErrServerClosed {
 				log.Fatal().Stack().Err(err).Msg("启动服务器失败")
 			}
 		} else {
