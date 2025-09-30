@@ -45,6 +45,10 @@ func (u *UserService) GetSelfInfo(c *gin.Context) (*GetUserInfoResponseDto, erro
 	}
 
 	ip := u.userRepo.GetLatestIP(c, user.ID)
+	avatar := ""
+	if user.Profiles.Target != nil {
+		avatar = user.Profiles.Target.Avatar
+	}
 
 	// convert
 	return &GetUserInfoResponseDto{
@@ -53,7 +57,7 @@ func (u *UserService) GetSelfInfo(c *gin.Context) (*GetUserInfoResponseDto, erro
 		Data: &GetUserInfoResponse{
 			Id:        user.ID,
 			Name:      user.Name,
-			AvatarUrl: user.Profiles.GetString("avatar", ""),
+			AvatarUrl: avatar,
 			Role:      user.Role,
 			IpLatest:  ip,
 		},

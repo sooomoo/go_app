@@ -132,8 +132,24 @@ func (JSON) GormDBDataType(db *gorm.DB, field *schema.Field) string {
 	return ""
 }
 
+// ​GormValuerInterface接口​：这是 GORM 提供的扩展接口，要求实现
+//
+//	GormValue(ctx context.Context, db *gorm.DB) (clause.Expr)
+//
+// 方法，它的能力更强，允许你返回一个完整的 SQL 表达式（clause.Expr），而不仅仅是一个简单的值
+// 这使得你可以嵌入数据库函数或构建更复杂的逻辑。
+//
+//   - 如果没有复杂的需求，不实现此接口也可以
 func (jm JSON) GormValue(ctx context.Context, db *gorm.DB) clause.Expr {
+	if len(jm) == 0 {
+		// 返回一个表示 SQL NULL 的表达式
+		return clause.Expr{SQL: "NULL"}
+	}
 	data, _ := jm.MarshalJSON()
+	if strings.EqualFold(string(data), "null") {
+		// 返回一个表示 SQL NULL 的表达式
+		return clause.Expr{SQL: "NULL"}
+	}
 	switch db.Dialector.Name() {
 	case "mysql":
 		if v, ok := db.Dialector.(*mysql.Dialector); ok && !strings.Contains(v.ServerVersion, "MariaDB") {

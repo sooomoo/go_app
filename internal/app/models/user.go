@@ -24,19 +24,29 @@ const (
 	UserRoleAdmin  UserRole = 0b10000000 // 管理员
 )
 
+type UserProfile struct {
+	Avatar string `json:"avatar"`
+}
+
+type UserInvite struct {
+	UserID     ids.UID   `json:"userId"`     // 邀请人的ID
+	InviteTime time.Time `json:"inviteTime"` // 邀请人发起邀请的时间
+	AcceptTime time.Time `json:"acceptTime"` // 被邀请人接受邀请的时间
+}
+
 type User struct {
 	bun.BaseModel `bun:"users,alias:u"`
-	ID            ids.UID    `bun:"id,pk" json:"id"`
-	Phone         string     `bun:"phone,notnull" json:"phone"`
-	Name          string     `bun:"name,notnull" json:"name"`
-	Password      string     `bun:"password,notnull" json:"password"`
-	Role          UserRole   `bun:"role,notnull" json:"role"`
-	Profiles      db.JSON    `bun:"profiles" json:"profiles"`
-	Invite        db.JSON    `bun:"invite" json:"invite"`
-	Status        UserStatus `bun:"status,notnull" json:"status"`
-	CreatedAt     time.Time  `bun:"created_at,notnull" json:"createdAt"`
-	UpdatedAt     time.Time  `bun:"updated_at,notnull" json:"updatedAt"`
-	DeletedAt     time.Time  `bun:"deleted_at,soft_delete,nullzero" json:"deletedAt"`
+	ID            ids.UID                `bun:"id,pk" json:"id"`
+	Phone         string                 `bun:"phone,notnull" json:"phone"`
+	Name          string                 `bun:"name,notnull" json:"name"`
+	Password      string                 `bun:"password,notnull" json:"password"`
+	Role          UserRole               `bun:"role,notnull" json:"role"`
+	Profiles      db.Object[UserProfile] `bun:"profiles" json:"profiles"`
+	Invite        db.Object[UserInvite]  `bun:"invite" json:"invite"`
+	Status        UserStatus             `bun:"status,notnull" json:"status"`
+	CreatedAt     time.Time              `bun:"created_at,notnull" json:"createdAt"`
+	UpdatedAt     time.Time              `bun:"updated_at,notnull" json:"updatedAt"`
+	DeletedAt     time.Time              `bun:"deleted_at,soft_delete,nullzero" json:"deletedAt"`
 }
 
 var _ bun.BeforeAppendModelHook = (*User)(nil)
