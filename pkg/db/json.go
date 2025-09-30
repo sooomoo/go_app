@@ -90,6 +90,10 @@ func (j *JSON) Scan(val any) error {
 	default:
 		return errors.New(fmt.Sprint("Failed to unmarshal JSONB value:", val))
 	}
+	if len(ba) == 0 || string(ba) == "null" {
+		*j = make(JSON)
+		return nil
+	}
 	t := map[string]any{}
 	rd := bytes.NewReader(ba)
 	decoder := json.NewDecoder(rd)
@@ -141,7 +145,7 @@ func (JSON) GormDBDataType(db *gorm.DB, field *schema.Field) string {
 //
 //   - 如果没有复杂的需求，不实现此接口也可以
 func (jm JSON) GormValue(ctx context.Context, db *gorm.DB) clause.Expr {
-	if len(jm) == 0 {
+	if jm == nil {
 		// 返回一个表示 SQL NULL 的表达式
 		return clause.Expr{SQL: "NULL"}
 	}

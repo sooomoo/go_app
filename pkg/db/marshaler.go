@@ -152,7 +152,7 @@ func (obj *Object[T]) UnmarshalJSON(b []byte) error {
 	// null into a non-pointer SeqID field will leave the field unchanged.
 	// For pointer values, encoding/json will set the pointer to nil and will
 	// not enter the UnmarshalJSON hook.
-	if string(b) == "null" || string(b) == "NULL" {
+	if len(b) == 0 || string(b) == "null" || string(b) == "NULL" {
 		*obj = Object[T]{Target: nil}
 		return nil
 	}
