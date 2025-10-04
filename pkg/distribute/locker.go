@@ -17,6 +17,7 @@ import (
 
 var (
 	ErrLockFailed  = errors.New("lock failed")
+	ErrClientIsNil = errors.New("client is nil")
 	ErrLockNotHeld = errors.New("lock not held")
 )
 
@@ -127,24 +128,48 @@ func LockWithDisableAutoExtend() LockOption {
 	}
 }
 
+// TryLock 当需要快速获得结果时，使用 TryLock 会很好，因为它只尝试获取锁一次，如果失败则立即返回。
+//
+// 考虑一种场景：一个任务同时只能运行一次，如果后续请求到来发现已经在运行了，则不需要再次触发任务。
+//
+// 如果你希望在获取锁失败时进行重试，可以使用 Lock 方法，它会根据提供的重试策略不断尝试获取锁，直到成功或超时。
+//
+// 注意：TryLock 在获取成功之后，也会自动续期锁；因此获取成功之后，记得调用 Unlock 释放锁。
+func (l *Locker) TryLock(ctx context.Context, resource string, options ...LockOption) (*Lock, error) {
+	opt := l.mergeOptions(options...)
+	l.mutex.RLock()
+	client := l.redisClient
+	l.mutex.RUnlock()
+
+	if client == nil {
+		return nil, ErrClientIsNil
+	}
+	ok, err := client.SetNX(ctx, opt.Resource, opt.Owner, opt.Ttl).Result()
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		lock := &Lock{
+			client:   client,
+			resource: opt.Resource,
+			owner:    opt.Owner,
+			ttl:      opt.Ttl,
+		}
+		if !opt.disableAutoExtend {
+			lock.autoExtend(context.Background(), opt.Ttl/3*2)
+		}
+		return lock, nil
+	}
+	return nil, nil
+}
+
+// Lock 会根据提供的重试策略不断尝试获取锁，直到成功或超时。
+//
+// 如果你希望只尝试获取锁一次，可以使用 TryLock 方法。
+//
+// 注意：Lock 在获取成功之后，会自动续期锁；因此获取成功之后，记得调用 Unlock 释放锁。
 func (l *Locker) Lock(ctx context.Context, resource string, options ...LockOption) (*Lock, error) {
-	opt := &LockOptions{Resource: resource}
-	for _, v := range options {
-		v(opt)
-	}
-	if opt.Ttl <= 0 {
-		opt.Ttl = l.defaultTtl
-	}
-	if opt.RetryStrategy == nil {
-		opt.RetryStrategy = l.defaultRetryStrategy
-	}
-	if opt.lockTimeout <= 0 {
-		opt.lockTimeout = l.defaultLockTimeout
-	}
-	opt.Owner = strings.TrimSpace(opt.Owner)
-	if len(opt.Owner) == 0 {
-		opt.Owner = ids.NewUUID()
-	}
+	opt := l.mergeOptions(options...)
 	return l.lockWithOptions(ctx, opt)
 }
 
@@ -160,7 +185,7 @@ func (l *Locker) lockWithOptions(ctx context.Context, opt *LockOptions) (*Lock, 
 		l.mutex.RUnlock()
 
 		if client == nil {
-			return nil, ErrLockFailed
+			return nil, ErrClientIsNil
 		}
 
 		ok, err := client.SetNX(ctx, opt.Resource, opt.Owner, opt.Ttl).Result()
@@ -189,6 +214,27 @@ func (l *Locker) lockWithOptions(ctx context.Context, opt *LockOptions) (*Lock, 
 			fmt.Println("retrying...")
 		}
 	}
+}
+
+func (l *Locker) mergeOptions(options ...LockOption) *LockOptions {
+	opt := &LockOptions{}
+	for _, v := range options {
+		v(opt)
+	}
+	if opt.Ttl <= 0 {
+		opt.Ttl = l.defaultTtl
+	}
+	if opt.RetryStrategy == nil {
+		opt.RetryStrategy = l.defaultRetryStrategy
+	}
+	if opt.lockTimeout <= 0 {
+		opt.lockTimeout = l.defaultLockTimeout
+	}
+	opt.Owner = strings.TrimSpace(opt.Owner)
+	if len(opt.Owner) == 0 {
+		opt.Owner = ids.NewUUID()
+	}
+	return opt
 }
 
 type Lock struct {
@@ -239,7 +285,9 @@ func (l *Lock) autoExtend(ctx context.Context, extendInterval time.Duration) {
 	}(ctx)
 }
 
-// 续期锁
+// Extend 手动续期锁
+//
+// 当开启了自动续期时，则不需要调用此方法。
 func (l *Lock) Extend(ctx context.Context) error {
 	if l.released.Load() {
 		return ErrLockNotHeld
@@ -255,7 +303,7 @@ func (l *Lock) Extend(ctx context.Context) error {
 	return ErrLockNotHeld
 }
 
-// 释放获取的锁
+// Unlock 释放获取的锁
 func (l *Lock) Unlock(ctx context.Context) error {
 	l.mut.Lock()
 	defer l.mut.Unlock()
