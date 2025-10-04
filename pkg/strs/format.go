@@ -62,18 +62,13 @@ func MaskPhone(phone string) string {
 
 // 根据指定的分隔符分离字符串，
 // 返回的字符串数组不包含空字符串
-func Split(str string, sep ...string) []string {
+func Split(str string, sep string) []string {
 	if len(str) <= 0 {
 		return []string{}
 	}
 
-	sepStr := ","
-	if len(sep) > 0 {
-		sepStr = sep[0]
-	}
-
 	items := []string{}
-	spl := strings.SplitSeq(str, sepStr)
+	spl := strings.SplitSeq(str, sep)
 	for v := range spl {
 		val := strings.TrimSpace(v)
 		if len(val) > 0 {
