@@ -60,7 +60,7 @@ func (r *UserStore) Upsert(ctx context.Context, phone, ip string) (*models.User,
 		return nil, err
 	}
 
-	r.cache.SetJson(ctx, CacheKeyPrefixUser+user.ID.String(), user, time.Hour)
+	r.cache.KeyDelayDoubleDel(ctx, time.Millisecond*500, CacheKeyPrefixUser+user.ID.String())
 	r.UpsertLatestIP(ctx, ids.UID(user.ID), ip)
 
 	return user, nil
@@ -101,7 +101,7 @@ func (r *UserStore) UpsertLatestIP(ctx context.Context, userID ids.UID, ip strin
 		On("CONFLICT (id) DO UPDATE").
 		Set("latest = ?, updated_at = ?", ip, time.Now()).Exec(ctx)
 	if err == nil {
-		r.cache.Set(ctx, CacheKeyPrefixLatestIP+userID.String(), ip, time.Hour)
+		r.cache.KeyDelayDoubleDel(ctx, time.Millisecond*500, CacheKeyPrefixLatestIP+userID.String())
 	}
 	return err
 }

@@ -171,6 +171,16 @@ func (c *Cache) KeyDel(ctx context.Context, keys ...string) (int64, error) {
 	return c.master.Del(ctx, keys...).Result()
 }
 
+// KeyDelayDoubleDel 延迟双删策略
+func (c *Cache) KeyDelayDoubleDel(ctx context.Context, delay time.Duration, keys ...string) (int64, error) {
+	_, err := c.master.Del(ctx, keys...).Result()
+	if err != nil {
+		return 0, err
+	}
+	time.Sleep(delay)
+	return c.master.Del(ctx, keys...).Result()
+}
+
 func (c *Cache) KeyExists(ctx context.Context, keys ...string) (int64, error) {
 	return c.slave.Exists(ctx, keys...).Result()
 }
