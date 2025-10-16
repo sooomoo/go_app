@@ -19,13 +19,14 @@ type HttpScraper struct {
 	header      http.Header
 	jar         *cookiejar.Jar
 	transport   *http.Transport
+	maxRetries  int
 
 	limitReqFrequence bool
 }
 
 // NewHttpScraper 创建一个新的 HttpScraper 实例
 
-// 默认 30s 超时
+// 默认 30s 超时, 默认重试2次（加上失败前的第一次请求，共3次请求）
 func NewHttpScraper() *HttpScraper {
 	jar, _ := cookiejar.New(nil)
 
@@ -47,6 +48,7 @@ func NewHttpScraper() *HttpScraper {
 		jar:               jar,
 		limitReqFrequence: true,
 		transport:         tr,
+		maxRetries:        2,
 	}
 }
 
@@ -103,20 +105,20 @@ func (s *HttpScraper) DoRequest(method string, link string, body io.Reader, time
 	req.Header.Set("Sec-Ch-Ua", uaConfig.secChUa)
 	req.Header.Set("Sec-Ch-Ua-Mobile", "?0")
 	req.Header.Set("Sec-Ch-Ua-Platform", uaConfig.secChUaPlatform)
+	req.Header.Set("Referer", link)
+
+	// 设置Origin
+	p, err := url.Parse(link)
+	if err == nil {
+		referer := fmt.Sprintf("%s://%s/", p.Scheme, p.Host)
+		req.Header.Set("Origin", referer)
+	}
 
 	if len(s.header) > 0 {
 		for k, v := range s.header {
 			for _, vv := range v {
 				req.Header.Add(k, vv)
 			}
-		}
-	}
-	// 如果没有设置 Referer，则根据访问地址设置
-	if len(strings.TrimSpace(req.Header.Get("Referer"))) == 0 {
-		p, err := url.Parse(link)
-		if err == nil {
-			referer := fmt.Sprintf("%s://%s/", p.Scheme, p.Host)
-			req.Header.Set("Referer", referer)
 		}
 	}
 
@@ -128,7 +130,27 @@ func (s *HttpScraper) DoRequest(method string, link string, body io.Reader, time
 	}
 
 	// 4. 发送请求
-	response, err = client.Do(req)
+	// response, err = client.Do(req)
+	maxReqCount := s.maxRetries + 1
+	for i := range maxReqCount {
+		response, err = client.Do(req)
+		if err != nil {
+			// 检查是否是连接关闭类错误
+			if errors.Is(err, io.EOF) || strings.Contains(err.Error(), "idle HTTP channel") {
+				if i == maxReqCount {
+					// 重试多次后仍失败，最终处理
+					return nil, fmt.Errorf("after %d retries: %w", maxReqCount, err)
+				}
+				fmt.Printf("请求失败，进行第%d次重试: %v\n", i+1, err)
+				time.Sleep(time.Duration((i+1)*100) * time.Millisecond) // 指数退避更佳
+				continue
+			} else {
+				// 其他错误，直接返回
+				return nil, err
+			}
+		}
+		break // 成功则跳出循环
+	}
 	return
 }
 
@@ -140,24 +162,24 @@ func (s *HttpScraper) DoPost(url string, body io.Reader) (*http.Response, error)
 	return s.DoRequest(http.MethodPost, url, body, s.timeout)
 }
 
+func (s *HttpScraper) DoHead(url string) (http.Header, error) {
+	resp, err := s.DoRequest(http.MethodHead, url, nil, s.headTimeout)
+	if err != nil {
+		return http.Header{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return http.Header{}, fmt.Errorf("StatusCode: %d", resp.StatusCode)
+	}
+
+	return resp.Header, nil
+}
+
 // 获取链接的MineType
 func (s *HttpScraper) GetMineType(link string) (*MineType, error) {
-	// 首先尝试通过HEAD请求快速判断
-	mineType, err := s.checkMineTypeByHeader(link)
-	if err == nil && len(mineType) > 0 {
-		return NewMineType(mineType), nil
-	}
-	// if err != nil {
-	// 	if strings.HasPrefix(err.Error(), "StatusCode:") {
-	// 		return nil, err
-	// 	}
-	// 	//  else if strings.Contains(err.Error(), "deadline exceeded") {
-	// 	// 	return nil, errors.New("Timeout")
-	// 	// }
-	// }
-
 	// 如果HEAD方法失败或不确定，通过内容检测
-	mineType, err = s.checkMineTypeByContent(link)
+	mineType, err := s.checkMineTypeByContent(link)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "StatusCode:") {
 			return nil, err
@@ -168,21 +190,6 @@ func (s *HttpScraper) GetMineType(link string) (*MineType, error) {
 	}
 
 	return NewMineType(mineType), nil
-}
-
-func (s *HttpScraper) checkMineTypeByHeader(url string) (string, error) {
-	resp, err := s.DoRequest(http.MethodHead, url, nil, s.headTimeout)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("StatusCode: %d", resp.StatusCode)
-	}
-
-	contentType := resp.Header.Get("Content-Type")
-	return contentType, nil
 }
 
 func (s *HttpScraper) checkMineTypeByContent(url string) (string, error) {
