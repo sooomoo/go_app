@@ -9,6 +9,7 @@ import (
 type AppConfig struct {
 	Name          string              `mapstructure:"name"`
 	Addr          string              `mapstructure:"addr"`
+	Domains       []string            `mapstructure:"domains"`
 	Id            string              `mapstructure:"id"`
 	WorkerId      int64               `mapstructure:"worker_id"`
 	Database      DatabaseConfig      `mapstructure:"database"`

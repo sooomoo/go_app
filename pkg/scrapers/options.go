@@ -150,11 +150,11 @@ func waitIfNeededBeforeVisit(link string) {
 	defer linkLock.Unlock()
 
 	diff := time.Since(linkLock.lastVisitTime)
-	if diff < 5*time.Second {
+	if diff < 3*time.Second {
 		localRand := rand.New(rand.NewSource(time.Now().UnixNano()))
-		// 生成一个 [5, 10] 的随机整数
-		min := 5
-		max := 10
+		// 生成一个 [2, 5] 的随机整数
+		min := 2
+		max := 5
 		randomNum2 := localRand.Intn(max-min+1) + min
 		sleepDur := time.Duration(randomNum2) * time.Second
 		time.Sleep(sleepDur)

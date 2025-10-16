@@ -8,11 +8,11 @@ import (
 	"goapp/internal/app/features/third"
 	"goapp/internal/app/global"
 	"goapp/internal/app/middleware"
-	"goapp/pkg/core"
 	"goapp/pkg/ids"
 	"net/http"
 	"os"
-	"time"
+
+	"github.com/gin-gonic/autotls"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
@@ -36,6 +36,7 @@ func main() {
 	log.Info().Msgf("server starting... runnint in [ %s ] mode", env)
 	ctx := context.Background()
 	global.Init(ctx) // 初始化全局变量, 失败时会 panic
+	defer global.Release()
 
 	// 设置Gin模式
 	switch env {
@@ -92,33 +93,14 @@ func main() {
 		features.RegisterRoutes(v1)
 	}
 
-	// 创建HTTP服务器
-	svr := &http.Server{Addr: global.GetAppConfig().Addr, Handler: r}
-	// 优雅关闭
-	go func() {
-		if env == "dev" {
-			if err := svr.ListenAndServeTLS("E:\\experiment\\certs\\localhost+2.pem", "E:\\experiment\\certs\\localhost+2-key.pem"); err != nil && err != http.ErrServerClosed {
-				log.Fatal().Stack().Err(err).Msg("启动服务器失败")
-			}
-		} else {
-			if err := svr.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				log.Fatal().Stack().Err(err).Msg("启动服务器失败")
-			}
-		}
-	}()
-
-	core.WaitSysSignal(func() {
-		log.Info().Msg("正在关闭服务器...")
-		c, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
-
-		if err := svr.Shutdown(c); err != nil {
-			log.Fatal().Stack().Err(err).Msg("服务器关闭失败")
-		}
-
-		// 释放资源
-		global.Release()
-
-		log.Info().Msg("服务器已优雅地关闭")
-	})
+	if env == "dev" {
+		err = r.RunTLS(global.GetAppConfig().Addr, "E:\\experiment\\certs\\localhost+2.pem", "E:\\experiment\\certs\\localhost+2-key.pem")
+	} else {
+		// Start HTTPS server with automatic Let's Encrypt certificate management and HTTP-to-HTTPS redirection.
+		// The server runs until interrupted and shuts down gracefully.
+		err = autotls.Run(r, global.GetAppConfig().Domains...)
+	}
+	if err != nil && err != http.ErrServerClosed {
+		log.Fatal().Stack().Err(err).Msg("启动服务器失败")
+	}
 }

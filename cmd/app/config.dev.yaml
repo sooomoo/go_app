@@ -1,6 +1,9 @@
 name: niu-dev
 worker_id: 1
 addr: 127.0.0.1:8001
+domains:
+    - niu.com
+    - www.niu.com
 
 database:
   # connect_string: root:abc12345@tcp(127.0.0.1:3306)/niu?charset=utf8mb4&parseTime=True&loc=Local
