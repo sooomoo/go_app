@@ -2,6 +2,8 @@ package authes
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"goapp/internal/app/features/authes/authers"
@@ -60,7 +62,7 @@ func (a *AuthService) PrepareLogin(ctx *gin.Context) *PrepareLoginResponseDto {
 	}
 	base64Str := item.EncodeB64string()
 	// 生成csrf token
-	csrfToken := ids.NewUUID()
+	csrfToken := a.CreateToken()
 	// 将验证码存入缓存中
 	dur := 10 * time.Minute
 	err = a.authRepo.SaveCsrfToken(ctx, csrfToken, answer, dur)
@@ -234,7 +236,7 @@ func (a *AuthService) GenerateTokenPair(ctx *gin.Context, userID ids.UID) (strin
 	if err != nil {
 		return "", "", err
 	}
-	refreshToken := ids.NewUUID()
+	refreshToken := a.CreateToken()
 	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, claims, time.Duration(global.GetAuthConfig().Jwt.RefreshTtl)*time.Minute)
 	if err != nil {
 		return "", "", err
@@ -242,11 +244,21 @@ func (a *AuthService) GenerateTokenPair(ctx *gin.Context, userID ids.UID) (strin
 	return accessToken, refreshToken, nil
 }
 
+// CreateToken 生成不可预测的令牌
+func (a *AuthService) CreateToken() string {
+	b := make([]byte, 32)
+	// Read 填充随机字节到b中，返回错误（正常系统极少出现）
+	if _, err := rand.Read(b); err != nil {
+		return ids.NewUUID() // 回退到uuidv7
+	}
+	return hex.EncodeToString(b)
+}
+
 func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID ids.UID, clientId string, platform core.Platform) (string, *claims.AuthorizedClaims, error) {
 	if len(clientId) == 0 || platform == core.Unspecify {
 		return "", nil, errors.New("invalid args")
 	}
-	token := ids.NewUUID()
+	token := a.CreateToken()
 	claims := claims.AuthorizedClaims{
 		UserId:          userID,
 		Platform:        platform,
