@@ -76,7 +76,7 @@ func (t ParallelTask) Execute(ctx context.Context, input core.MapX) (core.MapX, 
 		name   string
 		output core.MapX
 	}
-	outputChan := make(chan tmpOutput, len(t.Tasks))
+	outputChan := make(chan *tmpOutput, len(t.Tasks))
 	defer close(outputChan)
 
 	for _, v := range t.Tasks {
@@ -86,7 +86,7 @@ func (t ParallelTask) Execute(ctx context.Context, input core.MapX) (core.MapX, 
 			if err != nil {
 				return err
 			}
-			outputChan <- tmpOutput{name: task.Name(), output: output}
+			outputChan <- &tmpOutput{name: task.Name(), output: output}
 			return nil
 		})
 	}
