@@ -73,7 +73,7 @@ func (c *Cache) Close() error {
 	return nil
 }
 
-func (c *Cache) Batch(ctx context.Context, f func(pipe redis.Pipeliner)) (map[int]interface{}, map[int]error) {
+func (c *Cache) Batch(ctx context.Context, f func(pipe redis.Pipeliner)) (map[int]any, map[int]error) {
 	pp := c.master.TxPipeline()
 	// defer pp.Discard()
 	f(pp)
@@ -93,13 +93,13 @@ func (c *Cache) Batch(ctx context.Context, f func(pipe redis.Pipeliner)) (map[in
 	return c.getCmdResult(cmders)
 }
 
-func (c *Cache) getCmdResult(cmders []redis.Cmder) (map[int]interface{}, map[int]error) {
+func (c *Cache) getCmdResult(cmders []redis.Cmder) (map[int]any, map[int]error) {
 	mapLen := len(cmders)
 	if mapLen <= 0 {
 		return nil, nil
 	}
 
-	strMap := make(map[int]interface{}, mapLen)
+	strMap := make(map[int]any, mapLen)
 	errMap := make(map[int]error, mapLen)
 	for idx, cmder := range cmders {
 		mapIdx := idx
@@ -209,7 +209,7 @@ func (c *Cache) Get(ctx context.Context, key string) (string, error) {
 	return c.slave.Get(ctx, key).Result()
 }
 
-func (c *Cache) GetJson(ctx context.Context, key string, out interface{}) error {
+func (c *Cache) GetJson(ctx context.Context, key string, out any) error {
 	jsonStr, err := c.slave.Get(ctx, key).Result()
 	if err != nil {
 		return err
