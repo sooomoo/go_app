@@ -76,10 +76,7 @@ func Init(ctx context.Context) {
 	// // 设置默认的 Db 连接
 	// query.SetDefault(ormdb)
 
-	bunDB, err = db.OpenDB(appConfig.Database.Master, appConfig.Database.Replicas, 10*time.Second)
-	if err != nil {
-		panic(err)
-	}
+	bunDB = db.MustOpenDB(appConfig.Database.Master, appConfig.Database.Replicas, 10*time.Second)
 
 	cach, err = cache.NewCache(ctx, appConfig.Cache.GetRedisOption(), nil)
 	if err != nil {

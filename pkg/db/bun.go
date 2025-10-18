@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgerrcode"
@@ -68,6 +69,31 @@ func OpenDB(dsn string, replicas []string, healthCheckInterval time.Duration, op
 
 	// db.AddQueryHook()
 	return db, nil
+}
+
+var bunDB *bun.DB
+var bunDBMutex sync.Mutex = sync.Mutex{}
+
+func Get() *bun.DB {
+	return bunDB
+}
+
+// MustOpenDB panic if OpenDB failed.
+func MustOpenDB(dsn string, replicas []string, healthCheckInterval time.Duration, opts ...pgdriver.Option) *bun.DB {
+	bunDBMutex.Lock()
+	defer bunDBMutex.Unlock()
+
+	if bunDB != nil {
+		bunDB.Close()
+		bunDB = nil
+	}
+	db, err := OpenDB(dsn, replicas, healthCheckInterval, opts...)
+	if err != nil {
+		panic(err)
+	}
+	bunDB = db
+
+	return bunDB
 }
 
 // ToPGError tries to convert the given error to *pgdriver.Error.
