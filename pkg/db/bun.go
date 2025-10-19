@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"os"
@@ -120,4 +121,52 @@ func IsPGErrorCode(err error, code string) bool {
 
 func IsPGInvalidTransactionState(err error) bool {
 	return IsPGErrorCode(err, pgerrcode.InvalidTransactionState)
+}
+
+// T 必须为结构体，不能是指针
+func Update[T any](ctx context.Context, fn func(q *bun.UpdateQuery)) (sql.Result, error) {
+	var model T
+	q := Get().NewUpdate().Model(&model)
+	fn(q)
+	return q.Exec(ctx)
+}
+
+// T 必须为结构体，不能是指针
+func Select[T any](ctx context.Context, desc T, fn func(q *bun.SelectQuery)) error {
+	q := Get().NewSelect().Model(desc)
+	fn(q)
+	return q.Scan(ctx)
+}
+
+// T 必须为结构体，不能是指针
+func Insert[T any](ctx context.Context, src T) error {
+	_, err := Get().NewInsert().Model(src).Exec(ctx)
+	return err
+}
+
+// T 必须为结构体，不能是指针
+func Delete[T any](ctx context.Context, fn func(q *bun.DeleteQuery)) error {
+	var model T
+	d := Get().NewDelete().Model(&model)
+	fn(d)
+	_, err := d.Exec(ctx)
+	return err
+}
+
+type BaseModelCreate struct {
+	bun.BaseModel
+	CreatedAt time.Time `bun:"created_at,notnull" json:"createdAt"`
+}
+
+type BaseModelCreateUpdate struct {
+	bun.BaseModel
+	CreatedAt time.Time `bun:"created_at,notnull" json:"createdAt"`
+	UpdatedAt time.Time `bun:"updated_at,notnull" json:"updatedAt"`
+}
+
+type BaseModelCreateUpdateDelete struct {
+	bun.BaseModel
+	CreatedAt time.Time `bun:"created_at,notnull" json:"createdAt"`
+	UpdatedAt time.Time `bun:"updated_at,notnull" json:"updatedAt"`
+	DeletedAt time.Time `bun:"deleted_at,soft_delete,nullzero" json:"deletedAt"`
 }
