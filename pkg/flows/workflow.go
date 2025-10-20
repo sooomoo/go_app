@@ -2,6 +2,7 @@ package flows
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"goapp/pkg/core"
 	"goapp/pkg/db"
@@ -57,138 +58,157 @@ type WorkflowEntity struct {
 	Name                           string   `bun:"name,notnull" json:"name"`
 	Description                    string   `bun:"description,notnull" json:"description"`
 	TaskNames                      []string `bun:"taskNames,notnull" json:"taskNames"`
-
-	session *WorkflowSessionEntity `bun:"-" json:"-"`
 }
 
-func (w *WorkflowEntity) instantialTasks() []Task {
-	tasks := make([]Task, 0, len(w.TaskNames))
-	for _, taskName := range w.TaskNames {
-		tasks = append(tasks, NewTask(taskName))
-	}
-	return tasks
-}
-
-func (w *WorkflowEntity) startSession(ctx context.Context, fn func(ctx context.Context, input core.MapX) (core.MapX, error), input core.MapX) error {
-	w.session = &WorkflowSessionEntity{
+func (w *WorkflowEntity) startSession(ctx context.Context, input core.MapX) (*WorkflowSessionEntity, error) {
+	session := &WorkflowSessionEntity{
 		ID:         ids.NewUID(),
 		FlowID:     w.ID,
+		TaskNames:  w.TaskNames,
 		Input:      db.JSON(input),
 		Status:     WorkflowStatusRunning,
 		StatusText: "running",
-		BaseModelCreate: db.BaseModelCreate{
+		BaseModelCreateUpdate: db.BaseModelCreateUpdate{
 			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
 		},
 	}
-	_, err := db.Get().NewInsert().Model(w.session).Exec(ctx)
+	_, err := db.Get().NewInsert().Model(session).Exec(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	ctx = context.WithValue(ctx, workflowIDKey, w.ID)
-	ctx = context.WithValue(ctx, workflowSessionIDKey, w.session.ID)
-
-	output, err := fn(ctx, input) // 执行工作流
-	if err != nil {
-		w.session.Status = WorkflowStatusFail
-		w.session.StatusText = err.Error()
-	} else {
-		w.session.Output = db.JSON(output)
-		w.session.Status = WorkflowStatusSuccess
-		w.session.StatusText = "success"
-	}
-	if err != nil {
-		return err
-	}
-	_, err = db.Get().NewUpdate().Model(w.session).Where("id = ?", w.session.ID).Exec(ctx)
-	return err
+	return session, nil
 }
 
-func (w *WorkflowEntity) executeTask(ctx context.Context, task Task, input core.MapX) (core.MapX, error) {
-	sessionTask := WorkflowSessionTaskEntity{
+func (w *WorkflowEntity) startTask(ctx context.Context, sessionID ids.UID, taskName string, input core.MapX) (*WorkflowSessionTaskEntity, error) {
+	sessionTask := &WorkflowSessionTaskEntity{
 		ID:         ids.NewUID(),
+		TaskName:   taskName,
 		FlowID:     w.ID,
-		SessionID:  w.session.ID,
+		SessionID:  sessionID,
 		Input:      db.JSON(input),
 		Status:     WorkflowStatusRunning,
 		StatusText: "running",
-		BaseModelCreate: db.BaseModelCreate{
+		BaseModelCreateUpdate: db.BaseModelCreateUpdate{
 			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
 		},
 	}
 	_, err := db.Get().NewInsert().Model(sessionTask).Exec(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	ctx = context.WithValue(ctx, workflowSessionTaskIDKey, sessionTask.ID)
-	output, err := task.Execute(ctx, input) // 执行任务
-	if err != nil {
-		sessionTask.Status = WorkflowStatusFail
-		sessionTask.StatusText = err.Error()
-	} else {
-		sessionTask.Output = db.JSON(output)
-		sessionTask.Status = WorkflowStatusSuccess
-		sessionTask.StatusText = "success"
-	}
-	if err != nil {
-		return nil, err
-	}
-	_, err = db.Get().NewUpdate().Model(sessionTask).Where("id = ?", sessionTask.ID).Exec(ctx)
-	return output, err
+	return sessionTask, nil
 }
 
 // Run 方法顺序执行工作流中的所有任务
 func (w *WorkflowEntity) Run(ctx context.Context, input core.MapX) (err error) {
-	return w.startSession(ctx, func(ctx context.Context, input core.MapX) (core.MapX, error) {
-		tasks := w.instantialTasks()
-		curFlowData := input
-		for i, task := range tasks {
-			// 检查协程是否取消方式一
-			// select {
-			// case <-ctx.Done():
-			// 	return nil, ctx.Err()
-			// default:
-			// 	fmt.Printf("Executing task %d in workflow '%s'\n", i+1, w.Name)
-			// 	curFlowData, err = w.executeTask(ctx, task, curFlowData)
-			// 	if err != nil {
-			// 		return nil, err
-			// 	}
-			// }
+	session, err := w.startSession(ctx, input)
+	if err != nil {
+		return err
+	}
+	ctx = context.WithValue(ctx, workflowIDKey, w.ID)
+	ctx = context.WithValue(ctx, workflowSessionIDKey, session.ID)
 
-			// 检查协程是否取消方式二
-			if err := ctx.Err(); err != nil {
-				return nil, err // 被取消了
-			}
-			fmt.Printf("Executing task %d in workflow '%s'\n", i+1, w.Name)
-			curFlowData, err = w.executeTask(ctx, task, curFlowData)
-			if err != nil {
-				return nil, err
-			}
+	curFlowData := input
+	for i, taskName := range w.TaskNames {
+		if err = ctx.Err(); err != nil {
+			break // 被取消了
 		}
-		return curFlowData, nil
-	}, input)
+		err = session.stepForword(ctx, i, taskName)
+		err = errors.Join(err, ctx.Err())
+		if err != nil {
+			break
+		}
+		fmt.Printf("Executing task %d(%s) in workflow '%s'\n", i+1, taskName, w.Name)
+		taskEntity, er := w.startTask(ctx, session.ID, taskName, curFlowData)
+		err = errors.Join(er, ctx.Err())
+		if err != nil {
+			break
+		}
+		curFlowData, err = taskEntity.execute(ctx)
+		if err != nil {
+			break
+		}
+	}
+
+	return session.finish(ctx, curFlowData, err)
 }
 
 // 工作流运行历史记录
 type WorkflowSessionEntity struct {
-	db.BaseModelCreate `bun:"workflow_sessions,alias:wfs"`
-	ID                 ids.UID        `bun:"id,pk" json:"id"`
-	FlowID             ids.UID        `bun:"flow_id,notnull" json:"flowId"`
-	Input              db.JSON        `bun:"input" json:"input"`
-	Output             db.JSON        `bun:"output" json:"output"`
-	Status             WorkflowStatus `bun:"status" json:"status"`
-	StatusText         string         `bun:"status_text" json:"statusText"`
+	db.BaseModelCreateUpdate `bun:"workflow_sessions,alias:wfs"`
+	ID                       ids.UID        `bun:"id,pk" json:"id"`
+	FlowID                   ids.UID        `bun:"flow_id,notnull" json:"flowId"`
+	TaskNames                []string       `bun:"taskNames,notnull" json:"taskNames"` // 对当前工作流中的任务做个备份
+	CurrentTask              string         `bun:"current_task" json:"currentTask"`    // 当前正在执行的任务
+	Progress                 float64        `bun:"progress" json:"progress"`           // 当前工作流的进度，0-1
+	Input                    db.JSON        `bun:"input" json:"input"`
+	Output                   db.JSON        `bun:"output" json:"output"`
+	Status                   WorkflowStatus `bun:"status" json:"status"`
+	StatusText               string         `bun:"status_text" json:"statusText"`
+}
+
+func (w *WorkflowSessionEntity) stepForword(ctx context.Context, index int, taskName string) error {
+	w.CurrentTask = taskName
+	w.Progress = float64(index) / float64(len(w.TaskNames))
+	_, err := db.Get().NewUpdate().Model(w).Where("id = ?", w.ID).
+		Set("current_task = ?", taskName).
+		Set("progress = ?", w.Progress).
+		Set("updated_at = ?", time.Now()).
+		Exec(ctx)
+	return err
+}
+
+func (w *WorkflowSessionEntity) finish(ctx context.Context, output core.MapX, err error) error {
+	u := db.Get().NewUpdate().Model(w).Where("id = ?", w.ID)
+	if err != nil {
+		w.Status = WorkflowStatusFail
+		w.StatusText = err.Error()
+	} else {
+		w.Output = db.JSON(output)
+		w.Status = WorkflowStatusSuccess
+		w.StatusText = "success"
+		u.Set("output = ?", output)
+	}
+	u.Set("status = ?", w.Status)
+	u.Set("status_text = ?", w.StatusText)
+	_, err = u.Exec(ctx)
+	return err
 }
 
 type WorkflowSessionTaskEntity struct {
-	db.BaseModelCreate `bun:"workflow_session_tasks,alias:wfst"`
-	ID                 ids.UID
-	FlowID             ids.UID
-	SessionID          ids.UID
-	Input              db.JSON
-	Output             db.JSON
-	Status             WorkflowStatus
-	StatusText         string
+	db.BaseModelCreateUpdate `bun:"workflow_session_tasks,alias:wfst"`
+	ID                       ids.UID        `bun:"id,pk" json:"id"`
+	TaskName                 string         `bun:"task_name,notnull" json:"taskName"`
+	FlowID                   ids.UID        `bun:"flow_id,notnull" json:"flowId"`
+	SessionID                ids.UID        `bun:"session_id,notnull" json:"sessionId"`
+	Input                    db.JSON        `bun:"input" json:"input"`
+	Output                   db.JSON        `bun:"output" json:"output"`
+	Status                   WorkflowStatus `bun:"status" json:"status"`
+	StatusText               string         `bun:"status_text" json:"statusText"`
+}
+
+func (t *WorkflowSessionTaskEntity) execute(ctx context.Context) (core.MapX, error) {
+	ctx = context.WithValue(ctx, workflowSessionTaskIDKey, t.ID)
+	task := NewTask(t.TaskName)
+	output, err := task.Execute(ctx, core.MapX(t.Input)) // execute task
+
+	u := db.Get().NewUpdate().Model(t).Where("id = ?", t.ID)
+	if err != nil {
+		t.Status = WorkflowStatusFail
+		t.StatusText = err.Error()
+	} else {
+		t.Output = db.JSON(output)
+		t.Status = WorkflowStatusSuccess
+		t.StatusText = "success"
+		u.Set("output = ?", output)
+	}
+	u.Set("status = ?", t.Status)
+	u.Set("status_text = ?", t.StatusText)
+	_, err = db.Get().NewUpdate().Model(t).Where("id = ?", t.ID).Exec(ctx)
+
+	return output, err
 }
 
 // 工作流管理器
@@ -219,12 +239,7 @@ func (WorkflowManager) Update(ctx context.Context, workflowID ids.UID, updates m
 	return err
 }
 
-type WorkflowManagerListResponse struct {
-	Total int              `json:"total"`
-	Items []WorkflowEntity `json:"items"`
-}
-
-func (WorkflowManager) List(ctx context.Context, page, pageSize int) (*WorkflowManagerListResponse, error) {
+func (WorkflowManager) ListWorkflows(ctx context.Context, page, pageSize int) (*db.ListResult[WorkflowEntity], error) {
 	var workflows []WorkflowEntity
 	count, err := db.Get().NewSelect().Model(&workflows).Count(ctx)
 	if err != nil {
@@ -232,8 +247,28 @@ func (WorkflowManager) List(ctx context.Context, page, pageSize int) (*WorkflowM
 	}
 
 	err = db.Get().NewSelect().Model(&workflows).Limit(pageSize).Offset((page - 1) * pageSize).Scan(ctx)
-	return &WorkflowManagerListResponse{
+	return &db.ListResult[WorkflowEntity]{
 		Total: count,
 		Items: workflows,
 	}, err
+}
+
+func (WorkflowManager) ListWorkflowSessions(ctx context.Context, workflowID ids.UID, page, pageSize int) (*db.ListResult[WorkflowSessionEntity], error) {
+	var sessions []WorkflowSessionEntity
+	count, err := db.Get().NewSelect().Model(&sessions).Where("flow_id = ?", workflowID).Count(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.Get().NewSelect().Model(&sessions).Where("flow_id = ?", workflowID).Order("created_at desc").Limit(pageSize).Offset((page - 1) * pageSize).Scan(ctx)
+	return &db.ListResult[WorkflowSessionEntity]{
+		Total: count,
+		Items: sessions,
+	}, err
+}
+
+func (WorkflowManager) ListSessionTasks(ctx context.Context, sessionID ids.UID) ([]WorkflowSessionTaskEntity, error) {
+	var tasks []WorkflowSessionTaskEntity
+	err := db.Get().NewSelect().Model(&tasks).Where("session_id = ?", sessionID).Scan(ctx)
+	return tasks, err
 }

@@ -170,3 +170,8 @@ type BaseModelCreateUpdateDelete struct {
 	UpdatedAt time.Time `bun:"updated_at,notnull" json:"updatedAt"`
 	DeletedAt time.Time `bun:"deleted_at,soft_delete,nullzero" json:"deletedAt"`
 }
+
+type ListResult[T any] struct {
+	Total int `json:"total"`
+	Items []T `json:"items"`
+}
