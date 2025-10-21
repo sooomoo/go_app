@@ -83,9 +83,9 @@ func snowIDNowMillis() int64 {
 //
 // timestamp: 41位, (2^41 毫秒可以表示 69 年)
 //
-// nodeID: 8 位，即最多支持 256 个节点 (节点的值会在 init 函数自动从环境变量中获取， key 为 'node_id')
+// nodeID: 7 位，即最多支持 127 个节点 (节点的值会在 init 函数自动从环境变量中获取， key 为 'node_id')
 //
-// time back: 1位，表示这个 ID 是在时钟回拨时生成的
+// time back: 2位，表示这个 ID 是在时钟回拨时生成的
 //
 // counter: 13 位，即每毫秒最多可生成 8192 个 ID
 //
