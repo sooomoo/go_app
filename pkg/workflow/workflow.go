@@ -1,4 +1,4 @@
-package flows
+package workflow
 
 import (
 	"context"
@@ -8,8 +8,6 @@ import (
 	"goapp/pkg/db"
 	"goapp/pkg/ids"
 	"time"
-
-	"github.com/uptrace/bun"
 )
 
 type WorkflowStatus string
@@ -27,6 +25,7 @@ var workflowIDKey WorkflowKey
 var workflowSessionIDKey WorkflowKey
 var workflowSessionTaskIDKey WorkflowKey
 
+// WorkflowIDFromContext 从上下文中获取工作流的ID
 func WorkflowIDFromContext(ctx context.Context) ids.UID {
 	id, ok := ctx.Value(workflowIDKey).(ids.UID)
 	if !ok {
@@ -35,6 +34,7 @@ func WorkflowIDFromContext(ctx context.Context) ids.UID {
 	return id
 }
 
+// WorkflowSessionIDFromContext 从上下文中获取工作流会话的ID
 func WorkflowSessionIDFromContext(ctx context.Context) ids.UID {
 	id, ok := ctx.Value(workflowSessionIDKey).(ids.UID)
 	if !ok {
@@ -43,6 +43,7 @@ func WorkflowSessionIDFromContext(ctx context.Context) ids.UID {
 	return id
 }
 
+// WorkflowSessionTaskIDFromContext 从上下文中获取工作流会话任务的ID
 func WorkflowSessionTaskIDFromContext(ctx context.Context) ids.UID {
 	id, ok := ctx.Value(workflowSessionTaskIDKey).(ids.UID)
 	if !ok {
@@ -101,8 +102,8 @@ func (w *WorkflowEntity) startTask(ctx context.Context, sessionID ids.UID, taskN
 	return sessionTask, nil
 }
 
-// Run 方法顺序执行工作流中的所有任务
-func (w *WorkflowEntity) Run(ctx context.Context, input core.MapX) (err error) {
+// run 方法顺序执行工作流中的所有任务
+func (w *WorkflowEntity) run(ctx context.Context, input core.MapX) (err error) {
 	session, err := w.startSession(ctx, input)
 	if err != nil {
 		return err
@@ -209,66 +210,4 @@ func (t *WorkflowSessionTaskEntity) execute(ctx context.Context) (core.MapX, err
 	_, err = db.Get().NewUpdate().Model(t).Where("id = ?", t.ID).Exec(ctx)
 
 	return output, err
-}
-
-// 工作流管理器
-type WorkflowManager struct {
-}
-
-func NewWorkflowManager() *WorkflowManager {
-	return &WorkflowManager{}
-}
-
-func (WorkflowManager) Launch(ctx context.Context, workflowID ids.UID, input core.MapX) error {
-	var workflow WorkflowEntity
-	err := db.Get().NewSelect().Model(&workflow).Where("id = ?", workflowID).Scan(ctx)
-	if err != nil {
-		return err
-	}
-
-	return workflow.Run(ctx, input)
-}
-
-func (WorkflowManager) Update(ctx context.Context, workflowID ids.UID, updates map[string]any) error {
-	_, err := db.Update[WorkflowEntity](ctx, func(q *bun.UpdateQuery) {
-		q.Where("id = ?", workflowID)
-		for k, v := range updates {
-			q.Set(fmt.Sprintf("%s = ?", k), v)
-		}
-	})
-	return err
-}
-
-func (WorkflowManager) ListWorkflows(ctx context.Context, page, pageSize int) (*db.ListResult[WorkflowEntity], error) {
-	var workflows []WorkflowEntity
-	count, err := db.Get().NewSelect().Model(&workflows).Count(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	err = db.Get().NewSelect().Model(&workflows).Limit(pageSize).Offset((page - 1) * pageSize).Scan(ctx)
-	return &db.ListResult[WorkflowEntity]{
-		Total: count,
-		Items: workflows,
-	}, err
-}
-
-func (WorkflowManager) ListWorkflowSessions(ctx context.Context, workflowID ids.UID, page, pageSize int) (*db.ListResult[WorkflowSessionEntity], error) {
-	var sessions []WorkflowSessionEntity
-	count, err := db.Get().NewSelect().Model(&sessions).Where("flow_id = ?", workflowID).Count(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	err = db.Get().NewSelect().Model(&sessions).Where("flow_id = ?", workflowID).Order("created_at desc").Limit(pageSize).Offset((page - 1) * pageSize).Scan(ctx)
-	return &db.ListResult[WorkflowSessionEntity]{
-		Total: count,
-		Items: sessions,
-	}, err
-}
-
-func (WorkflowManager) ListSessionTasks(ctx context.Context, sessionID ids.UID) ([]WorkflowSessionTaskEntity, error) {
-	var tasks []WorkflowSessionTaskEntity
-	err := db.Get().NewSelect().Model(&tasks).Where("session_id = ?", sessionID).Scan(ctx)
-	return tasks, err
 }

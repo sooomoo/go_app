@@ -1,9 +1,10 @@
-package flows
+package workflow
 
 import (
 	"context"
 	"goapp/pkg/core"
 	"maps"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -61,7 +62,7 @@ func (t RetryableTask) Execute(ctx context.Context, input core.MapX) (core.MapX,
 	return output, err
 }
 
-// 需要多个任务同时执行并输出结果的情况
+// ParallelTask 需要多个任务同时执行并输出结果的情况
 type ParallelTask struct {
 	Tasks []Task
 }
@@ -104,4 +105,47 @@ func (t ParallelTask) Execute(ctx context.Context, input core.MapX) (core.MapX, 
 		output[taskOutput.name] = output
 	}
 	return output, nil
+}
+
+type taskFactory struct {
+	factories map[string]func() Task
+	mutex     sync.RWMutex
+}
+
+func newTaskFactory() *taskFactory {
+	return &taskFactory{
+		factories: make(map[string]func() Task),
+		mutex:     sync.RWMutex{},
+	}
+}
+
+func (tf *taskFactory) RegisterTask(taskName string, factory func() Task) {
+	tf.mutex.Lock()
+	defer tf.mutex.Unlock()
+	tf.factories[taskName] = factory
+}
+
+func (tf *taskFactory) NewTask(taskName string) Task {
+	tf.mutex.RLock()
+	defer tf.mutex.RUnlock()
+	factory, ok := tf.factories[taskName]
+	if !ok {
+		panic("task not found: " + taskName)
+	}
+	return factory()
+}
+
+// 任务实现
+var taskFactoryObj = newTaskFactory()
+
+// RegisterTask 注册任务实现: 应用启动时调用，后续不应该再调用
+func RegisterTaskFactory(taskName string, factory func() Task) {
+	taskFactoryObj.RegisterTask(taskName, factory)
+}
+
+// NewTask 获取任务实现, 调用factory生成实例
+//
+// 如果没有找到对应的factory，则 panic
+func NewTask(taskName string) Task {
+	return taskFactoryObj.NewTask(taskName)
 }
