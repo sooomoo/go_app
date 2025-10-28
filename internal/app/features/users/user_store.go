@@ -23,7 +23,7 @@ type UserStore struct {
 
 func NewUserStore() *UserStore {
 	return &UserStore{
-		cache: global.GetCache(),
+		cache: global.Cache(),
 	}
 }
 

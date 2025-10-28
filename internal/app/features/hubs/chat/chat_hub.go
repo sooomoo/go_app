@@ -41,7 +41,7 @@ type ChatHub struct {
 
 func NewChatHub() *ChatHub {
 	return &ChatHub{
-		pool:     global.GetCoroutinePool(),
+		pool:     global.GoroutinePool(),
 		config:   &global.GetAppConfig().Hub,
 		protooal: bytes.NewMsgPackProtocol(nil, nil),
 	}

@@ -21,7 +21,7 @@ type AIHub struct {
 }
 
 func NewAIHub() (*AIHub, error) {
-	pool := global.GetCoroutinePool()
+	pool := global.GoroutinePool()
 	h, err := sse.NewHub(pool, 30*time.Second)
 	if err != nil {
 		panic(err)

@@ -18,7 +18,7 @@ import (
 func CryptoMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get请求以及指定了不需要加密的路径放行
-		cryptoEnabled := global.GetAuthConfig().EnableCrypto
+		cryptoEnabled := global.AuthConfig().EnableCrypto
 		if !isPathNeedCrypto(c.Request.URL.Path) || !cryptoEnabled {
 			c.Next()
 			return
@@ -99,12 +99,12 @@ func CryptoMiddleware() gin.HandlerFunc {
 }
 
 func isPathNeedCrypto(path string) bool {
-	for _, p := range global.GetAuthConfig().PathsNotCrypt {
+	for _, p := range global.AuthConfig().PathsNotCrypt {
 		if strings.Contains(p, "*") || strings.EqualFold(p, path) {
 			return false
 		}
 	}
-	for _, p := range global.GetAuthConfig().PathsNeedCrypt {
+	for _, p := range global.AuthConfig().PathsNeedCrypt {
 		if strings.Contains(p, "*") {
 			return true
 		}

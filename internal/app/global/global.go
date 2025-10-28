@@ -3,6 +3,7 @@ package global
 import (
 	"context"
 	"fmt"
+	"goapp/internal/pkg/features/logging"
 	"goapp/pkg/cache"
 	"goapp/pkg/core"
 	"goapp/pkg/db"
@@ -95,6 +96,9 @@ func Init(ctx context.Context) {
 	if err != nil {
 		panic(err)
 	}
+
+	// 初始化日志系统
+	logging.Start(ctx, appConfig.Name, logging.NewDBStore())
 }
 
 func loadConfig() error {
@@ -144,28 +148,25 @@ func Release() {
 	queue.Close()
 }
 
-//	func DB() *gorm.DB {
-//		return ormdb
-//	}
 func DB() *bun.DB {
 	return bunDB
 }
-func GetCoroutinePool() core.CoroutinePool {
+func GoroutinePool() core.CoroutinePool {
 	return pool
 }
-func GetCache() *cache.Cache {
+func Cache() *cache.Cache {
 	return cach
 }
 
-func GetLocker() *distribute.Locker {
+func Locker() *distribute.Locker {
 	return locker
 }
-func GetQueue() distribute.MessageQueue {
+func Queue() distribute.MessageQueue {
 	return queue
 }
 func GetAppConfig() *AppConfig {
 	return appConfig
 }
-func GetAuthConfig() AuthenticatorConfig {
+func AuthConfig() AuthenticatorConfig {
 	return appConfig.Authenticator
 }

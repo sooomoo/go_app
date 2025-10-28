@@ -95,8 +95,8 @@ func VerifySign(pubKey string, data []byte, signature string) (bool, error) {
 // priKey: 私钥
 // data: 待签名的数据
 func SignMap(mp map[string]string) (string, error) {
-	key := global.GetAuthConfig().SignKeyPair.PrivateKey
-	pKey := global.GetAuthConfig().SignKeyPair.PublicKey
+	key := global.AuthConfig().SignKeyPair.PrivateKey
+	pKey := global.AuthConfig().SignKeyPair.PublicKey
 	if len(key) == 0 {
 		panic("sign key is empty")
 	}

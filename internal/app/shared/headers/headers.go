@@ -201,8 +201,8 @@ func SaveClientKeys(ctx *gin.Context) *SessionClientKeys {
 
 	signPubKey := raw[24:56]
 	boxPubKey := raw[56:]
-	if global.GetAuthConfig().EnableCrypto {
-		shareKey, err := crypto.NegotiateShareKey(boxPubKey, global.GetAuthConfig().BoxKeyPair.PrivateKey)
+	if global.AuthConfig().EnableCrypto {
+		shareKey, err := crypto.NegotiateShareKey(boxPubKey, global.AuthConfig().BoxKeyPair.PrivateKey)
 		if err != nil {
 			ctx.AbortWithError(400, errors.New("negotiate fail"))
 			return nil

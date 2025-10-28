@@ -70,7 +70,7 @@ func (a *AuthService) PrepareLogin(ctx *gin.Context) *PrepareLoginResponseDto {
 		ctx.AbortWithError(500, err)
 		return nil
 	}
-	jwtConfig := global.GetAuthConfig().Jwt
+	jwtConfig := global.AuthConfig().Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
 	ctx.SetCookie(headers.CookieKeyCsrfToken, csrfToken, int(dur.Seconds()), "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
 	// 返回验证码和csrf token
@@ -108,7 +108,7 @@ func (a *AuthService) Authorize(ctx *gin.Context, req authers.AuthRequest) *Auth
 		return nil
 	}
 
-	jwtConfig := global.GetAuthConfig().Jwt
+	jwtConfig := global.AuthConfig().Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
 	ctx.SetCookie(headers.CookieKeyCsrfToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
 
@@ -188,14 +188,14 @@ func (a *AuthService) Logout(ctx *gin.Context) {
 	// TODO: 可能不需要，客户端主动关闭也行
 
 	// 删除 cookie
-	jwtConfig := global.GetAuthConfig().Jwt
+	jwtConfig := global.AuthConfig().Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
 	ctx.SetCookie(headers.CookieKeyAccessToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
 	ctx.SetCookie(headers.CookieKeyRefreshToken, "", -1000, "/", jwtConfig.CookieDomain, jwtConfig.CookieSecure, jwtConfig.CookieHttpOnly)
 }
 
 func (a *AuthService) setupAuthorizedCookie(ctx *gin.Context, clientId, accessToken, refreshToken string) {
-	jwtConfig := global.GetAuthConfig().Jwt
+	jwtConfig := global.AuthConfig().Jwt
 	ctx.SetSameSite(http.SameSite(jwtConfig.CookieSameSiteMode))
 	atkMaxAge := int((time.Duration(jwtConfig.AccessTtl) * time.Minute).Seconds())
 	rtkMaxAge := int((time.Duration(jwtConfig.RefreshTtl) * time.Minute).Seconds())
@@ -237,7 +237,7 @@ func (a *AuthService) GenerateTokenPair(ctx *gin.Context, userID ids.UID) (strin
 		return "", "", err
 	}
 	refreshToken := a.CreateToken()
-	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, claims, time.Duration(global.GetAuthConfig().Jwt.RefreshTtl)*time.Minute)
+	err = a.authRepo.SaveRefreshToken(ctx, refreshToken, claims, time.Duration(global.AuthConfig().Jwt.RefreshTtl)*time.Minute)
 	if err != nil {
 		return "", "", err
 	}
@@ -267,7 +267,7 @@ func (a *AuthService) GenerateAccessToken(ctx *gin.Context, userID ids.UID, clie
 		UserAgentHashed: headers.GetUserAgentHashed(ctx),
 		Ip:              ctx.ClientIP(),
 	}
-	err := a.authRepo.SaveAccessToken(ctx, token, time.Duration(global.GetAuthConfig().Jwt.AccessTtl)*time.Minute, &claims)
+	err := a.authRepo.SaveAccessToken(ctx, token, time.Duration(global.AuthConfig().Jwt.AccessTtl)*time.Minute, &claims)
 	if err != nil {
 		return "", nil, err
 	}
@@ -284,7 +284,7 @@ func (d *AuthService) IsReplayRequest(ctx context.Context, requestId, timestamp 
 		return true
 	}
 
-	maxInterval := global.GetAuthConfig().ReplayMaxInterval
+	maxInterval := global.AuthConfig().ReplayMaxInterval
 	if time.Now().Unix()-timestampVal > maxInterval {
 		return true // 超过5分钟的请求视为无效
 	}

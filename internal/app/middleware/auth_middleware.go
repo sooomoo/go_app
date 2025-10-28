@@ -43,12 +43,12 @@ func AuthMiddleware() gin.HandlerFunc {
 }
 
 func isPathNeedAuth(path string) bool {
-	for _, p := range global.GetAuthConfig().PathsNotAuth {
+	for _, p := range global.AuthConfig().PathsNotAuth {
 		if strings.EqualFold(p, path) {
 			return false
 		}
 	}
-	for _, p := range global.GetAuthConfig().PathsNeedAuth {
+	for _, p := range global.AuthConfig().PathsNeedAuth {
 		if strings.Contains(p, "*") {
 			return true
 		}

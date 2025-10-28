@@ -8,7 +8,6 @@ import (
 	"goapp/pkg/ids"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -52,13 +51,6 @@ func TestID(t *testing.T) {
 	id := ids.NewID()
 	fmt.Printf("New ID: %v\n", id)
 	fmt.Printf("ID Time: %v, nodeid:%v, time back times:%v\n", ids.IDGetTimestamp(id), ids.IDGetNodeID(id), ids.IDGetClockBackwardTimes(id))
-	seqID := ids.NewSeqID()
-	fmt.Printf("New SeqID: %v\n", seqID)
-	fmt.Printf("SeqID Hex: %s\n", seqID)
-	fmt.Printf("SeqID B64: %s\n", seqID.Base64())
-	fmt.Printf("SeqID Time: %v\n", seqID.Timestamp())
-	var nilSeq ids.SeqID
-	fmt.Printf("Nil SeqEq: %v\n", nilSeq == ids.NilSeqID)
 
 	uidv7, _ := uuid.NewV7()
 	fmt.Printf("New UUID: %s\n", strings.ReplaceAll(uidv7.String(), "-", ""))
@@ -66,119 +58,10 @@ func TestID(t *testing.T) {
 
 	var bigID ids.BigID
 	fmt.Printf("New BigEQ: %v\n", bigID == ids.NilBigID)
-
-	var seqIDCounter uint32 = 0xffffffff
-	seq := atomic.AddUint32(&seqIDCounter, 20)
-	fmt.Println(seq)
-
-	fmt.Println(seqID)
-}
-
-func TestSeqId(t *testing.T) {
-	id := ids.NewSeqID()
-	fmt.Printf("New SeqID: %v\n", id)
-	fmt.Printf("SeqID Hex: %s\n", id)
-	fmt.Printf("SeqID B64: %s\n", id.Base64())
-	fmt.Printf("SeqID Time: %v\n", id.Timestamp())
-
-	cnt := 10000
-	wg := sync.WaitGroup{}
-	mp := sync.Map{}
-	wg.Add(cnt)
-	for range cnt {
-		go func() {
-			defer wg.Done()
-			for range 10000 {
-				id := ids.NewSeqID()
-				if _, loaded := mp.LoadOrStore(id, core.Empty{}); loaded {
-					t.Errorf("Duplicate SeqID found: %v", id)
-					return
-				}
-			}
-		}()
-	}
-	wg.Wait()
-	fmt.Printf("Set size after adding %d SeqIDs: %d\n", cnt, 0)
-}
-
-type SeqIDExample struct {
-	ID  ids.SeqID   `json:"id"`
-	Arr []ids.SeqID `json:"arr"`
-	Age int         `json:"age"`
-}
-
-func TestSeqIDMarshalJsonExp(t *testing.T) {
-	exp := SeqIDExample{
-		ID: ids.NewSeqID(),
-		Arr: []ids.SeqID{
-			ids.NewSeqID(),
-			ids.NewSeqID(),
-			ids.NewSeqID(),
-		},
-		Age: 30,
-	}
-	data, err := json.Marshal(exp)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	fmt.Printf("Marshaled SeqIDExample: %v\n", string(data))
-
-	var out SeqIDExample
-	err = json.Unmarshal(data, &out)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	fmt.Printf("Unmarshaled SeqIDExample: %v\n", out)
-}
-
-func TestSeqIDMarshalJson(t *testing.T) {
-	id := ids.NewSeqID()
-	data, err := json.Marshal(id)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	fmt.Printf("Marshaled SeqID: %s\n", data)
-
-	var out ids.SeqID
-	err = json.Unmarshal(data, &out)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	fmt.Printf("Unmarshaled SeqID: %v\n", out)
-}
-
-func TestSeqIDMarshalTest(t *testing.T) {
-	id := ids.NewSeqID()
-	data, err := id.MarshalText()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	fmt.Printf("Marshaled SeqID: %s\n", string(data))
-
-	var out ids.SeqID
-	err = out.UnmarshalText(data)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	fmt.Printf("Unmarshaled SeqID: %v\n", out)
-}
-
-func BenchmarkSeqID(b *testing.B) {
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			ids.NewSeqID()
-		}
-	})
 }
 
 func TestNewID(t *testing.T) {
-	id := ids.NewID()
+	id := ids.NewBigID()
 	fmt.Printf("New ID: %d\n", id)
 
 	mp := sync.Map{}
@@ -189,12 +72,12 @@ func TestNewID(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range 10000 {
-				id := ids.NewID()
+				id := ids.NewBigID()
 				if _, loaded := mp.LoadOrStore(id, core.Empty{}); loaded {
 					t.Errorf("Duplicate ID found: %v", id)
 					return
 				}
-				times := ids.IDGetClockBackwardTimes(id)
+				times := ids.IDGetClockBackwardTimes(int64(id))
 				if times > 0 {
 					fmt.Printf("New ID:%d, Clock back times:%v\n", id, times)
 				}
@@ -202,9 +85,7 @@ func TestNewID(t *testing.T) {
 		}()
 	}
 	// 新开协程模拟时钟回退
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		time.Sleep(2 * time.Second)
 		delta := int64(15)
 		ids.SetSnowIDNowMillisFunc(func() int64 {
@@ -212,7 +93,7 @@ func TestNewID(t *testing.T) {
 		})
 		time.Sleep(5 * time.Millisecond)
 		delta = int64(30)
-	}()
+	})
 	wg.Wait()
 	fmt.Printf("Set size after adding %d IDs: %d\n", cnt, 0)
 }
@@ -226,17 +107,12 @@ func TestIDMany(t *testing.T) {
 		id := ids.NewBigID()
 		fmt.Printf("New BigID: %d, time: %v\n", id, id.Timestamp())
 	}
-
-	for range 10 {
-		id := ids.NewSeqID()
-		fmt.Printf("New SeqID: %s, time: %v\n", id, id.Timestamp())
-	}
 }
 
 func BenchmarkBigID(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			ids.NewID()
+			ids.NewBigID()
 		}
 	})
 }
@@ -435,21 +311,6 @@ func TestMarshalJson(t *testing.T) {
 	}
 	fmt.Printf("Marshaled UIDExample: %v\n", string(data))
 
-	seqIDexp := SeqIDExample{
-		ID: ids.NewSeqID(),
-		Arr: []ids.SeqID{
-			ids.NewSeqID(),
-			ids.NewSeqID(),
-			ids.NewSeqID(),
-		},
-		Age: 30,
-	}
-	seqdata, err := json.Marshal(seqIDexp)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	fmt.Printf("Marshaled SeqIDExample: %v\n", string(seqdata))
 	bigexp := BigIDExample{
 		ID: int64(ids.NewBigID()),
 		Arr: []int64{

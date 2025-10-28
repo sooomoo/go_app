@@ -187,6 +187,9 @@ func (l *Locker) lockWithOptions(ctx context.Context, opt *LockOptions) (*Lock, 
 		if client == nil {
 			return nil, ErrClientIsNil
 		}
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 
 		ok, err := client.SetNX(ctx, opt.Resource, opt.Owner, opt.Ttl).Result()
 		if err != nil {

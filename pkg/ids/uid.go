@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,23 +21,11 @@ var _ encoding.TextUnmarshaler = (*UID)(nil)
 var _ json.Marshaler = (*UID)(nil)
 var _ json.Unmarshaler = (*UID)(nil)
 
-var uidFailCallback func(err error)
-
-// 设置一个 uid 生成失败时的回调函数
-func SetUIDFailCallback(f func(err error)) {
-	uidFailCallback = f
-}
-
 // 生成一个全局唯一 ID, 使用 uuidv7 生成
 func NewUID() UID {
 	uuid, err := uuid.NewV7()
 	if err != nil {
-		if uidFailCallback != nil {
-			uidFailCallback(fmt.Errorf("failed to generate UID: %w", err))
-		} else {
-			log.Printf("failed to generate UID: %v", err)
-		}
-		return ZeroUID
+		panic(err)
 	}
 	return UID(uuid)
 }

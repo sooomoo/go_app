@@ -28,7 +28,7 @@ type AuthStore struct {
 }
 
 func NewAuthStore() *AuthStore {
-	return &AuthStore{cache: global.GetCache()}
+	return &AuthStore{cache: global.Cache()}
 }
 
 func (a *AuthStore) SaveCsrfToken(ctx context.Context, token, val string, expire time.Duration) error {
